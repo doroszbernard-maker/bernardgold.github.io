@@ -20,7 +20,7 @@
   --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;--display:'Bebas Neue',cursive;
   --r:6px;--r2:4px;
 }
-body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;min-height:100vh;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px}
@@ -49,7 +49,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .hdr-btn:hover{background:var(--bg3);color:var(--text)}
 
 /* ── LAYOUT ── */
-.body{display:grid;grid-template-columns:260px 1fr 280px;flex:1;min-height:0;overflow:hidden}
+.body{display:grid;grid-template-columns:260px 1fr 280px;flex:1;min-height:0;overflow:hidden;min-width:800px}
 
 /* ── LEFT ── */
 .left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--bg)}
@@ -116,7 +116,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .chart-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
 .chart-hdr-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em}
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
-#tvContainer{flex:1;min-height:0}
+#tvContainer{flex:1;min-height:0;max-height:calc(100vh - 280px)}
 #tvContainer>div{width:100%;height:100%}
 .mini-row{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);height:130px;flex-shrink:0}
 .mini-pane{border-right:1px solid var(--border);padding:7px 10px;display:flex;flex-direction:column;overflow:hidden}
@@ -188,8 +188,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .foot{padding:5px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;background:var(--bg2);flex-shrink:0}
 .foot-l,.foot-r{font-size:9px;color:var(--text3)}
 
-@media(max-width:1050px){.body{grid-template-columns:240px 1fr 260px}}
-@media(max-width:800px){.body{grid-template-columns:1fr};.center,.right{display:none}}
+@media(max-width:1200px){.body{grid-template-columns:230px 1fr 250px}}
+@media(max-width:900px){.body{grid-template-columns:200px 1fr 220px}}
+@media(max-width:700px){.body{grid-template-columns:1fr};.center,.right{display:none}}
 </style>
 </head>
 <body>
