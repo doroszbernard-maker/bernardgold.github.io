@@ -497,14 +497,37 @@ function calcSignal(closes,rsi,macd,bb,e20,e50){
 }
 
 // ══ DATA ══════════════════════════════════════════════════════════════════════
+async function tryProxy(proxyFn,url){
+  const res=await fetch(proxyFn(url),{signal:AbortSignal.timeout(7000)});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const text=await res.text();
+  try{const w=JSON.parse(text);return w.contents?JSON.parse(w.contents):w;}
+  catch{return JSON.parse(text);}
+}
+
+async function fetchYahoo(){
+  const base='https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=180d';
+  const base2=base.replace('query1','query2');
+  const proxies=[
+    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+  ];
+  const urls=[base,base,base2,base2];
+  for(let i=0;i<proxies.length;i++){
+    try{
+      setStatus('warn','Pobieranie '+(i+1)+'/'+proxies.length+'...');
+      return await tryProxy(proxies[i],urls[i]);
+    }catch(e){console.warn('Proxy '+i+' error:',e.message);}
+  }
+  throw new Error('Wszystkie źródła niedostępne — spróbuj za chwilę');
+}
+
 async function loadData(){
   setStatus('warn','POBIERANIE...');
   try{
-    const proxy='https://api.allorigins.win/get?url=';
-    const url=encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=180d');
-    const res=await fetch(proxy+url);
-    const raw=await res.json();
-    const obj=JSON.parse(raw.contents);
+    const obj=await fetchYahoo();
     const q=obj.chart.result[0];
     const closes=q.indicators.quote[0].close.map(v=>v??null).filter(v=>v!=null);
     const vols=q.indicators.quote[0].volume||[];
