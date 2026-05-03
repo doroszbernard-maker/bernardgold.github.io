@@ -20,7 +20,7 @@
   --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;--display:'Bebas Neue',cursive;
   --r:6px;--r2:4px;
 }
-body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;min-height:100vh;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px}
@@ -49,7 +49,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .hdr-btn:hover{background:var(--bg3);color:var(--text)}
 
 /* ── LAYOUT ── */
-.body{display:grid;grid-template-columns:300px 1fr 320px;flex:1;min-height:0;overflow:hidden}
+.body{display:grid;grid-template-columns:300px 1fr 320px;height:calc(100vh - 42px);overflow:hidden}
 
 /* ── LEFT ── */
 .left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--bg)}
@@ -112,12 +112,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .hist-time{color:var(--text3);margin-left:auto}
 
 /* ── CENTER ── */
-.center{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);min-height:0}
+.center{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);height:100%}
 .chart-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
 .chart-hdr-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em}
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
-#tvContainer{flex:1;min-height:0;position:relative}
-#tvContainer>div{position:absolute;inset:0;width:100%;height:100%}
+#tvContainer{height:calc(100vh - 42px - 42px - 130px);position:relative;min-height:300px}
+#tvContainer>div{width:100%;height:100%}
 .mini-row{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);height:130px;flex-shrink:0}
 .mini-pane{border-right:1px solid var(--border);padding:7px 10px;display:flex;flex-direction:column;overflow:hidden}
 .mini-pane:last-child{border-right:none}
@@ -380,31 +380,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 </footer>
 
 <!-- TradingView -->
-<script>
-(function(){
-  var container=document.getElementById('tv_xau');
-  var script=document.createElement('script');
-  script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-  script.async=true;
-  script.innerHTML=JSON.stringify({
-    autosize:true,
-    symbol:"OANDA:XAUUSD",
-    interval:"15",
-    timezone:"Europe/Warsaw",
-    theme:"dark",
-    style:"1",
-    locale:"pl",
-    backgroundColor:"rgba(7,8,12,1)",
-    gridColor:"rgba(255,255,255,0.03)",
-    hide_top_toolbar:false,
-    save_image:false,
-    studies:["STD;RSI","STD;MACD","STD;Bollinger_Bands"],
-    container_id:"tv_xau",
-    height:"100%",
-    width:"100%"
-  });
-  container.appendChild(script);
-})();
+<script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+{
+  "autosize": true,
+  "symbol": "OANDA:XAUUSD",
+  "interval": "15",
+  "timezone": "Europe/Warsaw",
+  "theme": "dark",
+  "style": "1",
+  "locale": "pl",
+  "backgroundColor": "rgba(7,8,12,1)",
+  "gridColor": "rgba(255,255,255,0.03)",
+  "hide_top_toolbar": false,
+  "save_image": false,
+  "studies": ["STD;RSI","STD;MACD","STD;Bollinger_Bands"],
+  "container_id": "tv_xau",
+  "height": "100%",
+  "width": "100%"
+}
 </script>
 
 <script>
