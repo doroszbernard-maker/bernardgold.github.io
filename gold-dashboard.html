@@ -49,7 +49,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .hdr-btn:hover{background:var(--bg3);color:var(--text)}
 
 /* ── LAYOUT ── */
-.body{display:grid;grid-template-columns:260px 1fr 280px;flex:1;min-height:0;overflow:hidden;min-width:800px}
+.body{display:grid;grid-template-columns:300px 1fr 320px;flex:1;min-height:0;overflow:hidden}
 
 /* ── LEFT ── */
 .left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--bg)}
@@ -112,12 +112,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .hist-time{color:var(--text3);margin-left:auto}
 
 /* ── CENTER ── */
-.center{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.center{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);min-height:0}
 .chart-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
 .chart-hdr-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em}
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
-#tvContainer{flex:1;min-height:0;max-height:calc(100vh - 280px)}
-#tvContainer>div{width:100%;height:100%}
+#tvContainer{flex:1;min-height:0;position:relative}
+#tvContainer>div{position:absolute;inset:0;width:100%;height:100%}
 .mini-row{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);height:130px;flex-shrink:0}
 .mini-pane{border-right:1px solid var(--border);padding:7px 10px;display:flex;flex-direction:column;overflow:hidden}
 .mini-pane:last-child{border-right:none}
@@ -188,9 +188,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .foot{padding:5px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;background:var(--bg2);flex-shrink:0}
 .foot-l,.foot-r{font-size:9px;color:var(--text3)}
 
-@media(max-width:1200px){.body{grid-template-columns:230px 1fr 250px}}
-@media(max-width:900px){.body{grid-template-columns:200px 1fr 220px}}
-@media(max-width:700px){.body{grid-template-columns:1fr};.center,.right{display:none}}
+@media(max-width:1400px){.body{grid-template-columns:280px 1fr 300px}}
+@media(max-width:1100px){.body{grid-template-columns:240px 1fr 260px}}
+@media(max-width:800px){.body{grid-template-columns:1fr};.center,.right{display:none}}
 </style>
 </head>
 <body>
@@ -380,24 +380,31 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 </footer>
 
 <!-- TradingView -->
-<script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-{
-  "autosize": true,
-  "symbol": "OANDA:XAUUSD",
-  "interval": "15",
-  "timezone": "Europe/Warsaw",
-  "theme": "dark",
-  "style": "1",
-  "locale": "pl",
-  "backgroundColor": "rgba(7,8,12,1)",
-  "gridColor": "rgba(255,255,255,0.03)",
-  "hide_top_toolbar": false,
-  "save_image": false,
-  "studies": ["STD;RSI","STD;MACD","STD;Bollinger_Bands"],
-  "container_id": "tv_xau",
-  "height": "100%",
-  "width": "100%"
-}
+<script>
+(function(){
+  var container=document.getElementById('tv_xau');
+  var script=document.createElement('script');
+  script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+  script.async=true;
+  script.innerHTML=JSON.stringify({
+    autosize:true,
+    symbol:"OANDA:XAUUSD",
+    interval:"15",
+    timezone:"Europe/Warsaw",
+    theme:"dark",
+    style:"1",
+    locale:"pl",
+    backgroundColor:"rgba(7,8,12,1)",
+    gridColor:"rgba(255,255,255,0.03)",
+    hide_top_toolbar:false,
+    save_image:false,
+    studies:["STD;RSI","STD;MACD","STD;Bollinger_Bands"],
+    container_id:"tv_xau",
+    height:"100%",
+    width:"100%"
+  });
+  container.appendChild(script);
+})();
 </script>
 
 <script>
