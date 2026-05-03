@@ -50,7 +50,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .hdr-btn:hover{background:var(--bg3);color:var(--text)}
 
 /* MAIN ROW */
-.main{flex:1;display:flex;min-height:0;overflow:hidden}
+.main{flex:1;display:flex;flex-direction:row;min-height:0;overflow:hidden}
 
 /* RESIZER */
 .resizer{width:4px;flex-shrink:0;background:transparent;cursor:col-resize;position:relative;transition:background .15s}
@@ -119,8 +119,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .chart-hdr{height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--border);background:var(--bg)}
 .chart-hdr-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.09em}
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
-.tv-wrap{flex:1;min-height:0;overflow:hidden;position:relative}
-.tv-wrap>div{position:absolute;inset:0}
+.tv-wrap{flex:1;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.tv-wrap>div{flex:1;min-height:0}
 .mini-row{height:130px;flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border)}
 .mini-pane{border-right:1px solid var(--border);padding:6px 10px;display:flex;flex-direction:column;overflow:hidden}
 .mini-pane:last-child{border-right:none}
@@ -348,24 +348,31 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
   <div class="foot-r" id="footR">—</div>
 </footer>
 
-<script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-{
-  "autosize": true,
-  "symbol": "OANDA:XAUUSD",
-  "interval": "15",
-  "timezone": "Europe/Warsaw",
-  "theme": "dark",
-  "style": "1",
-  "locale": "pl",
-  "backgroundColor": "rgba(7,8,12,1)",
-  "gridColor": "rgba(255,255,255,0.03)",
-  "hide_top_toolbar": false,
-  "save_image": false,
-  "studies": ["STD;RSI","STD;MACD","STD;Bollinger_Bands"],
-  "container_id": "tv_xau",
-  "height": "100%",
-  "width": "100%"
-}
+<script>
+// TradingView widget - loaded after DOM ready
+window.addEventListener('DOMContentLoaded', function(){
+  var s = document.createElement('script');
+  s.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+  s.async = true;
+  s.textContent = JSON.stringify({
+    autosize: true,
+    symbol: "OANDA:XAUUSD",
+    interval: "15",
+    timezone: "Europe/Warsaw",
+    theme: "dark",
+    style: "1",
+    locale: "pl",
+    backgroundColor: "rgba(7,8,12,1)",
+    gridColor: "rgba(255,255,255,0.03)",
+    hide_top_toolbar: false,
+    save_image: false,
+    studies: ["STD;RSI","STD;MACD","STD;Bollinger_Bands"],
+    container_id: "tv_xau",
+    height: "100%",
+    width: "100%"
+  });
+  document.getElementById('tv_xau').appendChild(s);
+});
 </script>
 
 <script>
