@@ -121,7 +121,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
 .tv-wrap{flex:1;min-height:0;overflow:hidden;position:relative}
 .tv-wrap>div{position:absolute;inset:0;width:100%;height:100%}
-.mini-row{height:150px;flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1.4fr;border-top:1px solid var(--border)}
+.mini-row{height:var(--mini-h,160px);flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1.4fr;border-top:1px solid var(--border);min-height:80px}
 .mini-pane{border-right:1px solid var(--border);padding:6px 10px;display:flex;flex-direction:column;overflow:hidden}
 .mini-pane:last-child{border-right:none}
 .mini-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
@@ -172,6 +172,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .ev-imp.medium{background:var(--amber-bg);color:var(--amber)}
 .ev-imp.low{background:var(--bg4);color:var(--text3)}
 .ev-imp.now{background:var(--gold-bg);color:var(--gold2)}
+
+/* HORIZONTAL RESIZER */
+.h-resizer{height:5px;flex-shrink:0;background:transparent;cursor:row-resize;position:relative;transition:background .15s;z-index:10}
+.h-resizer:hover,.h-resizer.dragging{background:var(--gold-b)}
+.h-resizer::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:2px;border-radius:1px;background:var(--border3)}
+.h-resizer:hover::after,.h-resizer.dragging::after{background:var(--gold)}
 
 .toast{display:none;position:fixed;bottom:14px;right:14px;background:var(--bg3);border:1px solid var(--border3);border-radius:var(--r);padding:8px 13px;font-size:10px;color:var(--text2);z-index:999;max-width:280px}
 .foot{height:24px;flex-shrink:0;padding:0 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
@@ -347,10 +353,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
       <div class="chart-hdr-l">TRADINGVIEW · XAU/USD · 15M · REAL-TIME</div>
       <div class="chart-live"><div class="dot live"></div>LIVE</div>
     </div>
-    <div class="tv-wrap">
+    <div class="tv-wrap" id="tvWrapEl">
       <div id="tv_xau"></div>
     </div>
-    <div class="mini-row">
+    <div class="h-resizer" id="hResizer"></div>
+    <div class="mini-row" id="miniRow">
       <div class="mini-pane">
         <div class="mini-hdr"><div class="mini-lbl">RSI (14)</div><div class="mini-badge neutral" id="bdRsi">—</div></div>
         <div class="mini-val2" id="rsiVal">—</div>
@@ -804,7 +811,15 @@ async function loadData(){
     if(bv){setInd('Bb',cur<=bv.lower?'DOLNE BB':cur>=bv.upper?'GÓRNE BB':'WEWNĄTRZ','',cur<=bv.lower?'buy':cur>=bv.upper?'sell':'neutral');}
     setInd('Ema',ema20>ema50?'↑ WZROST':'↓ SPADEK','',ema20>ema50?'buy':'sell');
 
-    buildMinis(closes.map((_,i)=>i+''),rsiArr,macdData,closes,e20,atr,decisions);
+    const chartLabels=closes.map((_,i)=>{
+      // Use last 60 closes, show date labels
+      const daysAgo=closes.length-1-i;
+      if(daysAgo===0)return'Dziś';
+      if(daysAgo===1)return'Wczoraj';
+      return '-'+daysAgo+'d';
+    });
+    window._lastChartData={labels:chartLabels,rsiArr,macdData,closes,e20,atr,decisions};
+    buildMinis(chartLabels,rsiArr,macdData,closes,e20,atr,decisions);
 
     const lastSig=sigShort.type;
     if(!signalHistory.length||signalHistory[0].type!==lastSig){
@@ -883,156 +898,111 @@ function buildMinis(labels, rsi, macd, closes, e20, atr, decisions){
     {type:'line',data:sl(macd.signal),borderColor:'#d4861e',borderWidth:1,pointRadius:0,tension:.3,fill:false,order:0},
   ]},options:opts(null,null,3)});
 
-  // PREDICTION CHART
-  const predLast=20;
+  // ── PREDICTION CHART (enhanced) ──────────────────────────────────────────
+  const predLast=30;
   const priceSlice=closes.slice(-predLast);
   const emaSlice=e20.slice(-predLast);
   const labSlice=labels.slice(-predLast);
   const curPrice=priceSlice[priceSlice.length-1];
-  const atrVal=atr||0;
-
-  // Direction from decisions
+  const atrVal=atr||20;
   const probUp=decisions?parseFloat(decisions.probUp):50;
+  const probDown2=100-probUp;
   const isUp=probUp>=50;
-  const predColor=isUp?'rgba(39,185,122,':'rgba(217,79,79,';
-
-  // Prediction zone: 3 future points based on ATR
-  const futureLabels=['+1d','+2d','+3d'];
+  const gc=isUp?'rgba(39,185,122,':'rgba(217,79,79,';
+  const recent10=priceSlice.slice(-10);
+  const suppLevel=Math.min(...recent10);
+  const resLevel=Math.max(...recent10);
+  const futureDays=5;
+  const futureLabels=Array.from({length:futureDays},(_,i)=>'+'+(i+1)+'d');
   const allLabels=[...labSlice,...futureLabels];
-
-  // Price line: historical + null for future
-  const priceLine=[...priceSlice,...new Array(3).fill(null)];
-
-  // EMA line: historical + null for future
-  const emaLine=[...emaSlice,...new Array(3).fill(null)];
-
-  // Prediction upper band: null for history, then projected range
-  const step=isUp?atrVal*0.4:-(atrVal*0.4);
-  const predCenter=[...new Array(predLast).fill(null), curPrice+step, curPrice+step*1.6, curPrice+step*2.2];
-  const predUpper=[...new Array(predLast).fill(null), curPrice+atrVal*0.5, curPrice+atrVal*0.8, curPrice+atrVal*1.0];
-  const predLower=[...new Array(predLast).fill(null), curPrice-atrVal*0.5, curPrice-atrVal*0.8, curPrice-atrVal*1.0];
-
-  // Y axis range
+  const totalLen=predLast+futureDays;
+  const priceLine=[...priceSlice,...new Array(futureDays).fill(null)];
+  const emaLine=[...emaSlice,...new Array(futureDays).fill(null)];
+  const suppLine=new Array(totalLen).fill(suppLevel);
+  const resLine=new Array(totalLen).fill(resLevel);
+  const score=decisions?decisions.score:0;
+  const bias=score/12;
+  const predCenter=[...new Array(predLast).fill(null),
+    ...Array.from({length:futureDays},(_,i)=>curPrice+bias*atrVal*0.4*(i+1))];
+  const predUpper=[...new Array(predLast).fill(null),
+    ...Array.from({length:futureDays},(_,i)=>curPrice+atrVal*(0.3+i*0.15)+Math.max(0,bias)*atrVal*0.4*(i+1))];
+  const predLower=[...new Array(predLast).fill(null),
+    ...Array.from({length:futureDays},(_,i)=>curPrice-atrVal*(0.3+i*0.15)+Math.min(0,bias)*atrVal*0.4*(i+1))];
   const allVals=[...priceSlice,...predUpper.filter(v=>v!=null),...predLower.filter(v=>v!=null)];
-  const yMin=Math.min(...allVals)-atrVal*0.3;
-  const yMax=Math.max(...allVals)+atrVal*0.3;
-
-  // Badge
+  const yPad=atrVal*0.5;
+  const yMin=Math.min(...allVals)-yPad;
+  const yMax=Math.max(...allVals)+yPad;
   const bd=document.getElementById('bdPred');
-  bd.textContent=isUp?'▲ WZROST':'▼ SPADEK';
+  bd.textContent=isUp?'▲ '+probUp.toFixed(0)+'% WZROST':'▼ '+probDown2.toFixed(0)+'% SPADEK';
   bd.className='mini-badge '+(isUp?'buy':'sell');
-  document.getElementById('predVal').textContent=`ATR: ±${atrVal.toFixed(1)} USD · Prob: ${probUp.toFixed(0)}% ↑`;
-
+  document.getElementById('predVal').textContent='ATR: ±'+atrVal.toFixed(1)+' USD · Opr: '+suppLevel.toFixed(1)+' · Opór: '+resLevel.toFixed(1);
   charts.pred=new Chart(document.getElementById('cPred'),{
     type:'line',
-    data:{
-      labels:allLabels,
-      datasets:[
-        // Upper prediction band fill
-        {
-          data:predUpper,
-          borderColor:'transparent',
-          backgroundColor:predColor+'0.15)',
-          fill:'+1',
-          pointRadius:0,tension:.4,
-          order:3
-        },
-        // Lower prediction band
-        {
-          data:predLower,
-          borderColor:predColor+'0.3)',
-          borderWidth:1,
-          borderDash:[3,2],
-          backgroundColor:'transparent',
-          fill:false,
-          pointRadius:0,tension:.4,
-          order:4
-        },
-        // Prediction center line
-        {
-          data:predCenter,
-          borderColor:predColor+'0.9)',
-          borderWidth:2,
-          borderDash:[4,3],
-          backgroundColor:'transparent',
-          fill:false,
-          pointRadius:[...new Array(predLast).fill(0),4,4,4],
-          pointBackgroundColor:predColor+'0.9)',
-          tension:.3,
-          order:2
-        },
-        // EMA20
-        {
-          data:emaLine,
-          borderColor:'rgba(212,134,30,0.6)',
-          borderWidth:1,
-          backgroundColor:'transparent',
-          fill:false,
-          pointRadius:0,tension:.3,
-          order:1
-        },
-        // Price line
-        {
-          data:priceLine,
-          borderColor:'#cdd5e0',
-          borderWidth:1.5,
-          backgroundColor:'transparent',
-          fill:false,
-          pointRadius:0,tension:.3,
-          order:0
-        },
-      ]
-    },
+    data:{labels:allLabels,datasets:[
+      {label:'Górna banda',data:predUpper,borderColor:gc+'0.25)',borderWidth:1,borderDash:[2,2],
+        backgroundColor:gc+'0.08)',fill:'+1',pointRadius:0,tension:.4,order:5},
+      {label:'Dolna banda',data:predLower,borderColor:gc+'0.25)',borderWidth:1,borderDash:[2,2],
+        backgroundColor:'transparent',fill:false,pointRadius:0,tension:.4,order:6},
+      {label:'Predykcja',data:predCenter,borderColor:gc+'1)',borderWidth:2,borderDash:[5,3],
+        backgroundColor:'transparent',fill:false,
+        pointRadius:[...new Array(predLast).fill(0),...new Array(futureDays).fill(3)],
+        pointBackgroundColor:gc+'0.9)',pointBorderColor:'transparent',tension:.3,order:2},
+      {label:'Wsparcie',data:suppLine,borderColor:'rgba(39,185,122,0.4)',borderWidth:1,
+        borderDash:[3,4],backgroundColor:'transparent',fill:false,pointRadius:0,order:7},
+      {label:'Opór',data:resLine,borderColor:'rgba(217,79,79,0.4)',borderWidth:1,
+        borderDash:[3,4],backgroundColor:'transparent',fill:false,pointRadius:0,order:8},
+      {label:'EMA20',data:emaLine,borderColor:'rgba(212,134,30,0.7)',borderWidth:1.5,
+        backgroundColor:'transparent',fill:false,pointRadius:0,tension:.3,order:3},
+      {label:'Cena',data:priceLine,borderColor:'#cdd5e0',borderWidth:2,
+        backgroundColor:'rgba(200,200,220,0.04)',fill:false,
+        pointRadius:[...new Array(predLast-1).fill(0),4],
+        pointBackgroundColor:'#cdd5e0',tension:.3,order:1},
+    ]},
     options:{
       responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{
-          backgroundColor:'#111420',borderColor:'rgba(255,255,255,.06)',borderWidth:1,
+        tooltip:{backgroundColor:'rgba(11,14,21,0.95)',borderColor:'rgba(255,255,255,.08)',borderWidth:1,
           titleColor:'#5c6d82',bodyColor:'#cdd5e0',
           titleFont:{family:"'JetBrains Mono',monospace",size:8},
           bodyFont:{family:"'JetBrains Mono',monospace",size:9},
-          callbacks:{label:c=>c.dataset.label?c.dataset.label+': ':' '+c.parsed.y?.toFixed(2)}
-        },
-        annotation:{} // placeholder
+          callbacks:{label:c=>{if(c.parsed.y==null)return null;
+            const n={Cena:'Cena',EMA20:'EMA20',Predykcja:'Pred.','Górna banda':'Max','Dolna banda':'Min',Wsparcie:'Opr.',Opór:'Opór'};
+            return ' '+(n[c.dataset.label]||c.dataset.label)+': '+c.parsed.y.toFixed(2);}}
+        }
       },
       scales:{
-        x:{
-          ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:6},
-          grid:{color:'rgba(255,255,255,.02)'}
-        },
-        y:{
-          ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:4},
-          grid:{color:'rgba(255,255,255,.025)'},
-          min:yMin,max:yMax
-        }
+        x:{ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:8},
+          grid:{color:'rgba(255,255,255,.02)'}},
+        y:{position:'right',ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},
+            maxTicksLimit:5,callback:v=>v.toFixed(0)},
+          grid:{color:'rgba(255,255,255,.025)'},min:yMin,max:yMax}
       }
     }
   });
-
-  // Draw vertical separator line at "now" using afterDraw plugin
-  const sepPlugin={
-    id:'separator',
-    afterDraw(chart){
-      const{ctx,chartArea:{top,bottom},scales:{x}}=chart;
-      const xPos=x.getPixelForValue(predLast-1);
+  if(!Chart.registry.plugins.get('goldSep')){
+    Chart.register({id:'goldSep',afterDraw(chart){
+      const{ctx,chartArea:{top,bottom,left,right},scales:{x,y}}=chart;
+      const nowX=x.getPixelForValue(predLast-1);
       ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(xPos,top);
-      ctx.lineTo(xPos,bottom);
-      ctx.strokeStyle='rgba(255,255,255,0.15)';
-      ctx.lineWidth=1;
-      ctx.setLineDash([4,3]);
-      ctx.stroke();
+      ctx.beginPath();ctx.moveTo(nowX,top);ctx.lineTo(nowX,bottom);
+      ctx.strokeStyle='rgba(201,168,76,0.4)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();
       ctx.setLineDash([]);
-      // Label "TERAZ"
-      ctx.fillStyle='rgba(255,255,255,0.3)';
-      ctx.font='7px JetBrains Mono';
-      ctx.fillText('TERAZ',xPos+2,top+8);
+      ctx.fillStyle='rgba(201,168,76,0.8)';ctx.font='bold 7px JetBrains Mono';
+      ctx.fillText('TERAZ',nowX+3,top+9);
+      ctx.fillStyle='rgba(255,255,255,0.18)';ctx.font='7px JetBrains Mono';
+      ctx.fillText('← historia',nowX-58,top+9);
+      ctx.fillText('predykcja →',nowX+3,top+18);
+      const curY=y.getPixelForValue(curPrice);
+      ctx.beginPath();ctx.moveTo(left,curY);ctx.lineTo(right,curY);
+      ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(200,200,220,0.45)';ctx.font='7px JetBrains Mono';
+      ctx.fillText(curPrice.toFixed(2),right-44,curY-2);
       ctx.restore();
-    }
-  };
-  Chart.register(sepPlugin);
+    }});
+  }
 }
 
 function isWeekend(){const d=new Date().getDay();return d===0||d===6;}
@@ -1193,6 +1163,48 @@ function initResizer(resizerId, side){
 
 initResizer('resizerLeft','left');
 initResizer('resizerRight','right');
+
+// ══ HORIZONTAL RESIZER (mini-row height) ═════════════════════════════════════
+(function(){
+  const resizer=document.getElementById('hResizer');
+  const miniRow=document.getElementById('miniRow');
+  const center=document.querySelector('.center');
+  let startY=0, startH=0;
+
+  function onMove(e){
+    const y=e.touches?e.touches[0].clientY:e.clientY;
+    const dy=startY-y; // drag up = bigger mini row
+    const newH=Math.max(80,Math.min(400,startH+dy));
+    miniRow.style.height=newH+'px';
+    localStorage.setItem('mini-h',newH);
+  }
+  function onUp(){
+    resizer.classList.remove('dragging');
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    document.body.style.userSelect='';
+    document.body.style.cursor='';
+    // Rebuild charts after resize
+    if(window._lastChartData){
+      const d=window._lastChartData;
+      buildMinis(d.labels,d.rsiArr,d.macdData,d.closes,d.e20,d.atr,d.decisions);
+    }
+  }
+  resizer.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    startY=e.clientY;
+    startH=miniRow.offsetHeight;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect='none';
+    document.body.style.cursor='row-resize';
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+
+  // Restore saved height
+  const saved=localStorage.getItem('mini-h');
+  if(saved)miniRow.style.height=saved+'px';
+})();
 
 updateClock();updateSessions();renderWindows();renderEvents();loadData();
 setInterval(updateClock,1000);
