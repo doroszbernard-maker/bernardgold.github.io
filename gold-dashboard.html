@@ -264,6 +264,66 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
     </div>
 
     <div class="sec">
+      <div class="sec-title">Decyzje pozycyjne</div>
+
+      <!-- OPEN/CLOSE decision grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">
+        <div id="decOpenLong" style="border-radius:5px;padding:8px 10px;border:1px solid var(--border);background:var(--bg2);transition:all .3s">
+          <div style="font-size:8px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Otwarcie LONG ▲</div>
+          <div id="decOpenLongLabel" style="font-size:11px;font-weight:700;font-family:var(--sans)">—</div>
+          <div id="decOpenLongReason" style="font-size:8px;color:var(--text2);margin-top:2px;line-height:1.4">—</div>
+        </div>
+        <div id="decOpenShort" style="border-radius:5px;padding:8px 10px;border:1px solid var(--border);background:var(--bg2);transition:all .3s">
+          <div style="font-size:8px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Otwarcie SHORT ▼</div>
+          <div id="decOpenShortLabel" style="font-size:11px;font-weight:700;font-family:var(--sans)">—</div>
+          <div id="decOpenShortReason" style="font-size:8px;color:var(--text2);margin-top:2px;line-height:1.4">—</div>
+        </div>
+        <div id="decCloseLong" style="border-radius:5px;padding:8px 10px;border:1px solid var(--border);background:var(--bg2);transition:all .3s">
+          <div style="font-size:8px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Zamknięcie LONG ▲</div>
+          <div id="decCloseLongLabel" style="font-size:11px;font-weight:700;font-family:var(--sans)">—</div>
+          <div id="decCloseLongReason" style="font-size:8px;color:var(--text2);margin-top:2px;line-height:1.4">—</div>
+        </div>
+        <div id="decCloseShort" style="border-radius:5px;padding:8px 10px;border:1px solid var(--border);background:var(--bg2);transition:all .3s">
+          <div style="font-size:8px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Zamknięcie SHORT ▼</div>
+          <div id="decCloseShortLabel" style="font-size:11px;font-weight:700;font-family:var(--sans)">—</div>
+          <div id="decCloseShortReason" style="font-size:8px;color:var(--text2);margin-top:2px;line-height:1.4">—</div>
+        </div>
+      </div>
+
+      <!-- PREDICTION bar -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:9px 11px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Predykcja kolejnego ruchu</div>
+          <div id="predDirection" style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:3px;background:var(--bg4);color:var(--text2)">—</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+          <div style="font-size:8px;color:var(--red);min-width:28px;text-align:right" id="predDown">—</div>
+          <div style="flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;position:relative">
+            <div id="predBarLeft" style="position:absolute;top:0;right:50%;height:100%;background:var(--red);border-radius:4px 0 0 4px;width:0%;transition:width .5s"></div>
+            <div id="predBarRight" style="position:absolute;top:0;left:50%;height:100%;background:var(--green);border-radius:0 4px 4px 0;width:0%;transition:width .5s"></div>
+            <div style="position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--border3)"></div>
+          </div>
+          <div style="font-size:8px;color:var(--green);min-width:28px" id="predUp">—</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:4px">
+          <div style="text-align:center">
+            <div style="font-size:8px;color:var(--text3)">Zakres ruchu (ATR)</div>
+            <div id="predAtr" style="font-size:11px;font-weight:700;color:var(--text2)">—</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:8px;color:var(--text3)">Prob. wzrostu</div>
+            <div id="predProbUp" style="font-size:11px;font-weight:700;color:var(--green)">—</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:8px;color:var(--text3)">Prob. spadku</div>
+            <div id="predProbDown" style="font-size:11px;font-weight:700;color:var(--red)">—</div>
+          </div>
+        </div>
+        <div id="predNote" style="font-size:8px;color:var(--text3);margin-top:5px;line-height:1.4;border-top:1px solid var(--border);padding-top:4px">—</div>
+      </div>
+    </div>
+
+    <div class="sec">
       <div class="sec-title">Wskaźniki techniczne</div>
       <div class="ind-grid">
         <div class="ind-cell"><div class="ind-l">RSI 14</div><div class="ind-v" id="vRsi">—</div><div class="ind-t neutral" id="tRsi">—</div></div>
@@ -488,6 +548,192 @@ function calcSignalWeekly(closes,rsi,macd,bb,e20,e50,e100){
   return{type:'wait',label:'— TREND BOCZNY',reason,score,context};
 }
 
+function calcATR(closes, highs, lows, period=14){
+  // True Range and ATR
+  if(!highs||!lows||closes.length<period+1)return null;
+  const tr=[];
+  for(let i=1;i<closes.length;i++){
+    const h=highs[i]??closes[i],l=lows[i]??closes[i],pc=closes[i-1];
+    tr.push(Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc)));
+  }
+  if(tr.length<period)return null;
+  let atr=tr.slice(0,period).reduce((a,b)=>a+b,0)/period;
+  for(let i=period;i<tr.length;i++) atr=(atr*(period-1)+tr[i])/period;
+  return atr;
+}
+
+function calcDecisionsAndPrediction(closes, rsiArr, macdData, bbArr, e20, e50, e100, atr){
+  const n=closes.length-1;
+  if(n<50)return null;
+  const rv=rsiArr[n];
+  const ml=macdData.line[n],ms=macdData.signal[n];
+  const mlp=macdData.line[n-1],msp=macdData.signal[n-1];
+  const mh=macdData.hist[n],mhp=macdData.hist[n-1];
+  const bv=bbArr[n],cur=closes[n];
+  const ema20=e20[n],ema50=e50[n],ema100=e100[n];
+
+  // ── SCORE (same as main signal) ──
+  let score=0;
+  if(rv!=null){
+    if(rv<25)score+=4;else if(rv<35)score+=3;else if(rv<45)score+=1;
+    else if(rv>75)score-=4;else if(rv>65)score-=3;else if(rv>55)score-=1;
+  }
+  if(ml!=null&&ms!=null&&mlp!=null&&msp!=null){
+    if(mlp<msp&&ml>ms)score+=3;else if(mlp>msp&&ml<ms)score-=3;
+    else if(ml>ms)score+=1;else score-=1;
+  }
+  if(mh!=null&&mhp!=null){if(mh>0&&mh>mhp)score+=1;if(mh<0&&mh<mhp)score-=1;}
+  if(bv&&cur){if(cur<=bv.lower)score+=2;else if(cur>=bv.upper)score-=2;}
+  if(ema20!=null&&ema50!=null){if(ema20>ema50)score+=1;else score-=1;}
+
+  // ── PROBABILITY ──
+  // Convert score (-12 to +12) to probability (20%-80%)
+  const rawProb = 50 + (score/12)*30; // score=+12 → 80%, score=-12 → 20%
+  const probUp = Math.max(15, Math.min(85, rawProb));
+  const probDown = 100 - probUp;
+
+  // ── RSI ZONE ──
+  const rsiOversold = rv != null && rv < 35;
+  const rsiOverbought = rv != null && rv > 65;
+  const rsiNearOversold = rv != null && rv < 42;
+  const rsiNearOverbought = rv != null && rv > 58;
+
+  // ── MACD CROSS ──
+  const goldenCross = mlp!=null&&msp!=null&&ml!=null&&ms!=null && mlp<msp&&ml>ms;
+  const deathCross  = mlp!=null&&msp!=null&&ml!=null&&ms!=null && mlp>msp&&ml<ms;
+
+  // ── BB ──
+  const atLowerBB = bv && cur <= bv.lower;
+  const atUpperBB = bv && cur >= bv.upper;
+
+  // ── SESSION ──
+  const utcH = new Date().getUTCHours()+(isDST()?2:1);
+  const goodSession = (utcH>=8&&utcH<17)||(utcH>=14&&utcH<23);
+
+  // ── DECISIONS ──
+  // OPEN LONG
+  let openLong, openLongReason;
+  if(rsiOversold && score>=-2){
+    openLong='✅ DOBRY MOMENT';openLongReason='RSI wyprzedany — potencjalne odbicie';
+  } else if(goldenCross&&goodSession){
+    openLong='✅ DOBRY MOMENT';openLongReason='MACD golden cross w aktywnej sesji';
+  } else if(score>=3&&goodSession){
+    openLong='🟡 ROZWAŻYĆ';openLongReason='Sygnały bycze, dobra sesja';
+  } else if(score<=-3){
+    openLong='🔴 ZŁY MOMENT';openLongReason='Trend niedźwiedzi — ryzyko kontynuacji spadku';
+  } else if(!goodSession){
+    openLong='⚠ CZEKAJ';openLongReason='Poza aktywną sesją — wyższy spread';
+  } else {
+    openLong='⚠ CZEKAJ';openLongReason='Brak wyraźnego potwierdzenia';
+  }
+
+  // OPEN SHORT
+  let openShort, openShortReason;
+  if(rsiOverbought && score<=2){
+    openShort='✅ DOBRY MOMENT';openShortReason='RSI wykupiony — potencjalne cofnięcie';
+  } else if(deathCross&&goodSession){
+    openShort='✅ DOBRY MOMENT';openShortReason='MACD death cross w aktywnej sesji';
+  } else if(score<=-3&&goodSession){
+    openShort='🟡 ROZWAŻYĆ';openShortReason='Sygnały niedźwiedzie, dobra sesja';
+  } else if(rsiOversold){
+    openShort='🔴 ZŁY MOMENT';openShortReason='RSI wyprzedany — ryzyko odbicia';
+  } else if(!goodSession){
+    openShort='⚠ CZEKAJ';openShortReason='Poza aktywną sesją — wyższy spread';
+  } else {
+    openShort='⚠ CZEKAJ';openShortReason='Brak wyraźnego potwierdzenia';
+  }
+
+  // CLOSE LONG
+  let closeLong, closeLongReason;
+  if(rsiOverbought||atUpperBB){
+    closeLong='✅ ZAMKNIJ';closeLongReason='RSI wykupiony / cena przy górnym BB';
+  } else if(deathCross){
+    closeLong='✅ ZAMKNIJ';closeLongReason='MACD death cross — zmiana trendu';
+  } else if(score<=-4){
+    closeLong='🟡 ROZWAŻYĆ';closeLongReason='Silne sygnały sprzedaży — chroń zysk';
+  } else if(score>=2){
+    closeLong='🔴 TRZYMAJ';closeLongReason='Trend wzrostowy aktywny';
+  } else {
+    closeLong='⚠ MONITORUJ';closeLongReason='Trend neutralny — pilnuj SL';
+  }
+
+  // CLOSE SHORT
+  let closeShort, closeShortReason;
+  if(rsiOversold||atLowerBB){
+    closeShort='✅ ZAMKNIJ';closeShortReason='RSI wyprzedany / cena przy dolnym BB';
+  } else if(goldenCross){
+    closeShort='✅ ZAMKNIJ';closeShortReason='MACD golden cross — zmiana trendu';
+  } else if(score>=4){
+    closeShort='🟡 ROZWAŻYĆ';closeShortReason='Silne sygnały kupna — chroń zysk';
+  } else if(score<=-2){
+    closeShort='🔴 TRZYMAJ';closeShortReason='Trend spadkowy aktywny';
+  } else {
+    closeShort='⚠ MONITORUJ';closeShortReason='Trend neutralny — pilnuj SL';
+  }
+
+  // ── PREDICTION ──
+  const atrVal = atr ? atr.toFixed(2) : null;
+  const direction = probUp>=55?'▲ WZROST BARDZIEJ PRAWDOPODOBNY':probDown>=55?'▼ SPADEK BARDZIEJ PRAWDOPODOBNY':'↔ KIERUNEK NIEPEWNY';
+
+  let predNote='';
+  if(rsiOversold) predNote='RSI wyprzedany — możliwe techniczne odbicie w górę';
+  else if(rsiOverbought) predNote='RSI wykupiony — możliwa korekta w dół';
+  else if(atLowerBB) predNote='Cena przy dolnym BB — możliwe odbicie';
+  else if(atUpperBB) predNote='Cena przy górnym BB — możliwa korekta';
+  else if(goldenCross) predNote='MACD golden cross — impuls wzrostowy';
+  else if(deathCross) predNote='MACD death cross — impuls spadkowy';
+  else predNote='Brak ekstremalnego sygnału — ruch w obie strony możliwy';
+
+  if(!goodSession) predNote+=' · Uwaga: poza główną sesją';
+
+  return {
+    openLong,openLongReason,openShort,openShortReason,
+    closeLong,closeLongReason,closeShort,closeShortReason,
+    probUp:probUp.toFixed(0),probDown:probDown.toFixed(0),
+    direction,atrVal,predNote,score
+  };
+}
+
+function renderDecisions(d){
+  if(!d)return;
+
+  function styleBox(id,label){
+    const el=document.getElementById(id);
+    const lbl=document.getElementById(id+'Label');
+    const rea=document.getElementById(id+'Reason');
+    lbl.textContent=label.label;
+    rea.textContent=label.reason;
+    if(label.label.startsWith('✅')){
+      el.style.borderColor='var(--green-b)';el.style.background='var(--green-bg)';lbl.style.color='var(--green)';
+    } else if(label.label.startsWith('🔴')){
+      el.style.borderColor='var(--red-b)';el.style.background='var(--red-bg)';lbl.style.color='var(--red)';
+    } else if(label.label.startsWith('🟡')){
+      el.style.borderColor='var(--amber-b)';el.style.background='var(--amber-bg)';lbl.style.color='var(--amber)';
+    } else {
+      el.style.borderColor='var(--border)';el.style.background='var(--bg2)';lbl.style.color='var(--text2)';
+    }
+  }
+
+  styleBox('decOpenLong',{label:d.openLong,reason:d.openLongReason});
+  styleBox('decOpenShort',{label:d.openShort,reason:d.openShortReason});
+  styleBox('decCloseLong',{label:d.closeLong,reason:d.closeLongReason});
+  styleBox('decCloseShort',{label:d.closeShort,reason:d.closeShortReason});
+
+  // Prediction bar
+  const pu=parseFloat(d.probUp),pd=parseFloat(d.probDown);
+  document.getElementById('predDirection').textContent=d.direction;
+  document.getElementById('predDirection').style.background=pu>=55?'var(--green-bg)':pd>=55?'var(--red-bg)':'var(--bg4)';
+  document.getElementById('predDirection').style.color=pu>=55?'var(--green)':pd>=55?'var(--red)':'var(--text2)';
+  document.getElementById('predBarLeft').style.width=Math.min(50,pd/2)+'%';
+  document.getElementById('predBarRight').style.width=Math.min(50,pu/2)+'%';
+  document.getElementById('predUp').textContent=d.probUp+'%';
+  document.getElementById('predDown').textContent=d.probDown+'%';
+  document.getElementById('predAtr').textContent=d.atrVal?d.atrVal+' USD':'—';
+  document.getElementById('predProbUp').textContent=d.probUp+'%';
+  document.getElementById('predProbDown').textContent=d.probDown+'%';
+  document.getElementById('predNote').textContent=d.predNote;
+}
+
 async function tryProxy(fn,url){
   const res=await fetch(fn(url),{signal:AbortSignal.timeout(7000)});
   if(!res.ok)throw new Error('HTTP '+res.status);
@@ -520,10 +766,14 @@ async function loadData(){
     const chg=cur-prev,pct=chg/prev*100;
     const rsiArr=calcRSI(closes),macdData=calcMACD(closes),bbArr=calcBB(closes);
     const e20=calcEMA(closes,20),e50=calcEMA(closes,50),e100=calcEMA(closes,100);
+    const highs=q.indicators.quote[0].high||[];
+    const lows=q.indicators.quote[0].low||[];
     const n=closes.length-1;
+    const atr=calcATR(closes,highs,lows,14);
     const sigShort=calcSignal(closes,rsiArr,macdData,bbArr,e20,e50);
     const sigMid=calcSignal(closes,rsiArr,macdData,bbArr,e20,e50);
     const sigWeek=calcSignalWeekly(closes,rsiArr,macdData,bbArr,e20,e50,e100);
+    const decisions=calcDecisionsAndPrediction(closes,rsiArr,macdData,bbArr,e20,e50,e100,atr);
 
     const pEl=document.getElementById('priceVal');
     pEl.textContent=fmt(cur);pEl.className='price-big '+(chg>=0?'up':'dn');
@@ -538,6 +788,7 @@ async function loadData(){
     renderSig('Short',sigShort);
     renderSig('Mid',sigMid);
     renderSigWeek(sigWeek);
+    renderDecisions(decisions);
 
     const rv=rsiArr[n],mh=macdData.hist[n],bv=bbArr[n],ema20=e20[n],ema50=e50[n];
     setInd('Rsi',rv?.toFixed(1),rv<35?'WYPRZ.':rv>65?'WYKUP.':'NEUTRAL',rv<35?'buy':rv>65?'sell':'neutral');
