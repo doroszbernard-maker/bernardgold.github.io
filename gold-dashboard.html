@@ -722,18 +722,24 @@ function buildMinis(labels,rsi,macd){
 function buildPredCharts(closes,e20,atr,dec){
   const configs=[
     {id:'P1',canvasId:'cP1',bdId:'bdP1',atrId:'atrP1',noteId:'noteP1',lvlId:'lvlP1',
-     hist:6,future:8,atrMult:0.1,note:'Krótki termin — duża niepewność, śledź w czasie rzeczywistym na TradingView'},
+     hist:6, future:12, atrMult:0.08, spread:0.04,
+     futUnit:'×15min', futLabel:i=>'+'+(i+1)+'×15m',
+     note:'Krótki termin — duża niepewność, śledź w czasie rzeczywistym na TradingView'},
     {id:'P2',canvasId:'cP2',bdId:'bdP2',atrId:'atrP2',noteId:'noteP2',lvlId:'lvlP2',
-     hist:15,future:5,atrMult:0.35,note:'Intraday — oparty o trend dzienny, momentum MACD i RSI'},
+     hist:15, future:8, atrMult:0.30, spread:0.12,
+     futUnit:'godz', futLabel:i=>'+'+(i+1)+'h',
+     note:'Intraday — oparty o trend dzienny, momentum MACD i RSI'},
     {id:'P3',canvasId:'cP3',bdId:'bdP3',atrId:'atrP3',noteId:'noteP3',lvlId:'lvlP3',
-     hist:30,future:5,atrMult:1.0,note:'Swing tygodniowy — oparty o EMA20/50/100, scoring ±12 i ATR dzienny'},
+     hist:30, future:5, atrMult:1.0, spread:0.35,
+     futUnit:'dni', futLabel:i=>'+'+(i+1)+'d',
+     note:'Swing tygodniowy — oparty o EMA20/50/100, scoring ±12 i ATR dzienny'},
   ];
   configs.forEach(cfg=>buildOnePred(cfg,closes,e20,atr,dec));
 }
 
 function buildOnePred(cfg,closes,e20,atr,dec){
   if(charts[cfg.id])try{charts[cfg.id].destroy()}catch(e){}
-  const {hist,future,atrMult}=cfg;
+  const {hist,future,atrMult,spread}=cfg;
   const priceSlice=closes.slice(-hist);
   const emaSlice=e20.slice(-hist);
   const cur=priceSlice[priceSlice.length-1];
@@ -742,81 +748,155 @@ function buildOnePred(cfg,closes,e20,atr,dec){
   const probDown=100-probUp;
   const isUp=probUp>=50;
   const score=dec?dec.score:0;
-  const bias=score/12;
+  const bias=score/12; // -1 to +1
+
   const gc=isUp?'rgba(39,185,122,':'rgba(217,79,79,';
 
   const supp=Math.min(...priceSlice);
   const res=Math.max(...priceSlice);
 
-  const hLbl=priceSlice.map((_,i)=>{const d=hist-1-i;return d===0?'Dziś':d===1?'Wczr':'-'+d+'d';});
-  const fLbl=Array.from({length:future},(_,i)=>'+'+(i+1)+'d');
+  // Labels — use cfg.futLabel for future points
+  const hLbl=priceSlice.map((_,i)=>{
+    const d=hist-1-i;
+    return d===0?'Dziś':'-'+d+(cfg.futUnit==='dni'?'d':cfg.futUnit==='godz'?'d':'d');
+  });
+  const fLbl=Array.from({length:future},(_,i)=>cfg.futLabel(i));
   const allLbl=[...hLbl,...fLbl];
   const total=hist+future;
 
+  // Historical volatility — use std dev of last closes for realistic waviness
+  const histVol=()=>{
+    const mean=priceSlice.reduce((a,b)=>a+b,0)/priceSlice.length;
+    const variance=priceSlice.reduce((s,v)=>s+(v-mean)**2,0)/priceSlice.length;
+    return Math.sqrt(variance)*0.15; // scale down for projection
+  };
+  const vol=histVol();
+
+  // Generate wavy prediction using bias + noise pattern
+  // Use a seeded pseudo-random based on current price so it's consistent on reload
+  function seededRand(seed,i){
+    const x=Math.sin(seed*9301+i*49297+233720)*439.8;
+    return x-(Math.floor(x));
+  }
+  const seed=Math.round(cur)%100;
+
+  // Price line + EMA (historical only, null for future)
   const priceLine=[...priceSlice,...new Array(future).fill(null)];
   const emaLine=[...emaSlice,...new Array(future).fill(null)];
+
+  // Support/resistance horizontal lines
   const suppLine=new Array(total).fill(supp);
   const resLine=new Array(total).fill(res);
 
-  const sp=0.3+atrMult*0.1;
-  const predC=[...new Array(hist).fill(null),...Array.from({length:future},(_,i)=>cur+bias*atrVal*0.5*(i+1))];
-  const predU=[...new Array(hist).fill(null),...Array.from({length:future},(_,i)=>cur+atrVal*(sp+i*sp*0.4)+Math.max(0,bias)*atrVal*0.4*(i+1))];
-  const predL=[...new Array(hist).fill(null),...Array.from({length:future},(_,i)=>cur-atrVal*(sp+i*sp*0.4)+Math.min(0,bias)*atrVal*0.4*(i+1))];
+  // Prediction center — wavy, biased toward score direction
+  const predC=[...new Array(hist).fill(null),
+    ...Array.from({length:future},(_,i)=>{
+      const trend=bias*atrVal*0.6*(i+1)/future;
+      const wave=vol*(seededRand(seed,i)*2-1)*(1+i*0.15);
+      return cur+trend+wave;
+    })
+  ];
+
+  // Upper band — widens over time
+  const predU=[...new Array(hist).fill(null),
+    ...Array.from({length:future},(_,i)=>{
+      const trend=Math.max(0,bias)*atrVal*0.5*(i+1)/future;
+      return cur+atrVal*(spread+i*spread*0.5)+trend;
+    })
+  ];
+
+  // Lower band
+  const predL=[...new Array(hist).fill(null),
+    ...Array.from({length:future},(_,i)=>{
+      const trend=Math.min(0,bias)*atrVal*0.5*(i+1)/future;
+      return cur-atrVal*(spread+i*spread*0.5)+trend;
+    })
+  ];
 
   const allVals=[...priceSlice,...predU.filter(v=>v!=null),...predL.filter(v=>v!=null)];
   const yMin=Math.min(...allVals)-atrVal*0.3;
   const yMax=Math.max(...allVals)+atrVal*0.3;
 
-  // Update badge
+  // Badge + labels
   const bd=document.getElementById(cfg.bdId);
   bd.textContent=isUp?'▲ '+probUp.toFixed(0)+'% WZROST':'▼ '+probDown.toFixed(0)+'% SPADEK';
   bd.className='mini-badge '+(isUp?'buy':'sell');
   document.getElementById(cfg.atrId).textContent='ATR±'+atrVal.toFixed(1)+' USD';
   document.getElementById(cfg.noteId).textContent=cfg.note;
 
-  // Levels
-  const tp=(isUp?cur+atrVal:cur-atrVal).toFixed(2);
-  const slVal=(isUp?cur-atrVal*0.5:cur+atrVal*0.5).toFixed(2);
+  // TP / SL levels
+  const tp=(isUp?cur+atrVal*0.8:cur-atrVal*0.8).toFixed(2);
   document.getElementById(cfg.lvlId).innerHTML=`
     <div class="pred-lvl"><div class="pred-lvl-l">Wsparcie</div><div class="pred-lvl-v" style="color:var(--green)">${supp.toFixed(2)}</div></div>
     <div class="pred-lvl"><div class="pred-lvl-l">Take Profit ~</div><div class="pred-lvl-v" style="color:${isUp?'var(--green)':'var(--red)'}">${tp}</div></div>
     <div class="pred-lvl"><div class="pred-lvl-l">Opór</div><div class="pred-lvl-v" style="color:var(--red)">${res.toFixed(2)}</div></div>`;
 
+  // Tooltip callback with proper labels
+  const tooltipLabel=c=>{
+    if(c.parsed.y==null)return null;
+    const labels={
+      'Górna banda':'Górna granica',
+      'Dolna banda':'Dolna granica',
+      'Predykcja':'Kierunek ('+cfg.futUnit+')',
+      'Wsparcie':'Wsparcie',
+      'Opór':'Opór',
+      'EMA20':'EMA20',
+      'Cena':'Cena hist.',
+    };
+    const name=labels[c.dataset.label]||c.dataset.label;
+    return ' '+name+': '+c.parsed.y.toFixed(2)+' USD';
+  };
+
   const plugId='sep'+cfg.id;
   charts[cfg.id]=new Chart(document.getElementById(cfg.canvasId),{
     type:'line',
     data:{labels:allLbl,datasets:[
-      {data:predU,borderColor:gc+'0.2)',borderWidth:1,borderDash:[2,2],backgroundColor:gc+'0.07)',fill:'+1',pointRadius:0,tension:.4,order:5},
-      {data:predL,borderColor:gc+'0.2)',borderWidth:1,borderDash:[2,2],backgroundColor:'transparent',fill:false,pointRadius:0,tension:.4,order:6},
-      {data:predC,borderColor:gc+'0.95)',borderWidth:2,borderDash:[5,3],backgroundColor:'transparent',fill:false,
-        pointRadius:[...new Array(hist).fill(0),...new Array(future).fill(3)],pointBackgroundColor:gc+'0.9)',pointBorderColor:'transparent',tension:.3,order:2},
-      {data:suppLine,borderColor:'rgba(39,185,122,0.3)',borderWidth:1,borderDash:[2,4],backgroundColor:'transparent',fill:false,pointRadius:0,order:7},
-      {data:resLine,borderColor:'rgba(217,79,79,0.3)',borderWidth:1,borderDash:[2,4],backgroundColor:'transparent',fill:false,pointRadius:0,order:8},
-      {data:emaLine,borderColor:'rgba(212,134,30,0.65)',borderWidth:1.5,backgroundColor:'transparent',fill:false,pointRadius:0,tension:.3,order:3},
-      {data:priceLine,borderColor:'#cdd5e0',borderWidth:2,backgroundColor:'transparent',fill:false,
-        pointRadius:[...new Array(hist-1).fill(0),4],pointBackgroundColor:'#cdd5e0',tension:.3,order:1},
+      {label:'Górna banda',  data:predU, borderColor:gc+'0.2)', borderWidth:1, borderDash:[2,2], backgroundColor:gc+'0.07)', fill:'+1', pointRadius:0, tension:.4, order:5},
+      {label:'Dolna banda',  data:predL, borderColor:gc+'0.2)', borderWidth:1, borderDash:[2,2], backgroundColor:'transparent', fill:false, pointRadius:0, tension:.4, order:6},
+      {label:'Predykcja',    data:predC, borderColor:gc+'0.9)', borderWidth:2, backgroundColor:'transparent', fill:false,
+        pointRadius:[...new Array(hist).fill(0),...new Array(future).fill(2)],
+        pointBackgroundColor:gc+'0.8)', pointBorderColor:'transparent', tension:.5, order:2},
+      {label:'Wsparcie',     data:suppLine, borderColor:'rgba(39,185,122,0.28)', borderWidth:1, borderDash:[2,4], backgroundColor:'transparent', fill:false, pointRadius:0, order:7},
+      {label:'Opór',         data:resLine,  borderColor:'rgba(217,79,79,0.28)',  borderWidth:1, borderDash:[2,4], backgroundColor:'transparent', fill:false, pointRadius:0, order:8},
+      {label:'EMA20',        data:emaLine,  borderColor:'rgba(212,134,30,0.65)', borderWidth:1.5, backgroundColor:'transparent', fill:false, pointRadius:0, tension:.3, order:3},
+      {label:'Cena',         data:priceLine,borderColor:'#cdd5e0', borderWidth:2, backgroundColor:'transparent', fill:false,
+        pointRadius:[...new Array(hist-1).fill(0),4], pointBackgroundColor:'#cdd5e0', tension:.3, order:1},
     ]},
     options:{
-      responsive:true,maintainAspectRatio:false,animation:false,
-      interaction:{mode:'index',intersect:false},
+      responsive:true, maintainAspectRatio:false, animation:false,
+      interaction:{mode:'index', intersect:false},
       plugins:{
-        legend:{display:false},
-        tooltip:{backgroundColor:'rgba(11,14,21,0.95)',borderColor:'rgba(255,255,255,.08)',borderWidth:1,
-          titleColor:'#5c6d82',bodyColor:'#cdd5e0',
-          titleFont:{family:"'JetBrains Mono',monospace",size:8},bodyFont:{family:"'JetBrains Mono',monospace",size:9},
-          callbacks:{label:c=>{if(c.parsed.y==null)return null;
-            const n=['Górna','Dolna','Kierunek','Wsparcie','Opór','EMA20','Cena'];
-            const v=['Max','Min','Pred.','Opr.','Opór','EMA','Cena'];
-            const idx=n.indexOf(c.dataset.label);
-            return ' '+(idx>=0?v[idx]:c.dataset.label)+': '+c.parsed.y.toFixed(2);}}
+        legend:{
+          display:true,
+          position:'top',
+          align:'start',
+          labels:{
+            color:'rgba(255,255,255,0.25)',
+            font:{size:8, family:"'JetBrains Mono',monospace"},
+            boxWidth:16, boxHeight:2, padding:8,
+            filter:item=>!['Górna banda','Dolna banda'].includes(item.text)
+          }
+        },
+        tooltip:{
+          backgroundColor:'rgba(11,14,21,0.95)', borderColor:'rgba(255,255,255,.08)', borderWidth:1,
+          titleColor:'#5c6d82', bodyColor:'#cdd5e0',
+          titleFont:{family:"'JetBrains Mono',monospace", size:8},
+          bodyFont:{family:"'JetBrains Mono',monospace", size:9},
+          callbacks:{label:tooltipLabel}
         }
       },
       scales:{
-        x:{ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:10},grid:{color:'rgba(255,255,255,.02)'}},
-        y:{position:'right',ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:5,callback:v=>v.toFixed(0)},
-          grid:{color:'rgba(255,255,255,.025)'},min:yMin,max:yMax}
-      },
-      plugins:{[plugId]:{}}
+        x:{
+          ticks:{color:'#323c4e', font:{size:7, family:"'JetBrains Mono',monospace"}, maxTicksLimit:12},
+          grid:{color:'rgba(255,255,255,.02)'}
+        },
+        y:{
+          position:'right',
+          ticks:{color:'#323c4e', font:{size:7, family:"'JetBrains Mono',monospace"}, maxTicksLimit:5, callback:v=>v.toFixed(0)},
+          grid:{color:'rgba(255,255,255,.025)'},
+          min:yMin, max:yMax
+        }
+      }
     },
     plugins:[{
       id:plugId,
@@ -824,15 +904,19 @@ function buildOnePred(cfg,closes,e20,atr,dec){
         const{ctx,chartArea:{top,bottom,left,right},scales:{x,y}}=chart;
         const nx=x.getPixelForValue(hist-1);
         ctx.save();
-        ctx.beginPath();ctx.moveTo(nx,top);ctx.lineTo(nx,bottom);
-        ctx.strokeStyle='rgba(201,168,76,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
-        ctx.fillStyle='rgba(201,168,76,0.85)';ctx.font='bold 8px JetBrains Mono';ctx.fillText('TERAZ',nx+3,top+11);
-        ctx.fillStyle='rgba(255,255,255,0.2)';ctx.font='7px JetBrains Mono';
-        ctx.fillText('← historia',nx-62,top+11);ctx.fillText('predykcja →',nx+3,top+20);
+        // Vertical NOW line
+        ctx.beginPath(); ctx.moveTo(nx,top); ctx.lineTo(nx,bottom);
+        ctx.strokeStyle='rgba(201,168,76,0.5)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
+        // Labels
+        ctx.fillStyle='rgba(201,168,76,0.9)'; ctx.font='bold 8px JetBrains Mono'; ctx.fillText('TERAZ',nx+3,top+11);
+        ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='7px JetBrains Mono';
+        ctx.fillText('← historia',nx-62,top+11);
+        ctx.fillText('predykcja →',nx+3,top+20);
+        // Current price horizontal line
         const cy=y.getPixelForValue(cur);
-        ctx.beginPath();ctx.moveTo(left,cy);ctx.lineTo(right,cy);
-        ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.stroke();ctx.setLineDash([]);
-        ctx.fillStyle='rgba(200,200,220,0.4)';ctx.font='7px JetBrains Mono';ctx.fillText(cur.toFixed(2),right-45,cy-2);
+        ctx.beginPath(); ctx.moveTo(left,cy); ctx.lineTo(right,cy);
+        ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1; ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle='rgba(200,200,220,0.4)'; ctx.font='7px JetBrains Mono'; ctx.fillText(cur.toFixed(2),right-46,cy-2);
         ctx.restore();
       }
     }]
