@@ -249,6 +249,46 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .ev-imp.medium{background:var(--amber-bg);color:var(--amber)}
 .ev-imp.now{background:var(--btc-bg);color:var(--btc)}
 
+/* EXTRA INDICATORS */
+.extra-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.extra-cell{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:6px 9px;transition:all .3s}
+.extra-cell.bull{border-color:var(--green-b);background:var(--green-bg)}
+.extra-cell.bear{border-color:var(--red-b);background:var(--red-bg)}
+.extra-cell.warn{border-color:var(--amber-b);background:var(--amber-bg)}
+.extra-cell.extreme-fear{border-color:var(--green-b);background:var(--green-bg)}
+.extra-cell.extreme-greed{border-color:var(--red-b);background:var(--red-bg)}
+.ec-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+.ec-v{font-size:14px;font-weight:700;font-family:var(--sans);color:var(--text);margin:2px 0}
+.ec-t{font-size:8px;color:var(--text2);line-height:1.4}
+.fg-bar{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-top:4px}
+.fg-fill{height:100%;border-radius:2px;transition:width .5s}
+
+/* ORDER BOOK */
+.ob-section{margin-top:6px}
+.ob-title{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.ob-row{display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:center;margin-bottom:2px;font-size:9px}
+.ob-bid{text-align:right;color:var(--green)}
+.ob-price{color:var(--text3);font-size:8px;text-align:center}
+.ob-ask{color:var(--red)}
+.ob-bar-wrap{position:relative;height:3px;background:var(--bg4);border-radius:1px;margin-bottom:1px}
+.ob-bar-bid{position:absolute;right:50%;top:0;height:100%;background:rgba(29,184,122,0.5);border-radius:1px}
+.ob-bar-ask{position:absolute;left:50%;top:0;height:100%;background:rgba(224,69,69,0.5);border-radius:1px}
+.ob-pressure{display:flex;align-items:center;gap:6px;margin-top:5px;padding-top:5px;border-top:1px solid var(--border)}
+.ob-pressure-lbl{font-size:8px;color:var(--text3)}
+.ob-pressure-track{flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;position:relative}
+.ob-bid-fill{position:absolute;left:0;top:0;height:100%;background:var(--green);border-radius:3px;transition:width .5s}
+.ob-pct{font-size:8px;font-weight:700}
+
+/* WHALE ALERT */
+.whale-list{display:flex;flex-direction:column;gap:3px;max-height:120px;overflow-y:auto}
+.whale-item{display:flex;align-items:center;gap:6px;padding:3px 7px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-size:9px}
+.whale-item.big{border-color:var(--amber-b);background:var(--amber-bg)}
+.whale-side{font-size:8px;font-weight:700;min-width:28px}
+.whale-side.buy{color:var(--green)}.whale-side.sell{color:var(--red)}
+.whale-price{color:var(--text2);font-weight:600}
+.whale-size{color:var(--amber);margin-left:auto}
+.whale-time{color:var(--text3);font-size:8px}
+
 .toast{display:none;position:fixed;bottom:14px;right:14px;background:var(--bg3);border:1px solid var(--border3);border-radius:var(--r);padding:8px 13px;font-size:10px;color:var(--text2);z-index:999;max-width:300px}
 .foot{height:24px;flex-shrink:0;padding:0 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
 .foot-l,.foot-r{font-size:9px;color:var(--text3)}
@@ -307,6 +347,55 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
         <div class="btc-ind" id="bi_oi"><div class="bi-l">Open Interest</div><div class="bi-v" id="bv_oi">—</div><div class="bi-t" id="bt_oi">Aktywne kontrakty</div></div>
         <div class="btc-ind" id="bi_dom"><div class="bi-l">BTC Dominance</div><div class="bi-v" id="bv_dom">—</div><div class="bi-t" id="bt_dom">Udział w crypto rynku</div></div>
         <div class="btc-ind" id="bi_vol"><div class="bi-l">Wolumen 1M</div><div class="bi-v" id="bv_vol">—</div><div class="bi-t" id="bt_vol">Bieżąca świeca</div></div>
+      </div>
+    </div>
+
+    <!-- FEAR & GREED + DOMINANCE + EXTRA -->
+    <div class="sec">
+      <div class="sec-title">Sentyment rynku BTC</div>
+      <div class="extra-grid">
+        <div class="extra-cell" id="ec_fg">
+          <div class="ec-l">Fear &amp; Greed Index</div>
+          <div class="ec-v" id="ev_fg">—</div>
+          <div class="ec-t" id="et_fg">Ładowanie...</div>
+          <div class="fg-bar"><div class="fg-fill" id="ef_fg" style="width:0%"></div></div>
+        </div>
+        <div class="extra-cell" id="ec_dom">
+          <div class="ec-l">BTC Dominance</div>
+          <div class="ec-v" id="ev_dom">—</div>
+          <div class="ec-t" id="et_dom">Udział w rynku crypto</div>
+        </div>
+        <div class="extra-cell" id="ec_mcap">
+          <div class="ec-l">Market Cap BTC</div>
+          <div class="ec-v" id="ev_mcap">—</div>
+          <div class="ec-t" id="et_mcap">Kapitalizacja rynkowa</div>
+        </div>
+        <div class="extra-cell" id="ec_vol24">
+          <div class="ec-l">Wolumen Global 24h</div>
+          <div class="ec-v" id="ev_vol24">—</div>
+          <div class="ec-t" id="et_vol24">Cały rynek crypto</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDER BOOK -->
+    <div class="sec">
+      <div class="sec-title">Order Book — poziomy zleceń</div>
+      <div class="ob-pressure">
+        <div class="ob-pressure-lbl">KUPNO</div>
+        <div class="ob-pressure-track"><div class="ob-bid-fill" id="obBidFill" style="width:50%"></div></div>
+        <div class="ob-pct" id="obBidPct" style="color:var(--green)">—</div>
+        <div class="ob-pressure-lbl" style="margin-left:4px">SPRZEDAŻ</div>
+        <div class="ob-pct" id="obAskPct" style="color:var(--red)">—</div>
+      </div>
+      <div id="obRows" style="margin-top:6px"></div>
+    </div>
+
+    <!-- LARGE TRADES -->
+    <div class="sec">
+      <div class="sec-title">Duże transakcje (wieloryby &gt;50 BTC)</div>
+      <div class="whale-list" id="whaleList">
+        <div style="font-size:9px;color:var(--text3)">Oczekiwanie na dane...</div>
       </div>
     </div>
 
@@ -810,7 +899,13 @@ function computeAndRender(){
 
   const sigShort=calcSignal(closes,rsiArr,macdData,bbArr,e20,e50);
   const sigMid=calcSignal(closes,rsiArr,macdData,bbArr,e20,e50);
-  const sigWeek=calcSignalWeekly(closes,rsiArr,macdData,bbArr,e20,e50,e100);
+  // Use daily candles for weekly signal if available (more accurate)
+  const weekCloses=dailyCandles.length>50?dailyCandles.map(c=>c.c):closes;
+  const weekRsi=calcRSI(weekCloses);
+  const weekMacd=calcMACD(weekCloses);
+  const weekBb=calcBB(weekCloses);
+  const weekE20=calcEMA(weekCloses,20),weekE50=calcEMA(weekCloses,50),weekE100=calcEMA(weekCloses,100);
+  const sigWeek=calcSignalWeekly(weekCloses,weekRsi,weekMacd,weekBb,weekE20,weekE50,weekE100);
   const dec=calcDecisions(closes,rsiArr,macdData,bbArr,e20,e50,atr);
 
   renderSig('Short',sigShort);renderSig('Mid',sigMid);renderSigWeek(sigWeek);
@@ -1189,16 +1284,236 @@ function playBeep(freq){
   try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=freq;o.type='sine';g.gain.setValueAtTime(0.08,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3);}catch(e){}
 }
 
+// ══ FEAR & GREED INDEX (Alternative.me — darmowe) ═══════════════════════════
+async function fetchFearGreed(){
+  try{
+    const res=await fetch('https://api.alternative.me/fng/?limit=1');
+    const d=await res.json();
+    if(!d.data||!d.data[0])return;
+    const val=parseInt(d.data[0].value);
+    const label=d.data[0].value_classification;
+    const el=document.getElementById('ec_fg');
+    const ev=document.getElementById('ev_fg');
+    const et=document.getElementById('et_fg');
+    const ef=document.getElementById('ef_fg');
+    ev.textContent=val;
+    et.textContent=label;
+    ef.style.width=val+'%';
+    // Color by zone
+    let color,cls='';
+    if(val<=25){color='var(--green)';cls='extreme-fear';et.textContent='SKRAJNY STRACH → okazja BUY';}
+    else if(val<=45){color='var(--amber)';et.textContent='STRACH → rynek pesymistyczny';}
+    else if(val<=55){color='var(--text2)';et.textContent='NEUTRALNY → brak kierunku';}
+    else if(val<=75){color='var(--amber)';et.textContent='CHCIWOŚĆ → ostrożnie z long';}
+    else{color='var(--red)';cls='extreme-greed';et.textContent='SKRAJNA CHCIWOŚĆ → ryzyko korekty';}
+    ef.style.background=color;
+    ev.style.color=color;
+    el.className='extra-cell'+(cls?' '+cls:'');
+  }catch(e){console.warn('F&G error:',e.message);}
+}
+
+// ══ COINGECKO — DOMINANCE + MARKET CAP (darmowe) ════════════════════════════
+async function fetchCoinGecko(){
+  try{
+    // Global market data
+    const res=await fetch('https://api.coingecko.com/api/v3/global',{signal:AbortSignal.timeout(8000)});
+    const d=await res.json();
+    if(!d.data)return;
+    const dom=d.data.market_cap_percentage.btc;
+    const mcap=d.data.market_cap_usd||d.data.total_market_cap?.usd;
+    const vol=d.data.total_volume?.usd;
+    const btcMcap=d.data.total_market_cap?.btc||0;
+
+    // Dominance
+    const domEl=document.getElementById('ec_dom');
+    document.getElementById('ev_dom').textContent=dom?.toFixed(1)+'%';
+    const domT=document.getElementById('et_dom');
+    if(dom>60){domT.textContent='Wysoka dominacja → alt. słabe, BTC silny';domEl.className='extra-cell bull';}
+    else if(dom<45){domT.textContent='Niska dominacja → altseason, BTC może słabnąć';domEl.className='extra-cell warn';}
+    else{domT.textContent='Średnia dominacja — rynek zrównoważony';domEl.className='extra-cell';}
+
+    // Market cap
+    if(mcap){
+      document.getElementById('ev_mcap').textContent=fmtLarge(mcap);
+      document.getElementById('et_mcap').textContent='BTC: ~'+fmtLarge(mcap*dom/100);
+    }
+
+    // Volume
+    if(vol){
+      document.getElementById('ev_vol24').textContent=fmtLarge(vol);
+      const volRatio=vol/(mcap||1)*100;
+      const volT=document.getElementById('et_vol24');
+      const volEl=document.getElementById('ec_vol24');
+      if(volRatio>10){volT.textContent='Bardzo wysoki — silna aktywność';volEl.className='extra-cell bull';}
+      else if(volRatio<3){volT.textContent='Niski wolumen — słaba aktywność';volEl.className='extra-cell warn';}
+      else{volT.textContent='Normalny poziom aktywności';volEl.className='extra-cell';}
+    }
+  }catch(e){console.warn('CoinGecko error:',e.message);}
+}
+
+// ══ ORDER BOOK (Binance REST — darmowe) ══════════════════════════════════════
+async function fetchOrderBook(){
+  try{
+    const res=await fetch('https://api.binance.com/api/v3/depth?symbol=BTCUSDT&limit=10',{signal:AbortSignal.timeout(5000)});
+    const d=await res.json();
+    if(!d.bids||!d.asks)return;
+
+    // Top 5 bids and asks
+    const bids=d.bids.slice(0,5).map(b=>({price:parseFloat(b[0]),qty:parseFloat(b[1])}));
+    const asks=d.asks.slice(0,5).map(a=>({price:parseFloat(a[0]),qty:parseFloat(a[1])}));
+
+    // Total volumes
+    const totalBid=bids.reduce((s,b)=>s+b.qty*b.price,0);
+    const totalAsk=asks.reduce((s,a)=>s+a.qty*a.price,0);
+    const total=totalBid+totalAsk;
+    const bidPct=total>0?(totalBid/total*100):50;
+    const askPct=100-bidPct;
+
+    // Pressure bar
+    document.getElementById('obBidFill').style.width=bidPct+'%';
+    document.getElementById('obBidFill').style.background=bidPct>55?'var(--green)':bidPct<45?'var(--amber)':'var(--green)';
+    document.getElementById('obBidPct').textContent=bidPct.toFixed(0)+'%';
+    document.getElementById('obAskPct').textContent=askPct.toFixed(0)+'%';
+
+    // Max qty for bar scaling
+    const allQtys=[...bids.map(b=>b.qty*b.price),...asks.map(a=>a.qty*a.price)];
+    const maxQ=Math.max(...allQtys);
+
+    // Render rows (merged bid/ask)
+    let html='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:2px;font-size:9px;margin-bottom:4px">';
+    html+='<div style="color:var(--green);text-align:right;font-size:8px;color:var(--text3)">Kupno (USD)</div>';
+    html+='<div style="text-align:center;font-size:8px;color:var(--text3)">Cena</div>';
+    html+='<div style="color:var(--red);font-size:8px;color:var(--text3)">Sprzedaż (USD)</div></div>';
+    const rows=Math.min(bids.length,asks.length,5);
+    for(let i=0;i<rows;i++){
+      const b=bids[i],a=asks[i];
+      const bPct=b.qty*b.price/maxQ*50,aPct=a.qty*a.price/maxQ*50;
+      html+=`<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:2px;align-items:center;margin-bottom:2px">
+        <div style="text-align:right;position:relative;padding-right:3px">
+          <div style="position:absolute;right:0;top:0;height:100%;width:${bPct}%;background:rgba(29,184,122,0.15);border-radius:2px"></div>
+          <span style="color:var(--green);font-size:9px;position:relative">${fmtLarge(b.qty*b.price)}</span>
+        </div>
+        <div style="text-align:center;font-size:8px;color:var(--text3)">${fmtPrice(b.price)}</div>
+        <div style="position:relative;padding-left:3px">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${aPct}%;background:rgba(224,69,69,0.15);border-radius:2px"></div>
+          <span style="color:var(--red);font-size:9px;position:relative">${fmtLarge(a.qty*a.price)}</span>
+        </div>
+      </div>`;
+    }
+    html+='</div>';
+
+    // Spread
+    const spread=asks[0].price-bids[0].price;
+    html+=`<div style="font-size:8px;color:var(--text3);text-align:center;margin-top:2px">Spread: ${spread.toFixed(2)} USD (${(spread/bids[0].price*100).toFixed(4)}%)</div>`;
+
+    document.getElementById('obRows').innerHTML=html;
+
+    // Signal: if bid pressure > 60% = buyers dominate
+    if(bidPct>60)showToast('📗 Order book: kupujący dominują ('+bidPct.toFixed(0)+'% bid pressure)');
+    else if(bidPct<40)showToast('📕 Order book: sprzedający dominują ('+askPct.toFixed(0)+'% ask pressure)');
+  }catch(e){console.warn('OrderBook error:',e.message);}
+}
+
+// ══ LARGE TRADES MONITOR (Binance Agg Trades — darmowe) ══════════════════════
+let whaleTrades=[];
+let wsAgg=null;
+
+function connectWhaleMonitor(){
+  if(wsAgg)try{wsAgg.close()}catch(e){}
+  wsAgg=new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@aggTrade');
+  wsAgg.onmessage=e=>{
+    try{
+      const t=JSON.parse(e.data);
+      const qty=parseFloat(t.q);
+      const price=parseFloat(t.p);
+      const usdVal=qty*price;
+      // Only track trades > 50 BTC (~5M USD)
+      if(qty>=50){
+        const isBuy=!t.m; // m=true means market maker = sell
+        whaleTrades.unshift({
+          side:isBuy?'BUY':'SELL',
+          price,qty:qty.toFixed(2),
+          usd:usdVal,
+          time:new Date().toLocaleTimeString('pl-PL'),
+          big:usdVal>5000000
+        });
+        if(whaleTrades.length>20)whaleTrades.pop();
+        renderWhales();
+        // Alert for very large trades
+        if(usdVal>10000000){
+          playBeep(isBuy?660:330);
+          showToast(`🐋 WIELORYB ${isBuy?'KUPUJE':'SPRZEDAJE'}: ${qty.toFixed(0)} BTC (${fmtLarge(usdVal)} USD)`);
+        }
+      }
+    }catch(err){}
+  };
+  wsAgg.onclose=()=>setTimeout(connectWhaleMonitor,5000);
+}
+
+function renderWhales(){
+  const el=document.getElementById('whaleList');
+  if(!whaleTrades.length){el.innerHTML='<div style="font-size:9px;color:var(--text3)">Brak dużych transakcji (>50 BTC)</div>';return;}
+  el.innerHTML=whaleTrades.slice(0,8).map(w=>`
+    <div class="whale-item${w.big?' big':''}">
+      <div class="whale-side ${w.side.toLowerCase()}">${w.side}</div>
+      <div class="whale-price">${fmtPrice(w.price)}</div>
+      <div style="font-size:8px;color:var(--text2)">${w.qty} BTC</div>
+      <div class="whale-size">${fmtLarge(w.usd)}</div>
+      <div class="whale-time">${w.time}</div>
+    </div>`).join('');
+}
+
+// ══ BINANCE DAILY CANDLES for weekly signal ══════════════════════════════════
+let dailyCandles=[];
+async function fetchDailyCandles(){
+  try{
+    const res=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=100');
+    if(!res.ok)return;
+    const data=await res.json();
+    dailyCandles=data.slice(0,-1).map(k=>({
+      t:k[0],o:parseFloat(k[1]),h:parseFloat(k[2]),l:parseFloat(k[3]),
+      c:parseFloat(k[4]),v:parseFloat(k[5])
+    }));
+  }catch(e){console.warn('Daily candles error:',e.message);}
+}
+
+// ══ HELPER ══════════════════════════════════════════════════════════════════
+function fmtLarge(v){
+  if(!v&&v!==0)return'—';
+  if(v>=1e12)return(v/1e12).toFixed(2)+'T';
+  if(v>=1e9)return(v/1e9).toFixed(2)+'B';
+  if(v>=1e6)return(v/1e6).toFixed(2)+'M';
+  if(v>=1e3)return(v/1e3).toFixed(1)+'K';
+  return v.toFixed(0);
+}
+
 // ══ INIT ══════════════════════════════════════════════════════════════════
 updateClock();updateSessions();renderWindows();renderEvents();
-fetchInitialCandles().then(()=>{connectWS();setTimeout(loadMacroData,3000);});
+
+// Sekwencja startowa — nie ładuj wszystkiego naraz
+fetchInitialCandles().then(()=>{
+  connectWS();
+  connectWhaleMonitor();           // WebSocket dla dużych transakcji
+  setTimeout(loadMacroData, 2000);
+  setTimeout(fetchFearGreed, 3000);
+  setTimeout(fetchCoinGecko, 4000);
+  setTimeout(fetchOrderBook, 5000);
+  setTimeout(fetchDailyCandles, 6000);
+  setTimeout(fetchFundingRate, 1000);
+  setTimeout(fetchOpenInterest, 1500);
+});
+
 setInterval(updateClock,1000);
 setInterval(updateSessions,30000);
 setInterval(()=>{renderWindows();renderEvents();},60000);
-setInterval(fetch24h,60000);
-setInterval(fetchFundingRate,300000);   // funding rate co 5 min (zmienia się co 8h)
-setInterval(fetchOpenInterest,120000);  // open interest co 2 min
-setInterval(loadMacroData,90000);       // makro co 90 sek
+setInterval(fetch24h,60000);             // 24h ticker co minutę
+setInterval(fetchFundingRate,300000);    // funding rate co 5 min
+setInterval(fetchOpenInterest,120000);   // open interest co 2 min
+setInterval(loadMacroData,90000);        // makro (Yahoo) co 90 sek
+setInterval(fetchFearGreed,300000);      // F&G co 5 min (zmienia się powoli)
+setInterval(fetchCoinGecko,180000);      // CoinGecko co 3 min
+setInterval(fetchOrderBook,15000);       // order book co 15 sek — ważne!
+setInterval(fetchDailyCandles,3600000);  // dzienne świece co godzinę
 </script>
 </body>
 </html>
