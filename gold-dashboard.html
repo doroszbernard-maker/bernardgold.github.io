@@ -121,7 +121,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
 .tv-wrap{flex:1;min-height:0;overflow:hidden;position:relative}
 .tv-wrap>div{position:absolute;inset:0;width:100%;height:100%}
-.mini-row{height:130px;flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border)}
+.mini-row{height:150px;flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1.4fr;border-top:1px solid var(--border)}
 .mini-pane{border-right:1px solid var(--border);padding:6px 10px;display:flex;flex-direction:column;overflow:hidden}
 .mini-pane:last-child{border-right:none}
 .mini-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
@@ -360,6 +360,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
         <div class="mini-hdr"><div class="mini-lbl">MACD histogram</div><div class="mini-badge neutral" id="bdMacd">—</div></div>
         <div class="mini-val2" id="macdVal">—</div>
         <div class="mini-cvs"><canvas id="cMacd"></canvas></div>
+      </div>
+      <div class="mini-pane" style="border-right:none">
+        <div class="mini-hdr">
+          <div class="mini-lbl">Cena + Predykcja (ATR)</div>
+          <div class="mini-badge neutral" id="bdPred">—</div>
+        </div>
+        <div class="mini-val2" id="predVal">—</div>
+        <div class="mini-cvs"><canvas id="cPred"></canvas></div>
       </div>
     </div>
   </div>
@@ -796,7 +804,7 @@ async function loadData(){
     if(bv){setInd('Bb',cur<=bv.lower?'DOLNE BB':cur>=bv.upper?'GÓRNE BB':'WEWNĄTRZ','',cur<=bv.lower?'buy':cur>=bv.upper?'sell':'neutral');}
     setInd('Ema',ema20>ema50?'↑ WZROST':'↓ SPADEK','',ema20>ema50?'buy':'sell');
 
-    buildMinis(closes.map((_,i)=>i+''),rsiArr,macdData);
+    buildMinis(closes.map((_,i)=>i+''),rsiArr,macdData,closes,e20,atr,decisions);
 
     const lastSig=sigShort.type;
     if(!signalHistory.length||signalHistory[0].type!==lastSig){
@@ -844,7 +852,7 @@ function renderHistory(){
   el.innerHTML=signalHistory.map(h=>`<div class="hist-item"><div class="hist-pill ${h.type}">${h.type==='buy'?'BUY':h.type==='sell'?'SELL':'WAIT'}</div><div style="color:var(--text3);min-width:20px;font-size:9px">${h.tf}</div><div class="hist-price">${fmt(h.price)}</div><div class="hist-time">${h.time}</div></div>`).join('');
 }
 
-function buildMinis(labels,rsi,macd){
+function buildMinis(labels, rsi, macd, closes, e20, atr, decisions){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};
   const last=40,sl=a=>a.slice(-last);
   const opts=(yMin,yMax,decs)=>({responsive:true,maintainAspectRatio:false,animation:false,
@@ -852,24 +860,179 @@ function buildMinis(labels,rsi,macd){
       titleFont:{family:"'JetBrains Mono',monospace",size:8},bodyFont:{family:"'JetBrains Mono',monospace",size:9},callbacks:{label:c=>' '+c.parsed.y?.toFixed(decs)}}},
     scales:{x:{display:false},y:{ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:3},grid:{color:'rgba(255,255,255,.025)'},min:yMin,max:yMax}}
   });
+
+  // RSI
   const rv=rsi[rsi.length-1];
   document.getElementById('rsiVal').textContent=rv?.toFixed(2)??'—';
   document.getElementById('bdRsi').textContent=rv<35?'WYPRZ.':rv>65?'WYKUP.':'NEUTRAL';
   document.getElementById('bdRsi').className='mini-badge '+(rv<35?'buy':rv>65?'sell':'neutral');
-  const mh=macd.hist[macd.hist.length-1];
-  document.getElementById('macdVal').textContent=mh?.toFixed(4)??'—';
-  document.getElementById('bdMacd').textContent=mh>=0?'BYCZO':'NIEDŹ.';
-  document.getElementById('bdMacd').className='mini-badge '+(mh>=0?'buy':'sell');
   charts.rsi=new Chart(document.getElementById('cRsi'),{type:'line',data:{labels:sl(labels),datasets:[
     {data:sl(rsi),borderColor:'#7055b8',borderWidth:1.5,pointRadius:0,tension:.3,fill:false},
     {data:new Array(last).fill(70),borderColor:'rgba(217,79,79,.35)',borderWidth:.6,pointRadius:0,borderDash:[3,2],fill:false},
     {data:new Array(last).fill(30),borderColor:'rgba(39,185,122,.35)',borderWidth:.6,pointRadius:0,borderDash:[3,2],fill:false},
   ]},options:opts(0,100,1)});
+
+  // MACD
+  const mh=macd.hist[macd.hist.length-1];
+  document.getElementById('macdVal').textContent=mh?.toFixed(4)??'—';
+  document.getElementById('bdMacd').textContent=mh>=0?'BYCZO':'NIEDŹ.';
+  document.getElementById('bdMacd').className='mini-badge '+(mh>=0?'buy':'sell');
   charts.macd=new Chart(document.getElementById('cMacd'),{type:'bar',data:{labels:sl(labels),datasets:[
     {data:sl(macd.hist),backgroundColor:sl(macd.hist).map(v=>v==null?'transparent':v>=0?'rgba(39,185,122,.5)':'rgba(217,79,79,.5)'),borderWidth:0,order:2},
     {type:'line',data:sl(macd.line),borderColor:'#3d7fd4',borderWidth:1,pointRadius:0,tension:.3,fill:false,order:1},
     {type:'line',data:sl(macd.signal),borderColor:'#d4861e',borderWidth:1,pointRadius:0,tension:.3,fill:false,order:0},
   ]},options:opts(null,null,3)});
+
+  // PREDICTION CHART
+  const predLast=20;
+  const priceSlice=closes.slice(-predLast);
+  const emaSlice=e20.slice(-predLast);
+  const labSlice=labels.slice(-predLast);
+  const curPrice=priceSlice[priceSlice.length-1];
+  const atrVal=atr||0;
+
+  // Direction from decisions
+  const probUp=decisions?parseFloat(decisions.probUp):50;
+  const isUp=probUp>=50;
+  const predColor=isUp?'rgba(39,185,122,':'rgba(217,79,79,';
+
+  // Prediction zone: 3 future points based on ATR
+  const futureLabels=['+1d','+2d','+3d'];
+  const allLabels=[...labSlice,...futureLabels];
+
+  // Price line: historical + null for future
+  const priceLine=[...priceSlice,...new Array(3).fill(null)];
+
+  // EMA line: historical + null for future
+  const emaLine=[...emaSlice,...new Array(3).fill(null)];
+
+  // Prediction upper band: null for history, then projected range
+  const step=isUp?atrVal*0.4:-(atrVal*0.4);
+  const predCenter=[...new Array(predLast).fill(null), curPrice+step, curPrice+step*1.6, curPrice+step*2.2];
+  const predUpper=[...new Array(predLast).fill(null), curPrice+atrVal*0.5, curPrice+atrVal*0.8, curPrice+atrVal*1.0];
+  const predLower=[...new Array(predLast).fill(null), curPrice-atrVal*0.5, curPrice-atrVal*0.8, curPrice-atrVal*1.0];
+
+  // Y axis range
+  const allVals=[...priceSlice,...predUpper.filter(v=>v!=null),...predLower.filter(v=>v!=null)];
+  const yMin=Math.min(...allVals)-atrVal*0.3;
+  const yMax=Math.max(...allVals)+atrVal*0.3;
+
+  // Badge
+  const bd=document.getElementById('bdPred');
+  bd.textContent=isUp?'▲ WZROST':'▼ SPADEK';
+  bd.className='mini-badge '+(isUp?'buy':'sell');
+  document.getElementById('predVal').textContent=`ATR: ±${atrVal.toFixed(1)} USD · Prob: ${probUp.toFixed(0)}% ↑`;
+
+  charts.pred=new Chart(document.getElementById('cPred'),{
+    type:'line',
+    data:{
+      labels:allLabels,
+      datasets:[
+        // Upper prediction band fill
+        {
+          data:predUpper,
+          borderColor:'transparent',
+          backgroundColor:predColor+'0.15)',
+          fill:'+1',
+          pointRadius:0,tension:.4,
+          order:3
+        },
+        // Lower prediction band
+        {
+          data:predLower,
+          borderColor:predColor+'0.3)',
+          borderWidth:1,
+          borderDash:[3,2],
+          backgroundColor:'transparent',
+          fill:false,
+          pointRadius:0,tension:.4,
+          order:4
+        },
+        // Prediction center line
+        {
+          data:predCenter,
+          borderColor:predColor+'0.9)',
+          borderWidth:2,
+          borderDash:[4,3],
+          backgroundColor:'transparent',
+          fill:false,
+          pointRadius:[...new Array(predLast).fill(0),4,4,4],
+          pointBackgroundColor:predColor+'0.9)',
+          tension:.3,
+          order:2
+        },
+        // EMA20
+        {
+          data:emaLine,
+          borderColor:'rgba(212,134,30,0.6)',
+          borderWidth:1,
+          backgroundColor:'transparent',
+          fill:false,
+          pointRadius:0,tension:.3,
+          order:1
+        },
+        // Price line
+        {
+          data:priceLine,
+          borderColor:'#cdd5e0',
+          borderWidth:1.5,
+          backgroundColor:'transparent',
+          fill:false,
+          pointRadius:0,tension:.3,
+          order:0
+        },
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#111420',borderColor:'rgba(255,255,255,.06)',borderWidth:1,
+          titleColor:'#5c6d82',bodyColor:'#cdd5e0',
+          titleFont:{family:"'JetBrains Mono',monospace",size:8},
+          bodyFont:{family:"'JetBrains Mono',monospace",size:9},
+          callbacks:{label:c=>c.dataset.label?c.dataset.label+': ':' '+c.parsed.y?.toFixed(2)}
+        },
+        annotation:{} // placeholder
+      },
+      scales:{
+        x:{
+          ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:6},
+          grid:{color:'rgba(255,255,255,.02)'}
+        },
+        y:{
+          ticks:{color:'#323c4e',font:{size:7,family:"'JetBrains Mono',monospace"},maxTicksLimit:4},
+          grid:{color:'rgba(255,255,255,.025)'},
+          min:yMin,max:yMax
+        }
+      }
+    }
+  });
+
+  // Draw vertical separator line at "now" using afterDraw plugin
+  const sepPlugin={
+    id:'separator',
+    afterDraw(chart){
+      const{ctx,chartArea:{top,bottom},scales:{x}}=chart;
+      const xPos=x.getPixelForValue(predLast-1);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(xPos,top);
+      ctx.lineTo(xPos,bottom);
+      ctx.strokeStyle='rgba(255,255,255,0.15)';
+      ctx.lineWidth=1;
+      ctx.setLineDash([4,3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Label "TERAZ"
+      ctx.fillStyle='rgba(255,255,255,0.3)';
+      ctx.font='7px JetBrains Mono';
+      ctx.fillText('TERAZ',xPos+2,top+8);
+      ctx.restore();
+    }
+  };
+  Chart.register(sepPlugin);
 }
 
 function isWeekend(){const d=new Date().getDay();return d===0||d===6;}
