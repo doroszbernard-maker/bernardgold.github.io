@@ -228,6 +228,59 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .gold-score-num{font-size:14px;font-weight:700;font-family:var(--sans)}
 .gold-score-label{font-size:10px;color:var(--text2);margin-top:3px}
 
+/* API SETTINGS PANEL */
+.api-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(7,8,12,0.96);z-index:500;display:flex;align-items:center;justify-content:center}
+.api-panel.hidden{display:none}
+.api-box{background:var(--bg2);border:1px solid var(--border3);border-radius:10px;padding:28px 32px;width:480px;max-width:95vw}
+.api-box-title{font-family:var(--sans);font-size:18px;font-weight:700;color:var(--gold2);margin-bottom:4px}
+.api-box-sub{font-size:10px;color:var(--text3);margin-bottom:20px;line-height:1.5}
+.api-field{margin-bottom:14px}
+.api-field-label{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between}
+.api-field-status{font-size:9px;font-weight:600}
+.api-field-status.ok{color:var(--green)}
+.api-field-status.err{color:var(--red)}
+.api-field-status.empty{color:var(--text3)}
+.api-input{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:8px 11px;border-radius:var(--r2);outline:none;transition:border-color .15s}
+.api-input:focus{border-color:var(--gold-b)}
+.api-input::placeholder{color:var(--text3)}
+.api-desc{font-size:9px;color:var(--text3);margin-top:3px;line-height:1.4}
+.api-btn-row{display:flex;gap:8px;margin-top:20px}
+.api-save-btn{flex:1;background:var(--gold-bg);border:1px solid var(--gold-b);color:var(--gold2);font-family:var(--mono);font-size:11px;font-weight:700;padding:9px;border-radius:var(--r2);cursor:pointer;transition:all .15s}
+.api-save-btn:hover{background:rgba(201,168,76,.2)}
+.api-skip-btn{background:transparent;border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:10px;padding:9px 16px;border-radius:var(--r2);cursor:pointer;transition:all .15s}
+.api-skip-btn:hover{background:var(--bg3)}
+.api-indicator{display:flex;align-items:center;gap:5px;padding:3px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;font-size:9px;color:var(--text2);cursor:pointer}
+.api-indicator:hover{background:var(--bg3)}
+
+/* CHAT PANEL */
+.chat-panel{position:fixed;bottom:20px;right:20px;width:340px;background:var(--bg2);border:1px solid var(--border3);border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6);z-index:400;display:flex;flex-direction:column;max-height:500px;transition:all .3s}
+.chat-panel.hidden{display:none}
+.chat-panel-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chat-panel-title{font-family:var(--sans);font-size:12px;font-weight:700;color:var(--gold2);display:flex;align-items:center;gap:6px}
+.chat-close-btn{background:transparent;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:3px}
+.chat-close-btn:hover{color:var(--text);background:var(--bg3)}
+.chat-msgs{flex:1;overflow-y:auto;padding:10px 13px;display:flex;flex-direction:column;gap:7px;min-height:100px}
+.chat-msg{display:flex;flex-direction:column;gap:2px}
+.chat-msg.user{align-items:flex-end}
+.chat-msg.ai{align-items:flex-start}
+.chat-bubble{padding:7px 10px;border-radius:var(--r);font-size:10px;line-height:1.55;max-width:90%;word-wrap:break-word}
+.chat-msg.user .chat-bubble{background:var(--gold-bg);border:1px solid var(--gold-b);color:var(--text)}
+.chat-msg.ai .chat-bubble{background:var(--bg3);border:1px solid var(--border2);color:var(--text)}
+.chat-msg.ai .chat-bubble.thinking{color:var(--text3);font-style:italic}
+.chat-meta{font-size:8px;color:var(--text3)}
+.chat-quick{padding:7px 13px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px;flex-shrink:0}
+.chat-quick-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:8px;padding:3px 8px;border-radius:20px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.chat-quick-btn:hover{background:var(--bg4);color:var(--text)}
+.chat-input-row{display:flex;gap:6px;padding:9px 13px;border-top:1px solid var(--border);flex-shrink:0}
+.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:10px;padding:7px 10px;border-radius:var(--r2);outline:none;resize:none;height:34px;transition:border-color .15s}
+.chat-input:focus{border-color:var(--gold-b)}
+.chat-input::placeholder{color:var(--text3)}
+.chat-send-btn{background:var(--gold-bg);border:1px solid var(--gold-b);color:var(--gold2);font-family:var(--mono);font-size:12px;padding:7px 12px;border-radius:var(--r2);cursor:pointer;transition:all .15s;font-weight:700}
+.chat-send-btn:hover{background:rgba(201,168,76,.2)}
+.chat-send-btn:disabled{opacity:.4;cursor:not-allowed}
+.chat-fab{position:fixed;bottom:20px;right:20px;width:48px;height:48px;background:linear-gradient(135deg,var(--gold),#8b6d2a);border:none;border-radius:50%;color:#000;font-size:20px;cursor:pointer;box-shadow:0 4px 20px rgba(201,168,76,.4);z-index:399;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.chat-fab:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(201,168,76,.5)}
+
 .toast{display:none;position:fixed;bottom:14px;right:14px;background:var(--bg3);border:1px solid var(--border3);border-radius:var(--r);padding:8px 13px;font-size:10px;color:var(--text2);z-index:999;max-width:280px}
 .foot{height:24px;flex-shrink:0;padding:0 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
 .foot-l,.foot-r{font-size:9px;color:var(--text3)}
@@ -273,7 +326,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
     <div class="sec">
       <div class="sec-title">Sygnał krótki · Scalping (15min–1h)</div>
       <div class="sig-card wait" id="cardShort">
-        <div class="sig-head"><div class="sig-tf">SCALPING · 15M / 1H</div><div class="sig-tag wait" id="tagShort">—</div></div>
+        <div class="sig-head"><div class="sig-tf">SCALPING · 5M ↔ 15M</div><div class="sig-tag wait" id="tagShort">—</div></div>
         <div class="sig-label" id="lblShort">Ładowanie...</div>
         <div class="sig-reason" id="reaShort">Pobieranie danych</div>
         <div class="sig-warn" id="warnShort"></div>
@@ -284,7 +337,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
     <div class="sec">
       <div class="sec-title">Sygnał średni · Swing (2–6 godz)</div>
       <div class="sig-card wait" id="cardMid">
-        <div class="sig-head"><div class="sig-tf">INTRADAY SWING · 4H</div><div class="sig-tag wait" id="tagMid">—</div></div>
+        <div class="sig-head"><div class="sig-tf">INTRADAY · 15M POTWIERDZONY</div><div class="sig-tag wait" id="tagMid">—</div></div>
         <div class="sig-label" id="lblMid">Ładowanie...</div>
         <div class="sig-reason" id="reaMid">Pobieranie danych</div>
         <div class="sig-warn" id="warnMid"></div>
@@ -436,6 +489,74 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
     </div>
     <div class="right-sec"><div class="sec-title">Kluczowe okienka dnia (CET)</div><div id="winList"></div></div>
     <div class="right-sec grow"><div class="sec-title">Kalendarz makro — dziś</div><div id="eventList"></div></div>
+  </div>
+</div>
+
+<!-- API SETTINGS PANEL -->
+<div class="api-panel" id="apiPanel">
+  <div class="api-box">
+    <div class="api-box-title">⚙ Ustawienia API</div>
+    <div class="api-box-sub">Klucze są zapisywane tylko lokalnie w Twojej przeglądarce.<br>Nie są widoczne w kodzie na GitHub ani nigdzie indziej.</div>
+
+    <div class="api-field">
+      <div class="api-field-label">
+        <span>Twelve Data API Key</span>
+        <span class="api-field-status empty" id="tdStatus">Nie ustawiony</span>
+      </div>
+      <input class="api-input" type="password" id="tdKey" placeholder="Wklej klucz Twelve Data...">
+      <div class="api-desc">Dane intraday XAU/USD (świece 15min) · twelvedata.com</div>
+    </div>
+
+    <div class="api-field">
+      <div class="api-field-label">
+        <span>Metals-API Key</span>
+        <span class="api-field-status empty" id="maStatus">Nie ustawiony</span>
+      </div>
+      <input class="api-input" type="password" id="maKey" placeholder="Wklej klucz Metals-API...">
+      <div class="api-desc">Cena spot złota na żywo · metals-api.com</div>
+    </div>
+
+    <div class="api-field">
+      <div class="api-field-label">
+        <span>Anthropic API Key (Claude AI chat)</span>
+        <span class="api-field-status empty" id="antStatus">Nie ustawiony</span>
+      </div>
+      <input class="api-input" type="password" id="antKey" placeholder="Wklej klucz Anthropic (sk-ant-...)">
+      <div class="api-desc">Doradca AI w dashboardzie · console.anthropic.com</div>
+    </div>
+
+    <div class="api-btn-row">
+      <button class="api-save-btn" onclick="saveApiKeys()">✓ Zapisz klucze i uruchom</button>
+      <button class="api-skip-btn" onclick="skipApiSetup()">Pomiń (tylko Yahoo Finance)</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT FAB BUTTON -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Doradca AI" style="display:none">◈</button>
+
+<!-- CHAT PANEL -->
+<div class="chat-panel hidden" id="chatPanel">
+  <div class="chat-panel-hdr">
+    <div class="chat-panel-title"><span>◈</span> Doradca AI · Claude</div>
+    <button class="chat-close-btn" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="chat-msg ai">
+      <div class="chat-bubble">Cześć! Widzę aktualny kontekst rynku złota. Pytaj o pozycje, sygnały lub interpretację wskaźników.</div>
+      <div class="chat-meta">Claude · Doradca</div>
+    </div>
+  </div>
+  <div class="chat-quick">
+    <button class="chat-quick-btn" onclick="quickAsk('Czy teraz dobry moment na long?')">Long teraz?</button>
+    <button class="chat-quick-btn" onclick="quickAsk('Czy teraz dobry moment na short?')">Short teraz?</button>
+    <button class="chat-quick-btn" onclick="quickAsk('Oceń aktualny sygnał techniczny')">Oceń sygnał</button>
+    <button class="chat-quick-btn" onclick="quickAsk('Jakie ryzyko widzisz teraz?')">Ryzyko?</button>
+    <button class="chat-quick-btn" onclick="quickAsk('Kiedy najlepiej handlować dziś?')">Kiedy handlować?</button>
+  </div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chatInput" placeholder="Pytaj o złoto..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+    <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">↑</button>
   </div>
 </div>
 
@@ -1274,13 +1395,342 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 function updateClock(){document.getElementById('hdrClock').textContent=new Date().toLocaleTimeString('pl-PL');}
 
 // ══ INIT ════════════════════════════════════════════════════════════════════
+// ══ API KEY MANAGEMENT ═══════════════════════════════════════════════════════
+let API_KEYS={td:'',ma:'',ant:''};
+let chatHistory=[];
+let marketSnapshot={};
+
+function loadApiKeys(){
+  API_KEYS.td=localStorage.getItem('xau_td_key')||'';
+  API_KEYS.ma=localStorage.getItem('xau_ma_key')||'';
+  API_KEYS.ant=localStorage.getItem('xau_ant_key')||'';
+
+  // Pre-fill inputs if keys exist
+  if(API_KEYS.td){document.getElementById('tdKey').value=API_KEYS.td;setApiStatus('td','ok','✓ Ustawiony');}
+  if(API_KEYS.ma){document.getElementById('maKey').value=API_KEYS.ma;setApiStatus('ma','ok','✓ Ustawiony');}
+  if(API_KEYS.ant){document.getElementById('antKey').value=API_KEYS.ant;setApiStatus('ant','ok','✓ Ustawiony');}
+
+  // If all keys exist skip panel
+  if(API_KEYS.td&&API_KEYS.ma&&API_KEYS.ant){
+    document.getElementById('apiPanel').classList.add('hidden');
+    document.getElementById('chatFab').style.display='flex';
+    return true;
+  }
+  return false;
+}
+
+function setApiStatus(key,cls,txt){
+  const el=document.getElementById(key+'Status');
+  if(el){el.textContent=txt;el.className='api-field-status '+cls;}
+}
+
+function saveApiKeys(){
+  const td=document.getElementById('tdKey').value.trim();
+  const ma=document.getElementById('maKey').value.trim();
+  const ant=document.getElementById('antKey').value.trim();
+
+  if(td){localStorage.setItem('xau_td_key',td);API_KEYS.td=td;setApiStatus('td','ok','✓ Zapisany');}
+  if(ma){localStorage.setItem('xau_ma_key',ma);API_KEYS.ma=ma;setApiStatus('ma','ok','✓ Zapisany');}
+  if(ant){localStorage.setItem('xau_ant_key',ant);API_KEYS.ant=ant;setApiStatus('ant','ok','✓ Zapisany');}
+
+  document.getElementById('apiPanel').classList.add('hidden');
+  if(API_KEYS.ant)document.getElementById('chatFab').style.display='flex';
+  showToast('Klucze zapisane ✓ Uruchamiam dashboard...');
+  initDashboard();
+}
+
+function skipApiSetup(){
+  document.getElementById('apiPanel').classList.add('hidden');
+  initDashboard();
+}
+
+function openApiSettings(){
+  document.getElementById('apiPanel').classList.remove('hidden');
+}
+
+// ══ TWELVE DATA — INTRADAY XAU/USD (5min + 15min) ════════════════════════════
+let tdCandles5=[];   // 5-minutowe — sygnał krótki
+let tdCandles15=[];  // 15-minutowe — sygnał średni + potwierdzenie
+let tdCandles=[];    // alias dla kompatybilności
+
+async function fetchTwelveData(){
+  if(!API_KEYS.td)return false;
+  try{
+    // Fetch both timeframes in parallel
+    const [res5,res15]=await Promise.all([
+      fetch(`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=5min&outputsize=200&apikey=${API_KEYS.td}`,{signal:AbortSignal.timeout(10000)}),
+      fetch(`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=15min&outputsize=100&apikey=${API_KEYS.td}`,{signal:AbortSignal.timeout(10000)}),
+    ]);
+
+    const d5=await res5.json();
+    const d15=await res15.json();
+
+    if(d5.status==='error'){showToast('Twelve Data 5min: '+d5.message);return false;}
+    if(d15.status==='error'){showToast('Twelve Data 15min: '+d15.message);return false;}
+
+    const parse=v=>({
+      t:new Date(v.datetime).getTime(),
+      o:parseFloat(v.open),h:parseFloat(v.high),
+      l:parseFloat(v.low),c:parseFloat(v.close),
+      v:parseFloat(v.volume||0)
+    });
+
+    if(d5.values?.length)tdCandles5=d5.values.reverse().map(parse);
+    if(d15.values?.length)tdCandles15=d15.values.reverse().map(parse);
+
+    // Default alias = 5min for main calculations
+    tdCandles=tdCandles5;
+
+    setStatus('live','TD 5M+15M · LIVE');
+    return tdCandles5.length>20;
+  }catch(e){console.warn('TwelveData error:',e.message);return false;}
+}
+
+// ══ METALS-API — LIVE SPOT PRICE ══════════════════════════════════════════════
+async function fetchMetalsPrice(){
+  if(!API_KEYS.ma)return false;
+  try{
+    const url=`https://metals-api.com/api/latest?access_key=${API_KEYS.ma}&base=USD&symbols=XAU`;
+    const res=await fetch(url,{signal:AbortSignal.timeout(8000)});
+    const d=await res.json();
+    if(!d.success){showToast('Metals-API: '+d.error?.info);return false;}
+
+    // XAU rate is in troy oz per USD — invert to get USD per oz
+    const xauRate=d.rates?.XAU;
+    if(!xauRate)return false;
+    const priceUSD=1/xauRate;
+
+    // Update price display
+    const pEl=document.getElementById('priceVal');
+    const prevPrice=parseFloat(pEl.textContent.replace(/,/g,''))||0;
+    const chgFromPrev=prevPrice>0?((priceUSD-prevPrice)/prevPrice*100):0;
+    pEl.textContent=fmt(priceUSD);
+    pEl.className='price-big '+(chgFromPrev>=0?'up':'dn');
+
+    // Update live badge
+    setStatus('live','METALS-API · LIVE');
+    document.getElementById('footR').textContent='Spot: '+new Date().toLocaleTimeString('pl-PL');
+    return priceUSD;
+  }catch(e){console.warn('MetalsAPI error:',e.message);return false;}
+}
+
+// ══ ENHANCED loadData USING TWELVE DATA + METALS-API ══════════════════════════
+async function loadDataEnhanced(){
+  // Try Twelve Data for intraday candles
+  const tdOk=await fetchTwelveData();
+
+  // Try Metals-API for live price
+  const livePrice=await fetchMetalsPrice();
+
+  if(tdOk&&tdCandles5.length>20){
+    const cur=livePrice||tdCandles5[tdCandles5.length-1].c;
+
+    // 5-MINUTOWE — sygnał krótki
+    const c5=tdCandles5.map(c=>c.c);
+    const h5=tdCandles5.map(c=>c.h),l5=tdCandles5.map(c=>c.l);
+    const n5=c5.length-1;
+    const rsi5=calcRSI(c5),macd5=calcMACD(c5),bb5=calcBB(c5);
+    const e20_5=calcEMA(c5,20),e50_5=calcEMA(c5,50);
+    const atr5=calcATR(c5,h5,l5,14);
+    const sigShort=calcSignal(c5,rsi5,macd5,bb5,e20_5,e50_5);
+
+    // 15-MINUTOWE — sygnał średni + potwierdzenie
+    let sigMid=sigShort,sigWeek,dec,rsiDisp=rsi5,macdDisp=macd5;
+    let e20Pred=e20_5,atrPred=atr5,closesPred=c5;
+    if(tdCandles15.length>20){
+      const c15=tdCandles15.map(c=>c.c);
+      const h15=tdCandles15.map(c=>c.h),l15=tdCandles15.map(c=>c.l);
+      rsiDisp=calcRSI(c15);macdDisp=calcMACD(c15);
+      const bb15=calcBB(c15);
+      e20Pred=calcEMA(c15,20);
+      const e50_15=calcEMA(c15,50),e100_15=calcEMA(c15,100);
+      atrPred=calcATR(c15,h15,l15,14);
+      sigMid=calcSignal(c15,rsiDisp,macdDisp,bb15,e20Pred,e50_15);
+      sigWeek=calcSignalWeekly(c15,rsiDisp,macdDisp,bb15,e20Pred,e50_15,e100_15);
+      dec=calcDecisions(c15,rsiDisp,macdDisp,bb15,e20Pred,e50_15,atrPred);
+      closesPred=c15;
+    } else {
+      sigWeek=calcSignalWeekly(c5,rsi5,macd5,bb5,e20_5,e50_5,calcEMA(c5,100));
+      dec=calcDecisions(c5,rsi5,macd5,bb5,e20_5,e50_5,atr5);
+    }
+
+    // CONFLUENCE — czy 5M i 15M zgodne?
+    const same=sigShort.type===sigMid.type&&sigShort.type!=='wait';
+    const conflict=sigShort.type!=='wait'&&sigMid.type!=='wait'&&sigShort.type!==sigMid.type;
+    const confNote=same?' ✓✓ POTWIERDZONE 5M+15M':conflict?' ⚠ SPRZECZNE z 15M ('+sigMid.type.toUpperCase()+')':'';
+    const sigShortFinal={...sigShort,reason:sigShort.reason+confNote,
+      label:same?sigShort.label.replace('▲','▲▲').replace('▼','▼▼'):sigShort.label};
+
+    renderSig('Short',sigShortFinal);
+    renderSig('Mid',sigMid);
+    renderSigWeek(sigWeek||sigShort);
+    if(dec)renderDecisions(dec);
+
+    const rv5=rsi5[n5],mh5=macd5.hist[n5],bv5=bb5[n5],em20=e20_5[n5],em50=e50_5[n5];
+    setInd('Rsi',rv5?.toFixed(1)+' (5M)',rv5<35?'WYPRZ.':rv5>65?'WYKUP.':'NEUTRAL',rv5<35?'buy':rv5>65?'sell':'neutral');
+    setInd('Macd',mh5?.toFixed(2)+' (5M)',mh5>=0?'BYCZO':'NIEDŹ.',mh5>=0?'buy':'sell');
+    if(bv5)setInd('Bb',cur<=bv5.lower?'DOLNE BB':cur>=bv5.upper?'GÓRNE BB':'WEWNĄTRZ','',cur<=bv5.lower?'buy':cur>=bv5.upper?'sell':'neutral');
+    setInd('Ema',em20>em50?'↑ WZROST':'↓ SPADEK','',em20>em50?'buy':'sell');
+
+    const lbl5=tdCandles5.map(c=>new Date(c.t).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}));
+    buildMinis(lbl5,rsi5,macdDisp.hist?macdDisp:macd5);
+    buildPredCharts(closesPred,e20Pred,atrPred,dec);
+
+    marketSnapshot={
+      price:fmt(cur),source:'TD 5min+15min · Metals-API live',
+      rsi5:rv5?.toFixed(1),rsi15:rsiDisp[rsiDisp.length-1]?.toFixed(1),
+      macd5:mh5?.toFixed(2),bb:bv5?{upper:bv5.upper.toFixed(2),lower:bv5.lower.toFixed(2),mid:bv5.mid.toFixed(2)}:null,
+      ema20:em20?.toFixed(2),ema50:em50?.toFixed(2),
+      atr5:atr5?.toFixed(2),atr15:atrPred?.toFixed(2),
+      confluence:same,conflict,sigShort:sigShortFinal,sigMid,sigWeek,dec,
+      session:getCurrentSessionName(),time:new Date().toLocaleString('pl-PL')
+    };
+
+    if(!signalHistory.length||signalHistory[0].type!==sigShort.type){
+      signalHistory.unshift({type:sigShort.type,price:cur,time:new Date().toLocaleTimeString('pl-PL'),tf:'5M'});
+      if(signalHistory.length>8)signalHistory.pop();
+      renderHistory();
+    }
+    setStatus('live','TD 5M+15M · LIVE');
+    document.getElementById('footR').textContent='5min+15min · '+new Date().toLocaleTimeString('pl-PL')+(same?' · ✓ Zgodne 5M+15M':conflict?' · ⚠ Sprzeczne TF':'');
+    return;
+  }
+    // Fallback to Yahoo Finance
+  await loadData();
+}
+
+function getCurrentSessionName(){
+  const h=new Date().getUTCHours()+(isDST()?2:1);
+  const m=new Date().getUTCMinutes(),t=h*60+m;
+  if(t>=840&&t<1020)return'⚡ Overlap London-NY (max zmienność)';
+  if(t>=480&&t<1020)return'Londyn';
+  if(t>=870&&t<1380)return'Nowy Jork';
+  if(t>=60&&t<540)return'Azja (niski wolumen)';
+  return'Poza sesjami';
+}
+
+// ══ AI CHAT ═══════════════════════════════════════════════════════════════════
+function toggleChat(){
+  const panel=document.getElementById('chatPanel');
+  const fab=document.getElementById('chatFab');
+  panel.classList.toggle('hidden');
+  fab.style.display=panel.classList.contains('hidden')?'flex':'none';
+}
+
+function buildContext(){
+  const s=marketSnapshot;
+  if(!s.price)return'Dane rynkowe jeszcze się ładują. Zapytaj za chwilę.';
+  return`=== KONTEKST RYNKOWY XAU/USD ===
+Czas: ${s.time}
+Sesja: ${s.session}
+Cena: ${s.price} USD (${s.source})
+RSI 5min: ${s.rsi5} ${parseFloat(s.rsi5)<35?'→ WYPRZEDANY':parseFloat(s.rsi5)>65?'→ WYKUPIONY':'→ NEUTRALNY'}
+RSI 15min: ${s.rsi15||'—'} (potwierdzenie)
+MACD 5min hist: ${s.macd5}
+Confluence 5M+15M: ${s.confluence?'✓ ZGODNE — silniejszy sygnał':s.conflict?'⚠ SPRZECZNE — czekaj na potwierdzenie':'neutralny'}
+BB: górny ${s.bb?.upper} / środek ${s.bb?.mid} / dolny ${s.bb?.lower}
+EMA20: ${s.ema20} | EMA50: ${s.ema50} ${parseFloat(s.ema20)>parseFloat(s.ema50)?'→ UPTREND':'→ DOWNTREND'}
+ATR(14): ${s.atr} USD (typowy dzienny zasięg ruchu)
+Sygnał krótki: ${s.sigShort?.label} (score: ${s.sigShort?.score}/±12) | ${s.sigShort?.reason}
+Sygnał średni: ${s.sigMid?.label} (score: ${s.sigMid?.score}/±12)
+Sygnał tygodniowy: ${s.sigWeek?.label} (score: ${s.sigWeek?.score}/±12) | ${s.sigWeek?.context}
+Decyzja LONG: ${s.dec?.oL} — ${s.dec?.oLr}
+Decyzja SHORT: ${s.dec?.oS} — ${s.dec?.oSr}
+=== KONIEC KONTEKSTU ===
+
+Jesteś doradcą tradingowym XAU/USD. Odpowiadaj po polsku, konkretnie.
+Zawsze zaznaczaj że to NIE jest porada inwestycyjna.
+Uwzględniaj kontekst sesji i ATR przy ocenie ruchów.
+Bądź szczery gdy sygnały są sprzeczne lub warunki niekorzystne.`;
+}
+
+async function sendChat(){
+  if(!API_KEYS.ant){showToast('Brak klucza Anthropic — otwórz ustawienia ⚙');return;}
+  const input=document.getElementById('chatInput');
+  const msg=input.value.trim();if(!msg)return;
+  input.value='';
+  appendChatMsg('user',msg);
+  chatHistory.push({role:'user',content:msg});
+  const btn=document.getElementById('chatSendBtn');
+  btn.disabled=true;
+  const thinking=appendChatMsg('ai','Analizuję kontekst rynkowy...',true);
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':API_KEYS.ant,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:800,
+        system:buildContext(),
+        messages:chatHistory.slice(-8)
+      })
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'API error');}
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||'Brak odpowiedzi';
+    thinking.remove();
+    appendChatMsg('ai',reply);
+    chatHistory.push({role:'assistant',content:reply});
+  }catch(e){
+    thinking.remove();
+    appendChatMsg('ai','❌ Błąd: '+e.message);
+    chatHistory.pop();
+  }finally{btn.disabled=false;}
+}
+
+function quickAsk(msg){document.getElementById('chatInput').value=msg;sendChat();}
+
+function appendChatMsg(role,text,thinking=false){
+  const msgs=document.getElementById('chatMsgs');
+  const div=document.createElement('div');
+  div.className='chat-msg '+role;
+  div.innerHTML=`<div class="chat-bubble${thinking?' thinking':''}">${text.replace(/
+/g,'<br>')}</div><div class="chat-meta">${role==='user'?'Ty':'Claude'} · ${new Date().toLocaleTimeString('pl-PL')}</div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+// ══ INIT ═════════════════════════════════════════════════════════════════════
+function initDashboard(){
+  if(API_KEYS.td||API_KEYS.ma){
+    loadDataEnhanced();
+    loadMacroData().then(()=>{});
+    setInterval(()=>{loadDataEnhanced();},60000);
+    setInterval(loadMacroData,90000);
+  } else {
+    loadData();
+    loadMacroData().then(()=>{});
+    setInterval(loadData,60000);
+    setInterval(loadMacroData,90000);
+  }
+  setInterval(()=>{renderWindows();renderEvents();},60000);
+}
+
+// Add settings button to header
+document.addEventListener('DOMContentLoaded',()=>{
+  const hdrRight=document.querySelector('.hdr-right');
+  if(hdrRight){
+    const settBtn=document.createElement('div');
+    settBtn.className='api-indicator';
+    settBtn.innerHTML='⚙ API';
+    settBtn.onclick=openApiSettings;
+    hdrRight.insertBefore(settBtn,hdrRight.firstChild);
+  }
+});
+
+// Start — load API keys from localStorage
+const keysLoaded=loadApiKeys();
 updateClock();updateSessions();renderWindows();renderEvents();
-loadData().then(()=>loadMacroData());
+if(keysLoaded){
+  initDashboard();
+} else if(!document.getElementById('apiPanel').classList.contains('hidden')){
+  // Panel shown — wait for user to save keys
+} else {
+  initDashboard(); // skip was pressed
+}
 setInterval(updateClock,1000);
 setInterval(updateSessions,30000);
-setInterval(()=>{renderWindows();renderEvents();},60000);
-setInterval(loadData,60000);       // złoto co 60 sek
-setInterval(loadMacroData,90000);  // makro co 90 sek
+setInterval(()=>{if(API_KEYS.ma)fetchMetalsPrice();},120000);
 </script>
 </body>
 </html>
