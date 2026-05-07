@@ -1190,7 +1190,7 @@ function buildOnePred(cfg,closes,e20,atr,dec){
   document.getElementById(cfg.atrId).textContent='ATR±'+atrVal.toFixed(1)+' USD';
   document.getElementById(cfg.noteId).textContent=cfg.note;
 
-  // TP / SL levels
+  // TP i SL levels
   const tp=(isUp?cur+atrVal*0.8:cur-atrVal*0.8).toFixed(2);
   document.getElementById(cfg.lvlId).innerHTML=`
     <div class="pred-lvl"><div class="pred-lvl-l">Wsparcie</div><div class="pred-lvl-v" style="color:var(--green)">${supp.toFixed(2)}</div></div>
@@ -1637,7 +1637,7 @@ function buildContext(){
     'RSI 15min: '+(s.rsi15||'brak')+' -> '+rsi15txt,
     'MACD 5min hist: '+s.macd5,
     'Confluence 5M+15M: '+confTxt,
-    'BB: gorny '+(s.bb?s.bb.upper:'?')+' / srodek '+(s.bb?s.bb.mid:'?')+' / dolny '+(s.bb?s.bb.lower:'?'),
+    'BB: gorny '+(s.bb?s.bb.upper:'brak')+', srodek '+(s.bb?s.bb.mid:'brak')+', dolny '+(s.bb?s.bb.lower:'brak'),
     'EMA20: '+s.ema20+' | EMA50: '+s.ema50+' -> '+etatxt,
     'ATR 5min: '+(s.atr5||'?')+' USD | ATR 15min: '+(s.atr15||'?')+' USD',
     'Sygnal krotki: '+(s.sigShort?s.sigShort.label+' (score: '+s.sigShort.score+'/12) | '+s.sigShort.reason:'brak'),
@@ -1692,17 +1692,23 @@ async function sendChat(){
 
 function quickAsk(msg){document.getElementById('chatInput').value=msg;sendChat();}
 
-function appendChatMsg(role,text,thinking=false){
+function appendChatMsg(role,text,thinking){
   const msgs=document.getElementById('chatMsgs');
   const div=document.createElement('div');
   div.className='chat-msg '+role;
-  div.innerHTML=`<div class="chat-bubble${thinking?' thinking':''}">${text.replace(/
-/g,'<br>')}</div><div class="chat-meta">${role==='user'?'Ty':'Claude'} · ${new Date().toLocaleTimeString('pl-PL')}</div>`;
-  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  const bubble=document.createElement('div');
+  bubble.className=thinking?'chat-bubble thinking':'chat-bubble';
+  bubble.innerHTML=text.split(String.fromCharCode(10)).join('<br>');
+  const meta=document.createElement('div');
+  meta.className='chat-meta';
+  meta.textContent=(role==='user'?'Ty':'Claude')+' · '+new Date().toLocaleTimeString('pl-PL');
+  div.appendChild(bubble);
+  div.appendChild(meta);
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
   return div;
 }
 
-// ══ INIT ═════════════════════════════════════════════════════════════════════
 function initDashboard(){
   if(API_KEYS.td||API_KEYS.ma){
     loadDataEnhanced();
