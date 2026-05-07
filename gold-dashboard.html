@@ -1619,30 +1619,42 @@ function toggleChat(){
 
 function buildContext(){
   const s=marketSnapshot;
-  if(!s.price)return'Dane rynkowe jeszcze się ładują. Zapytaj za chwilę.';
-  return`=== KONTEKST RYNKOWY XAU/USD ===
-Czas: ${s.time}
-Sesja: ${s.session}
-Cena: ${s.price} USD (${s.source})
-RSI 5min: ${s.rsi5} ${parseFloat(s.rsi5)<35?'→ WYPRZEDANY':parseFloat(s.rsi5)>65?'→ WYKUPIONY':'→ NEUTRALNY'}
-RSI 15min: ${s.rsi15||'—'} (potwierdzenie)
-MACD 5min hist: ${s.macd5}
-Confluence 5M+15M: ${s.confluence?'✓ ZGODNE — silniejszy sygnał':s.conflict?'⚠ SPRZECZNE — czekaj na potwierdzenie':'neutralny'}
-BB: górny ${s.bb?.upper} / środek ${s.bb?.mid} / dolny ${s.bb?.lower}
-EMA20: ${s.ema20} | EMA50: ${s.ema50} ${parseFloat(s.ema20)>parseFloat(s.ema50)?'→ UPTREND':'→ DOWNTREND'}
-ATR(14): ${s.atr} USD (typowy dzienny zasięg ruchu)
-Sygnał krótki: ${s.sigShort?.label} (score: ${s.sigShort?.score}/±12) | ${s.sigShort?.reason}
-Sygnał średni: ${s.sigMid?.label} (score: ${s.sigMid?.score}/±12)
-Sygnał tygodniowy: ${s.sigWeek?.label} (score: ${s.sigWeek?.score}/±12) | ${s.sigWeek?.context}
-Decyzja LONG: ${s.dec?.oL} — ${s.dec?.oLr}
-Decyzja SHORT: ${s.dec?.oS} — ${s.dec?.oSr}
-=== KONIEC KONTEKSTU ===
-
-Jesteś doradcą tradingowym XAU/USD. Odpowiadaj po polsku, konkretnie.
-Zawsze zaznaczaj że to NIE jest porada inwestycyjna.
-Uwzględniaj kontekst sesji i ATR przy ocenie ruchów.
-Bądź szczery gdy sygnały są sprzeczne lub warunki niekorzystne.`;
+  if(!s.price)return'Dane rynkowe jeszcze sie laduja. Zapytaj za chwile.';
+  const rsi5=parseFloat(s.rsi5)||50;
+  const rsi15=parseFloat(s.rsi15)||50;
+  const ema20=parseFloat(s.ema20)||0;
+  const ema50=parseFloat(s.ema50)||0;
+  const rsi5txt=rsi5<35?'WYPRZEDANY':rsi5>65?'WYKUPIONY':'NEUTRALNY';
+  const rsi15txt=rsi15<35?'WYPRZEDANY':rsi15>65?'WYKUPIONY':'NEUTRALNY';
+  const etatxt=ema20>ema50?'UPTREND':'DOWNTREND';
+  const confTxt=s.confluence?'ZGODNE - silniejszy sygnal':s.conflict?'SPRZECZNE - czekaj na potwierdzenie':'neutralny';
+  const lines=[
+    '=== KONTEKST RYNKOWY XAU/USD ===',
+    'Czas: '+s.time,
+    'Sesja: '+s.session,
+    'Cena: '+s.price+' USD ('+s.source+')',
+    'RSI 5min: '+s.rsi5+' -> '+rsi5txt,
+    'RSI 15min: '+(s.rsi15||'brak')+' -> '+rsi15txt,
+    'MACD 5min hist: '+s.macd5,
+    'Confluence 5M+15M: '+confTxt,
+    'BB: gorny '+(s.bb?s.bb.upper:'?')+' / srodek '+(s.bb?s.bb.mid:'?')+' / dolny '+(s.bb?s.bb.lower:'?'),
+    'EMA20: '+s.ema20+' | EMA50: '+s.ema50+' -> '+etatxt,
+    'ATR 5min: '+(s.atr5||'?')+' USD | ATR 15min: '+(s.atr15||'?')+' USD',
+    'Sygnal krotki: '+(s.sigShort?s.sigShort.label+' (score: '+s.sigShort.score+'/12) | '+s.sigShort.reason:'brak'),
+    'Sygnal sredni: '+(s.sigMid?s.sigMid.label+' (score: '+s.sigMid.score+'/12)':'brak'),
+    'Sygnal tygodniowy: '+(s.sigWeek?s.sigWeek.label+' (score: '+s.sigWeek.score+'/12) | '+(s.sigWeek.context||''):'brak'),
+    'Decyzja LONG: '+(s.dec?s.dec.oL+' - '+s.dec.oLr:'brak'),
+    'Decyzja SHORT: '+(s.dec?s.dec.oS+' - '+s.dec.oSr:'brak'),
+    '=== KONIEC KONTEKSTU ===',
+    '',
+    'Jestes doradca tradingowym XAU/USD. Odpowiadaj po polsku, konkretnie.',
+    'Zawsze zaznaczaj ze to NIE jest porada inwestycyjna.',
+    'Uwzgledniaj kontekst sesji i ATR przy ocenie ruchow.',
+    'Badz szczery gdy sygnaly sa sprzeczne lub warunki niekorzystne.',
+  ];
+  return lines.join('\n');
 }
+
 
 async function sendChat(){
   if(!API_KEYS.ant){showToast('Brak klucza Anthropic — otwórz ustawienia ⚙');return;}
