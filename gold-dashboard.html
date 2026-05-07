@@ -577,7 +577,8 @@ window.addEventListener('load', function(){
 <script>
 // ══ STATE ═══════════════════════════════════════════════════════════════════
 let charts={}, signalHistory=[];
-// API_KEYS and chatHistory declared in STATE section above
+let API_KEYS={td:'',ant:''};
+let chatHistory=[];
 let marketSnapshot={};
 let tdCandles5=[], tdCandles15=[];
 
@@ -968,6 +969,37 @@ async function loadData(){
     setStatus('live','YAHOO · LIVE');
     document.getElementById('footR').textContent='Dane: '+new Date().toLocaleString('pl-PL');
   }catch(e){setStatus('err','BŁĄD DANYCH');showToast('Błąd: '+e.message);}
+}
+
+// ══ HELPERS ═════════════════════════════════════════════════════════════════
+function fmt(v){
+  return v==null?'—':parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtVol(v){
+  if(!v)return'—';
+  if(v>=1e9)return(v/1e9).toFixed(1)+'B';
+  if(v>=1e6)return(v/1e6).toFixed(1)+'M';
+  return String(Math.round(v));
+}
+function setStatus(cls,txt){
+  const d=document.getElementById('dotStatus');
+  const l=document.getElementById('lblStatus');
+  if(d)d.className='dot'+(cls?' '+cls:'');
+  if(l)l.textContent=txt;
+}
+function setInd(id,val,tag,cls){
+  const v=document.getElementById('v'+id);
+  const t=document.getElementById('t'+id);
+  if(v)v.textContent=val??'—';
+  if(t){if(tag)t.textContent=tag;t.className='ind-t '+cls;}
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  if(t){t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},5000);}
+}
+function updateClock(){
+  const el=document.getElementById('hdrClock');
+  if(el)el.textContent=new Date().toLocaleTimeString('pl-PL');
 }
 
 // ══ RENDER ══════════════════════════════════════════════════════════════════
