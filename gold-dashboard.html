@@ -1505,6 +1505,55 @@ function renderHistory(){
 
 // ══ INIT ═════════════════════════════════════════════════════════════════════
 
+// ══ API KEY MANAGEMENT ═══════════════════════════════════════════════════════
+function setApiStatus(key,cls,txt){
+  const el=document.getElementById(key+'Status');
+  if(el){el.textContent=txt;el.className='api-field-status '+cls;}
+}
+
+function loadApiKeys(){
+  API_KEYS.td=localStorage.getItem('xau_td_key')||'';
+  API_KEYS.ant=localStorage.getItem('xau_ant_key')||'';
+  const tdI=document.getElementById('tdKey');
+  const antI=document.getElementById('antKey');
+  if(API_KEYS.td&&tdI){tdI.value=API_KEYS.td;setApiStatus('td','ok','✓ Ustawiony');}
+  if(API_KEYS.ant&&antI){antI.value=API_KEYS.ant;setApiStatus('ant','ok','✓ Ustawiony');}
+  if(API_KEYS.td&&API_KEYS.ant){
+    const p=document.getElementById('apiPanel');
+    if(p)p.classList.add('hidden');
+    const f=document.getElementById('chatFab');
+    if(f)f.style.display='flex';
+    return true;
+  }
+  return false;
+}
+
+function saveApiKeys(){
+  const tdEl=document.getElementById('tdKey');
+  const antEl=document.getElementById('antKey');
+  const td=tdEl?tdEl.value.trim():'';
+  const ant=antEl?antEl.value.trim():'';
+  if(td){localStorage.setItem('xau_td_key',td);API_KEYS.td=td;setApiStatus('td','ok','✓ Zapisany');}
+  if(ant){localStorage.setItem('xau_ant_key',ant);API_KEYS.ant=ant;setApiStatus('ant','ok','✓ Zapisany');}
+  const p=document.getElementById('apiPanel');
+  if(p)p.classList.add('hidden');
+  const f=document.getElementById('chatFab');
+  if(f&&API_KEYS.ant)f.style.display='flex';
+  showToast('Klucze zapisane ✓ Uruchamiam...');
+  initDashboard();
+}
+
+function skipApiSetup(){
+  const p=document.getElementById('apiPanel');
+  if(p)p.classList.add('hidden');
+  initDashboard();
+}
+
+function openApiSettings(){
+  const p=document.getElementById('apiPanel');
+  if(p)p.classList.remove('hidden');
+}
+
 // ══ TWELVE DATA ═════════════════════════════════════════════════════════════
 
 async function fetchTwelveData(){
