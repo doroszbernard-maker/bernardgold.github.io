@@ -526,8 +526,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
     </div>
 
     <div class="api-btn-row">
-      <button class="api-save-btn" onclick="saveApiKeys()">✓ Zapisz klucze i uruchom</button>
-      <button class="api-skip-btn" onclick="skipApiSetup()">Pomiń (tylko Yahoo Finance)</button>
+      <button class="api-save-btn" id="apiSaveBtn">✓ Zapisz klucze i uruchom</button>
+      <button class="api-skip-btn" id="apiSkipBtn">Pomiń (tylko Yahoo Finance)</button>
     </div>
   </div>
 </div>
@@ -1708,12 +1708,19 @@ function initDashboard(){
 
 // Add settings button to header
 document.addEventListener('DOMContentLoaded',()=>{
+  // Wire up API panel buttons
+  const saveBtn=document.getElementById('apiSaveBtn');
+  const skipBtn=document.getElementById('apiSkipBtn');
+  if(saveBtn)saveBtn.addEventListener('click',saveApiKeys);
+  if(skipBtn)skipBtn.addEventListener('click',skipApiSetup);
+
+  // Add settings gear to header
   const hdrRight=document.querySelector('.hdr-right');
   if(hdrRight){
     const settBtn=document.createElement('div');
     settBtn.className='api-indicator';
     settBtn.innerHTML='⚙ API';
-    settBtn.onclick=openApiSettings;
+    settBtn.addEventListener('click',openApiSettings);
     hdrRight.insertBefore(settBtn,hdrRight.firstChild);
   }
 });
