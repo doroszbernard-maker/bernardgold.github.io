@@ -281,6 +281,41 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .chat-fab{position:fixed;bottom:20px;right:20px;width:48px;height:48px;background:linear-gradient(135deg,var(--gold),#8b6d2a);border:none;border-radius:50%;color:#000;font-size:20px;cursor:pointer;box-shadow:0 4px 20px rgba(201,168,76,.4);z-index:399;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .chat-fab:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(201,168,76,.5)}
 
+/* PRICE LEVELS PANEL */
+.levels-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:6px}
+.level-cell{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:5px 8px;position:relative;overflow:hidden;transition:all .3s}
+.level-cell.near{border-color:var(--gold-b);background:var(--gold-bg)}
+.level-cell.broken-up{border-color:var(--green-b);background:var(--green-bg)}
+.level-cell.broken-dn{border-color:var(--red-b);background:var(--red-bg)}
+.lc-label{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+.lc-price{font-size:13px;font-weight:700;font-family:var(--sans);color:var(--text);margin:2px 0}
+.lc-dist{font-size:8px;margin-top:1px}
+.lc-dist.above{color:var(--red)}.lc-dist.below{color:var(--green)}.lc-dist.near{color:var(--gold2)}
+.lc-bar{position:absolute;bottom:0;left:0;height:2px;background:var(--gold-b);border-radius:0 2px 2px 0;transition:width .5s}
+.lc-strength{font-size:8px;font-weight:600;margin-top:2px}
+.lc-strength.strong{color:var(--red)}.lc-strength.medium{color:var(--amber)}.lc-strength.weak{color:var(--green)}
+
+/* SL/TP PANEL */
+.sltp-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:5px}
+.sltp-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.sltp-label{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+.sltp-val{font-size:12px;font-weight:700;font-family:var(--sans)}
+.sltp-val.tp{color:var(--green)}.sltp-val.sl{color:var(--red)}.sltp-val.usd{color:var(--amber)}
+.sltp-divider{height:1px;background:var(--border);margin:5px 0}
+.sltp-calc{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+.sltp-calc-cell{background:var(--bg3);border-radius:3px;padding:3px 7px;text-align:center}
+.sltp-calc-l{font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.sltp-calc-v{font-size:10px;font-weight:700;font-family:var(--sans);margin-top:1px}
+
+/* MOMENTUM ALERT */
+.momentum-alert{display:none;border-radius:var(--r2);padding:7px 10px;border:1px solid;margin-bottom:5px;animation:pulse-border 2s infinite}
+.momentum-alert.weak-bull{border-color:var(--amber-b);background:var(--amber-bg);color:var(--amber)}
+.momentum-alert.weak-bear{border-color:var(--amber-b);background:var(--amber-bg);color:var(--amber)}
+.momentum-alert.exit-now{border-color:var(--red-b);background:var(--red-bg);color:var(--red)}
+@keyframes pulse-border{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 8px rgba(212,134,30,.3)}}
+.ma-title{font-size:10px;font-weight:700;font-family:var(--sans);margin-bottom:2px}
+.ma-desc{font-size:9px;opacity:.85;line-height:1.5}
+
 .toast{display:none;position:fixed;bottom:14px;right:14px;background:var(--bg3);border:1px solid var(--border3);border-radius:var(--r);padding:8px 13px;font-size:10px;color:var(--text2);z-index:999;max-width:280px}
 .foot{height:24px;flex-shrink:0;padding:0 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
 .foot-l,.foot-r{font-size:9px;color:var(--text3)}
@@ -321,6 +356,94 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
         <div class="ohlc-cell"><div class="ohlc-l">Poprz. zamkn.</div><div class="ohlc-v" id="oPrev">—</div></div>
         <div class="ohlc-cell"><div class="ohlc-l">Wolumen</div><div class="ohlc-v" id="oVol">—</div></div>
       </div>
+    </div>
+
+    <!-- MOMENTUM ALERT -->
+    <div class="sec">
+      <div class="momentum-alert" id="momentumAlert">
+        <div class="ma-title" id="maTitle">—</div>
+        <div class="ma-desc" id="maDesc">—</div>
+      </div>
+
+      <!-- SL/TP SUGGESTION -->
+      <div class="sec-title">Sugerowane SL / TP</div>
+      <div class="sltp-box">
+        <div class="sltp-row">
+          <div class="sltp-label">Take Profit (lok. High 8h)</div>
+          <div class="sltp-val tp" id="sltpTP">—</div>
+        </div>
+        <div class="sltp-row">
+          <div class="sltp-label">Stop Loss (lok. Low 8h)</div>
+          <div class="sltp-val sl" id="sltpSL">—</div>
+        </div>
+        <div class="sltp-row">
+          <div class="sltp-label">Zasięg ruchu (pkt)</div>
+          <div class="sltp-val usd" id="sltpRange">—</div>
+        </div>
+        <div class="sltp-divider"></div>
+        <div class="sltp-calc">
+          <div class="sltp-calc-cell">
+            <div class="sltp-calc-l">0.005 lota</div>
+            <div class="sltp-calc-v" id="calcSmall">—</div>
+          </div>
+          <div class="sltp-calc-cell">
+            <div class="sltp-calc-l">0.01 lota</div>
+            <div class="sltp-calc-v" id="calcLarge">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KEY PRICE LEVELS -->
+    <div class="sec">
+      <div class="sec-title">Kluczowe poziomy cenowe</div>
+      <div class="levels-grid">
+        <div class="level-cell" id="lc_dh">
+          <div class="lc-bar" id="lb_dh" style="width:0%"></div>
+          <div class="lc-label">High dnia</div>
+          <div class="lc-price" id="lp_dh">—</div>
+          <div class="lc-dist" id="ld_dh">—</div>
+          <div class="lc-strength" id="ls_dh">—</div>
+        </div>
+        <div class="level-cell" id="lc_dl">
+          <div class="lc-bar" id="lb_dl" style="width:0%"></div>
+          <div class="lc-label">Low dnia</div>
+          <div class="lc-price" id="lp_dl">—</div>
+          <div class="lc-dist" id="ld_dl">—</div>
+          <div class="lc-strength" id="ls_dl">—</div>
+        </div>
+        <div class="level-cell" id="lc_wh">
+          <div class="lc-bar" id="lb_wh" style="width:0%"></div>
+          <div class="lc-label">High tygodnia</div>
+          <div class="lc-price" id="lp_wh">—</div>
+          <div class="lc-dist" id="ld_wh">—</div>
+          <div class="lc-strength" id="ls_wh">—</div>
+        </div>
+        <div class="level-cell" id="lc_wl">
+          <div class="lc-bar" id="lb_wl" style="width:0%"></div>
+          <div class="lc-label">Low tygodnia</div>
+          <div class="lc-price" id="lp_wl">—</div>
+          <div class="lc-dist" id="ld_wl">—</div>
+          <div class="lc-strength" id="ls_wl">—</div>
+        </div>
+        <div class="level-cell" id="lc_8h">
+          <div class="lc-bar" id="lb_8h" style="width:0%"></div>
+          <div class="lc-label">High 8h (lok. TP)</div>
+          <div class="lc-price" id="lp_8h">—</div>
+          <div class="lc-dist" id="ld_8h">—</div>
+          <div class="lc-strength" id="ls_8h">—</div>
+        </div>
+        <div class="level-cell" id="lc_8l">
+          <div class="lc-bar" id="lb_8l" style="width:0%"></div>
+          <div class="lc-label">Low 8h (lok. SL)</div>
+          <div class="lc-price" id="lp_8l">—</div>
+          <div class="lc-dist" id="ld_8l">—</div>
+          <div class="lc-strength" id="ls_8l">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec" style="display:none"><!-- placeholder ohlc --></div>
     </div>
 
     <div class="sec">
@@ -842,7 +965,11 @@ function renderMacro(){
     // VIX: up = bullish for gold
     else if(k==='vix'){if(pct>5)macroScore+=2;else if(pct>2)macroScore+=1;else if(pct<-5)macroScore-=1;}
     // Oil: up = slightly bullish (inflation)
-    else if(k==='oil'){if(pct>2)macroScore+=1;else if(pct<-2)macroScore-=1;}
+    else if(k==='oil'){
+      // ODWROCONA korelacja w srodowisku wojennym (Bliski Wschod 2023-2026)
+      // Droga ropa = kapital odplywa z XAU. Tania ropa/rozejm = XAU rosnie
+      if(pct>2)macroScore-=1;else if(pct<-2)macroScore+=1;
+    }
     // EUR/USD: up (weak USD) = bullish gold
     else if(k==='eur'){if(pct>0.5)macroScore+=1;else if(pct<-0.5)macroScore-=1;}
     // Silver: confirms gold direction
@@ -1478,6 +1605,14 @@ async function loadDataEnhanced(){
       confluence:same,conflict,sigShort:sigShortFinal,sigMid,sigWeek,dec,
       session:getCurrentSessionName(),time:new Date().toLocaleString('pl-PL')};
     macroData.au={closes:closesPred,price:cur,prev:closesPred[closesPred.length-2]||cur,pct:0};
+
+    // Price levels from 5min candles
+    var levels=calcPriceLevels(tdCandles5);
+    if(levels)renderPriceLevels(levels,cur,atr5);
+
+    // Momentum divergence alert
+    checkMomentumDivergence(c5,rsi5,macd5,sigShort.type==='buy');
+
     setStatus('live','TD 5M+15M · LIVE');
     const fR=document.getElementById('footR');
     if(fR)fR.textContent='5min+15min · '+new Date().toLocaleTimeString('pl-PL')+(same?' · ✓ Zgodne':conflict?' · ⚠ Sprzeczne':'');
@@ -1696,6 +1831,177 @@ function playSignalBeep(type){
   } else {
     // Neutralny - jeden ton
     playBeep(520,0.15,0.04);
+  }
+}
+
+// ══ PRICE LEVELS & SL/TP ════════════════════════════════════════════════════
+function calcPriceLevels(candles5m){
+  if(!candles5m||candles5m.length<2)return null;
+  var now=new Date();
+  var todayOpen=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  var h8ago=now.getTime()-8*3600000;
+
+  // Filter 5min candles for today and last 8h
+  var todayCandles=candles5m.filter(function(c){return c.t>=todayOpen;});
+  var h8Candles=candles5m.filter(function(c){return c.t>=h8ago;});
+
+  function hilo5m(arr){
+    if(!arr.length)return{h:null,l:null};
+    return{
+      h:Math.max.apply(null,arr.map(function(c){return c.h||c.c;})),
+      l:Math.min.apply(null,arr.map(function(c){return c.l||c.c;}))
+    };
+  }
+
+  // Weekly High/Low from Yahoo Finance daily data (macroData.au)
+  // Much more accurate than 5min which only covers ~17h
+  var weekH=null,weekL=null;
+  if(macroData.au&&macroData.au.closes&&macroData.au.closes.length>=5){
+    var last5=macroData.au.closes.slice(-5);
+    weekH=Math.max.apply(null,last5);
+    weekL=Math.min.apply(null,last5);
+  }
+
+  var dayHL=hilo5m(todayCandles);
+  var h8HL=hilo5m(h8Candles);
+
+  return{
+    day:dayHL,
+    week:{h:weekH,l:weekL},
+    h8:h8HL,
+  };
+}
+
+function renderPriceLevels(levels, cur, atr){
+  if(!levels||!cur)return;
+  const defs=[
+    {id:'dh', price:levels.day.h,  label:'dnia',    dir:'above'},
+    {id:'dl', price:levels.day.l,  label:'dnia',    dir:'below'},
+    {id:'wh', price:levels.week.h, label:'tygodnia',dir:'above'},
+    {id:'wl', price:levels.week.l, label:'tygodnia',dir:'below'},
+    {id:'8h', price:levels.h8.h,   label:'8h',      dir:'above'},
+    {id:'8l', price:levels.h8.l,   label:'8h',      dir:'below'},
+  ];
+  defs.forEach(function(d){
+    if(!d.price)return;
+    var dist=d.price-cur;
+    var distAbs=Math.abs(dist);
+    var pEl=document.getElementById('lp_'+d.id);
+    var dEl=document.getElementById('ld_'+d.id);
+    var sEl=document.getElementById('ls_'+d.id);
+    var bEl=document.getElementById('lb_'+d.id);
+    var cEl=document.getElementById('lc_'+d.id);
+    if(!pEl)return;
+    pEl.textContent=fmt(d.price);
+
+    // Distance
+    var pct=(distAbs/(atr||20)*100).toFixed(0);
+    var distTxt=(dist>0?'+':'')+dist.toFixed(1)+' pkt';
+    dEl.textContent=distTxt;
+
+    // Near = within 0.5x ATR
+    var isNear=distAbs<(atr||20)*0.5;
+    var isBroken=(d.dir==='above'&&cur>d.price)||(d.dir==='below'&&cur<d.price);
+
+    if(isBroken){
+      cEl.className='level-cell broken-'+(d.dir==='above'?'up':'dn');
+      dEl.className='lc-dist '+(d.dir==='above'?'below':'above');
+      sEl.textContent='PRZEBITY ✓';
+      sEl.className='lc-strength strong';
+    } else if(isNear){
+      cEl.className='level-cell near';
+      dEl.className='lc-dist near';
+      sEl.textContent='BLISKO — obserwuj';
+      sEl.className='lc-strength medium';
+    } else {
+      cEl.className='level-cell';
+      dEl.className='lc-dist '+(dist>0?'above':'below');
+      // Strength: can current momentum reach this level?
+      var strength=distAbs<(atr||20)?'Zasieg w 1xATR':'Zasieg w '+(distAbs/(atr||20)).toFixed(1)+'xATR';
+      sEl.textContent=strength;
+      sEl.className='lc-strength '+(distAbs<(atr||20)*1.5?'medium':'weak');
+    }
+
+    // Progress bar - how close to level (0-100%)
+    var barPct=Math.max(0,Math.min(100,100-distAbs/(atr||20)*20));
+    if(bEl)bEl.style.width=barPct+'%';
+  });
+
+  // SL/TP suggestions
+  var tp=levels.h8.h, sl=levels.h8.l;
+  var tpEl=document.getElementById('sltpTP');
+  var slEl=document.getElementById('sltpSL');
+  var rangeEl=document.getElementById('sltpRange');
+  var calcS=document.getElementById('calcSmall');
+  var calcL=document.getElementById('calcLarge');
+  if(tpEl&&tp)tpEl.textContent=fmt(tp);
+  if(slEl&&sl)slEl.textContent=fmt(sl);
+  if(rangeEl&&tp&&sl){
+    var range=Math.abs(tp-sl);
+    rangeEl.textContent=range.toFixed(1)+' pkt';
+    // 1:20 leverage, gold = 100oz per lot
+    // 0.005 lot = 0.005*100 = 0.5 oz, 1pt = $1 -> 0.5*1*range
+    var usdSmall=(range*0.5).toFixed(2);
+    var usdLarge=(range*1.0).toFixed(2);
+    if(calcS)calcS.textContent='$'+usdSmall;
+    if(calcL)calcL.textContent='$'+usdLarge;
+  }
+}
+
+// ══ MOMENTUM DIVERGENCE ALERT ════════════════════════════════════════════════
+function checkMomentumDivergence(closes, rsi, macd, isUp){
+  var n=closes.length-1;
+  if(n<5)return null;
+  var alert=document.getElementById('momentumAlert');
+  if(!alert)return;
+
+  // Check last 5 candles for divergence
+  var priceSlope=closes[n]-closes[n-4]; // price direction
+  var rsiSlope=(rsi[n]||50)-(rsi[n-4]||50); // RSI direction
+  var macdSlope=(macd.hist[n]||0)-(macd.hist[n-4]||0); // MACD hist direction
+
+  // Bearish divergence: price up but RSI/MACD down (for long positions)
+  var bearDiv=priceSlope>0&&rsiSlope<-3&&macdSlope<0;
+  // Bullish divergence: price down but RSI/MACD up (for short positions)
+  var bullDiv=priceSlope<0&&rsiSlope>3&&macdSlope>0;
+
+  // RSI overbought/oversold extreme
+  var rv=rsi[n]||50;
+  var rsiExtreme=rv>70||rv<30;
+
+  // MACD histogram shrinking (momentum loss)
+  var mhNow=Math.abs(macd.hist[n]||0);
+  var mhPrev=Math.abs(macd.hist[n-1]||0);
+  var mhPrev2=Math.abs(macd.hist[n-2]||0);
+  var macdShrinking=mhNow<mhPrev&&mhPrev<mhPrev2&&mhNow>0;
+
+  var title='',desc='',cls='';
+
+  if(bearDiv&&isUp){
+    title='⚠ MOMENTUM SŁABNIE — rozważ wyjście z LONG';
+    desc='Cena rośnie ale RSI i MACD tracą siłę. Dywergencja niedźwiedzia — możliwe odwrócenie.';
+    cls='weak-bull';
+  } else if(bullDiv&&!isUp){
+    title='⚠ MOMENTUM SŁABNIE — rozważ wyjście z SHORT';
+    desc='Cena spada ale RSI i MACD się poprawiają. Dywergencja bycza — możliwe odwrócenie.';
+    cls='weak-bear';
+  } else if(rsiExtreme&&macdShrinking){
+    title='⚠ RSI '+(rv>70?'WYKUPIONY':'WYPRZEDANY')+' + MACD traci siłę';
+    desc='Podwójny sygnał słabnącego momentum. Pilnuj SL lub rozważ częściowe zamknięcie.';
+    cls='exit-now';
+  } else if(macdShrinking&&mhNow<mhPrev2*0.5){
+    title='↘ Momentum spada — obserwuj uważnie';
+    desc='MACD histogram traci siłę. Nie otwieraj nowych pozycji w kierunku trendu.';
+    cls='weak-bull';
+  }
+
+  if(title){
+    alert.style.display='block';
+    alert.className='momentum-alert '+cls;
+    document.getElementById('maTitle').textContent=title;
+    document.getElementById('maDesc').textContent=desc;
+  } else {
+    alert.style.display='none';
   }
 }
 
