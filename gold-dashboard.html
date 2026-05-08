@@ -1464,6 +1464,7 @@ async function loadDataEnhanced(){
     buildMinis(lbl5,rsi5,macdDisp.hist?macdDisp:macd5);
     buildPredCharts(closesPred,e20Pred,atrPred,dec,candlesPred,rsiDisp,macdDisp,calcBB(closesPred),calcEMA(closesPred,50));
     if(!signalHistory.length||signalHistory[0].type!==sigShort.type){
+      if(signalHistory.length>0){playSignalBeep(sigShort.type);}
       signalHistory.unshift({type:sigShort.type,price:cur,time:new Date().toLocaleTimeString('pl-PL'),tf:'5M'});
       if(signalHistory.length>8)signalHistory.pop();
       renderHistory();
@@ -1664,6 +1665,38 @@ function renderEvents(){
     var isPast=eMin>0&&nowMin-eMin>30;
     return '<div class="event-item'+(isNow?' now':'')+'" style="'+(isPast?'opacity:.4':'')+'">'+'<div class="ev-dot '+(isNow?'now':e.imp)+'"></div>'+'<div class="ev-body">'+'<div class="ev-name">'+e.name+'</div>'+'<div class="ev-time">'+e.time+' CET'+(isSoon&&!isNow?' - za '+(eMin-nowMin)+'min':'')+'</div>'+'<div class="ev-imp '+(isNow?'now':e.imp)+'">'+(isNow?'TERAZ':e.imp==='high'?'WYSOKI':e.imp==='medium'?'SREDNI':'NISKI')+' wplyw</div>'+'<div class="ev-desc">'+e.desc+'</div>'+'</div></div>';
   }).join('');
+}
+
+// ══ AUDIO ALERTS ════════════════════════════════════════════════════════════
+function playBeep(freq, duration, volume){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    var osc=ctx.createOscillator();
+    var gain=ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value=freq||660;
+    osc.type='sine';
+    gain.gain.setValueAtTime(volume||0.07,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+(duration||0.3));
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+(duration||0.3));
+  }catch(e){}
+}
+
+function playSignalBeep(type){
+  if(type==='buy'){
+    // Rosnący dwuton - sygnał kupna
+    playBeep(440,0.15,0.06);
+    setTimeout(function(){playBeep(660,0.2,0.07);},160);
+  } else if(type==='sell'){
+    // Opadający dwuton - sygnał sprzedaży
+    playBeep(660,0.15,0.06);
+    setTimeout(function(){playBeep(440,0.2,0.07);},160);
+  } else {
+    // Neutralny - jeden ton
+    playBeep(520,0.15,0.04);
+  }
 }
 
 function initDashboard(){
