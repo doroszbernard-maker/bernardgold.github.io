@@ -59,14 +59,17 @@ html,body{
   overflow-x:hidden;
   border-right:1px solid rgba(255,255,255,0.055);
   background:#07080c;
+  display:flex;
+  flex-direction:column;
 }
 .center{
   flex:1;
   min-width:0;
-  overflow:hidden;
+  overflow:hidden !important;
   display:flex;
   flex-direction:column;
   border-right:1px solid rgba(255,255,255,0.055);
+  contain:layout;
 }
 .right{
   width:320px;
@@ -76,20 +79,20 @@ html,body{
   overflow-y:auto;
   overflow-x:hidden;
   background:#07080c;
+  display:flex;
+  flex-direction:column;
 }
 
 /* TV WRAP */
 .tv-wrap{
-  flex:0 0 52%;
-  position:relative;
+  height:55%;
+  min-height:200px;
+  max-height:60vh;
+  flex-shrink:0;
   overflow:hidden;
+  width:100%;
 }
-.tv-wrap iframe{
-  position:absolute;
-  top:0;left:0;
-  width:100%;height:100%;
-  border:none;
-}
+.tv-wrap iframe{display:block;width:100%!important;height:100%!important;border:none;max-width:100%;}
 
 /* SCROLL AREA IN CENTER */
 .center-scroll{
@@ -608,7 +611,7 @@ html,body{
     <div class="tv-wrap">
   <iframe
     src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw"
-    style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
+    style="width:100%;height:100%;border:none;display:block;"
     frameborder="0"
     allowfullscreen
   ></iframe>
