@@ -7,7 +7,99 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Bebas+Neue&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
+/* RESET */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* FULL SCREEN FIXED LAYOUT */
+html,body{
+  width:100vw;height:100vh;
+  overflow:hidden;
+  background:#07080c;
+  color:#cdd5e0;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+}
+
+/* WRAPPER - full screen flex column */
+#app{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* HEADER */
+.hdr{
+  height:40px;
+  flex:0 0 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  border-bottom:1px solid rgba(255,255,255,0.055);
+  background:#07080c;
+  gap:10px;
+  z-index:10;
+}
+
+/* MAIN 3-COLUMN - THE KEY FIX */
+/* Using table-layout approach for guaranteed column widths */
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:row;
+  overflow:hidden;
+  min-height:0;
+}
+.left{
+  width:300px;
+  min-width:300px;
+  max-width:300px;
+  flex:0 0 300px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  border-right:1px solid rgba(255,255,255,0.055);
+  background:#07080c;
+}
+.center{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  border-right:1px solid rgba(255,255,255,0.055);
+}
+.right{
+  width:320px;
+  min-width:320px;
+  max-width:320px;
+  flex:0 0 320px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  background:#07080c;
+}
+
+/* TV WRAP */
+.tv-wrap{
+  flex:0 0 52%;
+  position:relative;
+  overflow:hidden;
+}
+.tv-wrap iframe{
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  border:none;
+}
+
+/* SCROLL AREA IN CENTER */
+.center-scroll{
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  min-height:0;
+}
+
+
 :root{
   --bg:#07080c;--bg2:#0c0e15;--bg3:#111420;--bg4:#171b28;
   --border:rgba(255,255,255,0.055);--border2:rgba(255,255,255,0.10);--border3:rgba(255,255,255,0.15);
@@ -21,8 +113,8 @@
   --r:6px;--r2:4px;
 }
 *{box-sizing:border-box}
-html{height:100%;overflow:hidden;width:100%;max-width:100vw}
-body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;display:flex;flex-direction:column;position:fixed;top:0;left:0;right:0;bottom:0}
+
+
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px}
@@ -51,10 +143,10 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
 .hdr-btn:hover{background:var(--bg3);color:var(--text)}
 
 /* MAIN 3-COLUMN */
-.main{flex:1;display:grid;grid-template-columns:300px 1fr 320px;min-height:0;overflow:hidden;width:100%;max-width:100%;position:relative}
+
 
 /* LEFT */
-.left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--bg);width:300px;min-width:300px;max-width:300px;flex-shrink:0}
+
 .sec{padding:9px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .sec-title{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.13em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
 .sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
@@ -115,12 +207,12 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
 .hist-time{color:var(--text3);margin-left:auto}
 
 /* CENTER */
-.center{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);min-width:0;max-width:100%;width:0}
+
 .chart-hdr{height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--border);background:var(--bg)}
 .chart-hdr-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.09em}
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
-.tv-wrap{flex:0 0 50%;position:relative;overflow:hidden;min-height:220px;contain:layout size;max-width:100%;width:100%}
-.tv-wrap>div{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
+
+
 .center-scroll{flex:1;overflow-y:auto;min-height:0}
 
 /* RSI/MACD mini row */
@@ -156,7 +248,7 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
 .pred-lvl-v{font-size:11px;font-weight:700;margin-top:1px}
 
 /* RIGHT */
-.right{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);width:320px;min-width:320px;max-width:320px;flex-shrink:0}
+
 .right-sec{padding:9px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .right-sec.grow{flex:1;overflow-y:auto}
 .sess-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
@@ -320,10 +412,11 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
 .toast{display:none;position:fixed;bottom:14px;right:14px;background:var(--bg3);border:1px solid var(--border3);border-radius:var(--r);padding:8px 13px;font-size:10px;color:var(--text2);z-index:999;max-width:280px}
 .foot{height:24px;flex-shrink:0;padding:0 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
 .foot-l,.foot-r{font-size:9px;color:var(--text3)}
+
 </style>
 </head>
 <body>
-<div class="toast" id="toast"></div>
+<div id="app">
 
 <header class="hdr">
   <div class="logo"><div class="logo-mark">GOLD</div><div class="logo-sub">XAU/USD · Intraday Signal Dashboard</div></div>
@@ -342,7 +435,7 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
 
 <div class="main">
 
-  <!-- LEFT -->
+<!-- LEFT -->
   <div class="left">
     <div class="sec">
       <div class="price-sym">XAU / USD · Spot Gold · GC=F</div>
@@ -514,6 +607,12 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
     </div>
     <div class="tv-wrap">
   <iframe
+    src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw"
+    style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
+    frameborder="0"
+    allowfullscreen
+  ></iframe>
+  <iframe
     id="tv_iframe"
     src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=rgba%287%2C8%2C12%2C1%29&gridColor=rgba%28255%2C255%2C255%2C0.03%29&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw"
     style="width:100%;height:100%;border:none;display:block;"
@@ -624,7 +723,9 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
     <div class="right-sec"><div class="sec-title">Kluczowe okienka dnia (CET)</div><div id="winList"></div></div>
     <div class="right-sec grow"><div class="sec-title">Kalendarz makro — dziś</div><div id="eventList"></div></div>
   </div>
-</div>
+
+
+</div><!-- /main -->
 
 <!-- API SETTINGS PANEL -->
 <div class="api-panel" id="apiPanel">
@@ -657,6 +758,8 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
   </div>
 </div>
 
+
+
 <!-- CHAT FAB BUTTON -->
 <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Doradca AI" style="display:none">◈</button>
 
@@ -685,14 +788,19 @@ body{height:100%;overflow:hidden;width:100vw;max-width:100vw;background:var(--bg
   </div>
 </div>
 
+
+
 <footer class="foot">
   <div class="foot-l">XAU/USD · Twelve Data (5min+15min) · Yahoo Finance (makro) · Odśwież co 60s</div>
   <div class="foot-r" id="footR">—</div>
 </footer>
 
+</div><!-- /app -->
 
+<div class="toast" id="toast"></div>
 
 <script>
+
 // ══ STATE ═══════════════════════════════════════════════════════════════════
 let charts={}, signalHistory=[];
 let API_KEYS={td:'',ant:''};
@@ -2046,6 +2154,7 @@ document.addEventListener('DOMContentLoaded',function(){
   setInterval(updateSessions,30000);
   setInterval(function(){renderWindows();renderEvents();},60000);
 });
+
 </script>
 </body>
 </html>
