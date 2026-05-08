@@ -20,7 +20,7 @@
   --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;--display:'Bebas Neue',cursive;
   --r:6px;--r2:4px;
 }
-html,body{height:100%;overflow:hidden}
+html,body{height:100%;overflow:hidden;max-width:100vw}
 body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;display:flex;flex-direction:column}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -50,10 +50,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .hdr-btn:hover{background:var(--bg3);color:var(--text)}
 
 /* MAIN 3-COLUMN */
-.main{flex:1;display:grid;grid-template-columns:340px 1fr 360px;min-height:0;overflow:hidden;width:100%}
+.main{flex:1;display:grid;grid-template-columns:300px 1fr 320px;min-height:0;overflow:hidden;width:100vw;max-width:100vw}
 
 /* LEFT */
-.left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--bg);width:340px;flex-shrink:0}
+.left{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;background:var(--bg);width:300px;flex-shrink:0}
 .sec{padding:9px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .sec-title{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.13em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
 .sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
@@ -118,7 +118,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .chart-hdr{height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--border);background:var(--bg)}
 .chart-hdr-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.09em}
 .chart-live{font-size:8px;color:var(--green);display:flex;align-items:center;gap:4px}
-.tv-wrap{flex:0 0 52%;position:relative;overflow:hidden;min-height:220px;contain:strict}
+.tv-wrap{flex:0 0 50%;position:relative;overflow:hidden;min-height:220px;contain:strict;max-width:100%}
 .tv-wrap>div{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
 .center-scroll{flex:1;overflow-y:auto;min-height:0}
 
@@ -155,7 +155,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .pred-lvl-v{font-size:11px;font-weight:700;margin-top:1px}
 
 /* RIGHT */
-.right{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);width:360px;flex-shrink:0}
+.right{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);width:320px;flex-shrink:0}
 .right-sec{padding:9px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 .right-sec.grow{flex:1;overflow-y:auto}
 .sess-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
@@ -231,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 /* API SETTINGS PANEL */
 .api-panel{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(7,8,12,0.96);z-index:500;display:flex;align-items:center;justify-content:center}
 .api-panel.hidden{display:none}
-.api-box{background:var(--bg2);border:1px solid var(--border3);border-radius:10px;padding:28px 32px;width:480px;max-width:95vw}
+.api-box{background:var(--bg2);border:1px solid var(--border3);border-radius:10px;padding:28px 32px;width:420px;max-width:90vw}
 .api-box-title{font-family:var(--sans);font-size:18px;font-weight:700;color:var(--gold2);margin-bottom:4px}
 .api-box-sub{font-size:10px;color:var(--text3);margin-bottom:20px;line-height:1.5}
 .api-field{margin-bottom:14px}
@@ -253,7 +253,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12
 .api-indicator:hover{background:var(--bg3)}
 
 /* CHAT PANEL */
-.chat-panel{position:fixed;bottom:20px;right:20px;width:340px;background:var(--bg2);border:1px solid var(--border3);border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6);z-index:400;display:flex;flex-direction:column;max-height:500px;transition:all .3s}
+.chat-panel{position:fixed;bottom:20px;right:20px;width:300px;background:var(--bg2);border:1px solid var(--border3);border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6);z-index:400;display:flex;flex-direction:column;max-height:500px;transition:all .3s}
 .chat-panel.hidden{display:none}
 .chat-panel-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .chat-panel-title{font-family:var(--sans);font-size:12px;font-weight:700;color:var(--gold2);display:flex;align-items:center;gap:6px}
