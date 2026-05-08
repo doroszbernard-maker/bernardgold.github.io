@@ -1784,11 +1784,23 @@ async function sendChat(){
   const btn=document.getElementById('chatSendBtn');if(btn)btn.disabled=true;
   const thinking=appendChatMsg('ai','Analizuje kontekst...',true);
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    // Use corsproxy to bypass CORS restriction on Anthropic API
+    const payload=JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:800,
+      system:buildContext(),
+      messages:chatHistory.slice(-8)
+    });
+    const proxyUrl='https://corsproxy.io/?'+encodeURIComponent('https://api.anthropic.com/v1/messages');
+    const res=await fetch(proxyUrl,{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':API_KEYS.ant,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,
-        system:buildContext(),messages:chatHistory.slice(-8)})
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':API_KEYS.ant,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:payload
     });
     if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'API error');}
     const data=await res.json();
@@ -1798,7 +1810,11 @@ async function sendChat(){
     chatHistory.push({role:'assistant',content:reply});
   }catch(e){
     if(thinking)thinking.remove();
-    appendChatMsg('ai','Blad: '+e.message);
+    let errMsg='Blad: '+e.message;
+    if(e.message.includes('fetch')||e.message.includes('Failed')){
+      errMsg='Blad polaczenia z Claude API. Sprawdz czy klucz Anthropic jest poprawny i sprobuj ponownie.';
+    }
+    appendChatMsg('ai',errMsg);
     chatHistory.pop();
   }finally{if(btn)btn.disabled=false;}
 }
