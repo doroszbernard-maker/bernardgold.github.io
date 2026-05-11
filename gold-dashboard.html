@@ -514,6 +514,37 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 
 
+
+/* Signal card inner layout */
+.sig-hdr{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sig-badge{font-size:10px;font-weight:600;color:var(--text);font-family:var(--sans)}
+.sig-reason{font-size:9px;color:var(--text3);margin:3px 0;line-height:1.5}
+.sig-warn{font-size:9px;color:var(--amber);margin-top:3px;padding:3px 6px;background:var(--amber-bg);border-radius:3px}
+.sig-ctx{font-size:9px;color:var(--text3);margin-top:2px}
+.score-bar{height:3px;background:var(--bg3);border-radius:2px;margin:5px 0 2px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px;transition:width .5s}
+.score-fill.pos{background:var(--green)}
+.score-fill.neg{background:var(--red)}
+.score-row{display:flex;align-items:center;justify-content:space-between}
+.score-lbl{font-size:8px;color:var(--text3)}
+.score-n{font-size:9px;font-weight:700;font-family:var(--sans)}
+.score-n.pos{color:var(--green)}.score-n.neg{color:var(--red)}.score-n.neu{color:var(--text3)}
+
+/* Prediction canvas */
+.pred-canvas-wrap{position:relative;height:160px;margin:6px 0}
+.pred-canvas-wrap canvas{width:100%!important;height:100%!important}
+.pred-tf{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+.pred-meta-row{font-size:8px;color:var(--text3);margin:2px 0}
+.pred-lvls{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.pred-lvl{display:flex;justify-content:space-between;font-size:9px}
+.pred-lvl-l{color:var(--text3)}.pred-lvl-v{font-weight:600;font-family:var(--sans)}
+.pred-note{font-size:8px;color:var(--text3);margin-top:4px;line-height:1.5}
+.pred-section{padding:8px}
+.pred-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.pred-title{font-size:10px;font-weight:600;color:var(--text)}
+.pred-meta{font-size:8px;color:var(--text3)}
+.pred-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+
 </style>
 </head>
 <body>
@@ -1080,6 +1111,73 @@ const MACRO_SYMBOLS={
 };
 
 let macroData={}; // stores {price,prev,pct,closes} per key
+
+function renderMacro(){
+  const goldCloses=macroData.au?macroData.au.closes:[];
+  let macroScore=0;
+
+  // Calculate score
+  ['dxy','tnx','vix','oil','spx','eur','ag','gdx'].forEach(k=>{
+    const d=macroData[k];if(!d||!d.pct)return;
+    const p=d.pct;
+    if(k==='dxy'||k==='tnx'){if(p>0.5)macroScore-=2;else if(p>0.2)macroScore-=1;else if(p<-0.5)macroScore+=2;else if(p<-0.2)macroScore+=1;}
+    else if(k==='oil'){if(p>2)macroScore-=1;else if(p<-2)macroScore+=1;} // inverted war mode
+    else if(k==='vix'){if(p>5)macroScore+=2;else if(p>2)macroScore+=1;else if(p<-5)macroScore-=1;}
+    else if(k==='spx'){if(p<-1)macroScore+=1;else if(p>2)macroScore-=1;}
+    else{if(p>1)macroScore+=1;else if(p>0.3)macroScore+=1;else if(p<-1)macroScore-=1;else if(p<-0.3)macroScore-=1;}
+  });
+  macroScore=Math.max(-10,Math.min(10,macroScore));
+
+  // Render score bar
+  const gsNum=document.getElementById('gsNum');
+  const gsBar=document.getElementById('gsBar');
+  const gsLabel=document.getElementById('gsLabel');
+  if(gsNum){gsNum.textContent=(macroScore>0?'+':'')+macroScore;gsNum.style.color=macroScore>2?'var(--green)':macroScore<-2?'var(--red)':'var(--amber)';}
+  if(gsBar){gsBar.style.width=Math.abs(macroScore)/10*50+'%';gsBar.className='gs-bar-fill '+(macroScore>=0?'bull':'bear');}
+  if(gsLabel){
+    if(macroScore>=4)gsLabel.textContent='Makro BYCZE dla złota — silna presja wzrostowa';
+    else if(macroScore>=2)gsLabel.textContent='Makro lekko bycze — kontekst sprzyja złotu';
+    else if(macroScore<=-4)gsLabel.textContent='Makro NIEDŹWIEDZIE — silna presja spadkowa';
+    else if(macroScore<=-2)gsLabel.textContent='Makro lekko niedźwiedzie — presja na złoto';
+    else gsLabel.textContent='Makro neutralne — brak wyraźnego sygnału';
+  }
+
+  // Render macro cells
+  const fmts={dxy:v=>v.toFixed(2),tnx:v=>v.toFixed(2)+'%',vix:v=>v.toFixed(2),
+    spx:v=>Math.round(v).toLocaleString(),oil:v=>v.toFixed(2),eur:v=>v.toFixed(4),ag:v=>v.toFixed(2),gdx:v=>v.toFixed(2)};
+  ['dxy','tnx','vix','spx','oil','eur','ag','gdx'].forEach(k=>{
+    const d=macroData[k];if(!d)return;
+    const pct=d.pct||0;
+    const mv=document.getElementById('mv_'+k);
+    const mc=document.getElementById('mc_'+k+'_c');
+    const cell=document.getElementById('mc_'+k);
+    if(mv)mv.textContent=fmts[k]?fmts[k](d.price):'—';
+    if(mc){mc.textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';mc.className='macro-chg '+(pct>=0?'up':'dn');}
+    // Color cell based on impact on gold
+    let bull=false,bear=false;
+    if(k==='dxy'||k==='tnx'){bear=pct>0.2;bull=pct<-0.2;}
+    else if(k==='oil'){bear=pct>2;bull=pct<-2;} // war mode inverted
+    else{bull=pct>0.3;bear=pct<-0.3;}
+    if(cell)cell.className='macro-cell'+(bull?' bull':bear?' bear':'');
+  });
+
+  // Correlation bars (use pct as proxy since no history)
+  ['dxy','tnx','vix','oil','ag'].forEach(k=>{
+    const d=macroData[k];if(!d)return;
+    const bar=document.getElementById('cr_'+k);
+    const num=document.getElementById('cn_'+k);
+    // Use pct as rough correlation proxy
+    const corr=(d.pct||0)/5; // normalize to -1..1 range roughly
+    const clamped=Math.max(-1,Math.min(1,corr));
+    if(bar){bar.style.width=Math.abs(clamped)*100+'%';bar.className='corr-fill '+(clamped>0?'pos':'neg');}
+    if(num){num.textContent=(clamped>=0?'+':'')+clamped.toFixed(2);num.className='corr-num '+(clamped>0.05?'pos':clamped<-0.05?'neg':'');}
+  });
+}
+
+function renderMacroPlaceholder(){
+  const gsLabel=document.getElementById('gsLabel');
+  if(gsLabel)gsLabel.textContent='Brak klucza API — wprowadź klucz Twelve Data';
+}
 
 async function loadMacroData(){
   // Use Twelve Data for macro data (same API key, no proxy needed)
