@@ -662,9 +662,6 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
           <div class="pred-levels" id="lvlP3"></div>
         </div>
       </div>
-    
-        </div>
-      
     </div>
   </div>
 
@@ -705,7 +702,6 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
         <div class="corr-row"><div class="corr-lbl">Ropa WTI</div><div class="corr-track"><div class="corr-fill pos" id="cr_oil" style="width:0%"></div></div><div class="corr-num pos" id="cn_oil">—</div></div>
         <div class="corr-row"><div class="corr-lbl">Srebro</div><div class="corr-track"><div class="corr-fill pos" id="cr_ag" style="width:0%"></div></div><div class="corr-num pos" id="cn_ag">—</div></div>
       </div>
-    </div>
     </div>
   </div>
 
@@ -1012,14 +1008,14 @@ let macroData={}; // stores {price,prev,pct,closes} per key
 async function loadMacroData(){
   // Use Twelve Data for macro data (same API key, no proxy needed)
   const macroSymbols={
-    dxy: {td:'DXY',   label:'DXY',  impact:'neg', desc:'Silny USD = presja na XAU↓ (odwrócona w trybie wojennym)'},
-    tnx: {td:'TNX',   label:'10Y',  impact:'neg', desc:'Wyższe rentowności = słabsze XAU'},
-    vix: {td:'VIX',   label:'VIX',  impact:'pos', desc:'Strach rośnie = XAU rośnie (safe haven)'},
-    spx: {td:'SPX',   label:'SPX',  impact:'mix', desc:'Spadki SPX = czasem XAU↑ (safe haven)'},
-    oil: {td:'WTI',   label:'WTI',  impact:'inv', desc:'Droga ropa = odpływ z XAU↓ (tryb wojenny 2024+)'},
-    eur: {td:'EUR/USD',label:'EUR', impact:'pos', desc:'Słaby USD (EUR↑) = XAU↑'},
-    ag:  {td:'XAG/USD',label:'XAG', impact:'pos', desc:'Srebro podąża za złotem'},
-    gdx: {td:'GDX',   label:'GDX',  impact:'pos', desc:'ETF spółek złota wyprzedza XAU'},
+    dxy: {td:'DX-Y.NYB', label:'DXY',  impact:'neg', desc:'Silny USD = presja na XAU↓'},
+    tnx: {td:'TNX',      label:'10Y',  impact:'neg', desc:'Wyższe rentowności = słabsze XAU'},
+    vix: {td:'VIX',      label:'VIX',  impact:'pos', desc:'Strach rośnie = XAU rośnie'},
+    spx: {td:'SPX',      label:'SPX',  impact:'mix', desc:'Spadki SPX = czasem XAU↑'},
+    oil: {td:'WTI/USD',  label:'WTI',  impact:'inv', desc:'Droga ropa = odpływ z XAU↓ (tryb wojenny)'},
+    eur: {td:'EUR/USD',  label:'EUR',  impact:'pos', desc:'Słaby USD (EUR↑) = XAU↑'},
+    ag:  {td:'XAG/USD',  label:'XAG',  impact:'pos', desc:'Srebro podąża za złotem'},
+    gdx: {td:'GDX',      label:'GDX',  impact:'pos', desc:'ETF spółek złota wyprzedza XAU'},
   };
 
   if(!API_KEYS.td){
@@ -1028,35 +1024,41 @@ async function loadMacroData(){
     return;
   }
 
-  // Fetch all macro symbols from Twelve Data in parallel
-  const results=await Promise.allSettled(
-    Object.entries(macroSymbols).map(async ([k,v])=>{
-      try{
-        const url='https://api.twelvedata.com/quote?symbol='+encodeURIComponent(v.td)+'&apikey='+API_KEYS.td;
-        const res=await fetch(url);
-        if(!res.ok)throw new Error('HTTP '+res.status);
-        const d=await res.json();
-        if(d.status==='error')throw new Error(d.message);
-        return{
-          key:k,
-          price:parseFloat(d.close||d.price||0),
-          prev:parseFloat(d.previous_close||0),
-          pct:parseFloat(d.percent_change||0),
-          closes:[] // no history for correlation from this endpoint
-        };
-      }catch(e){
-        console.warn('Macro '+k+':',e.message);
-        return null;
-      }
-    })
-  );
+  // Fetch macro symbols from Twelve Data
+  // Build batch request - more efficient than individual calls
+  const symbols=Object.values(macroSymbols).map(v=>v.td).join(',');
+  try{
+    const url='https://api.twelvedata.com/quote?symbol='+encodeURIComponent(symbols)+'&apikey='+API_KEYS.td;
+    const res=await fetch(url);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
 
-  results.forEach(r=>{
-    if(r.status==='fulfilled'&&r.value){
-      const d=r.value;
-      macroData[d.key]={price:d.price,prev:d.prev,pct:d.pct,closes:[]};
-    }
-  });
+    Object.entries(macroSymbols).forEach(([k,v])=>{
+      // Batch response: if 1 symbol -> direct obj, if multiple -> keyed by symbol
+      const d=Object.keys(macroSymbols).length===1?data:data[v.td];
+      if(!d||d.status==='error'){
+        console.warn('Macro '+k+' ('+v.td+'): '+(d?d.message:'no data'));
+        return;
+      }
+      const price=parseFloat(d.close||d.price||0);
+      const prev=parseFloat(d.previous_close||price);
+      const pct=prev?((price-prev)/prev*100):parseFloat(d.percent_change||0);
+      macroData[k]={price,prev,pct,closes:[],label:v.label,desc:v.desc,impact:v.impact};
+    });
+  }catch(e){
+    console.warn('Macro batch fetch failed:',e.message);
+    // Try individual fallback
+    await Promise.allSettled(Object.entries(macroSymbols).map(async([k,v])=>{
+      try{
+        const r=await fetch('https://api.twelvedata.com/price?symbol='+encodeURIComponent(v.td)+'&apikey='+API_KEYS.td);
+        const d=await r.json();
+        if(d.price){
+          const price=parseFloat(d.price);
+          macroData[k]={price,prev:price,pct:0,closes:[],label:v.label,desc:v.desc,impact:v.impact};
+        }
+      }catch(e2){console.warn('Macro fallback '+k+':',e2.message);}
+    }));
+  }
 
   renderMacro();
 }
