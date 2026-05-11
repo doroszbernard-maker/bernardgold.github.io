@@ -7,27 +7,108 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Bebas+Neue&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
+/* ── RESET ───────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e0;font-family:'JetBrains Mono',monospace;font-size:12px}
+html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'JetBrains Mono',monospace;font-size:12px;overflow:hidden}
+
+/* ── HEADER ─────────────────────────────────────── */
+#hdr{position:fixed;top:0;left:0;right:0;height:40px;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:0 14px;background:#07080c;
+  border-bottom:1px solid rgba(255,255,255,.055)}
+
+/* ── PANEL CONTAINER ─────────────────────────────── */
+#panels{position:fixed;top:40px;left:0;right:0;bottom:24px;
+  display:flex;flex-direction:row;overflow:hidden}
+
+/* ── RESIZABLE PANELS ────────────────────────────── */
+.panel{position:relative;display:flex;flex-direction:column;
+  overflow:hidden;min-width:180px}
+.panel-body{flex:1;overflow-y:auto;overflow-x:hidden}
+
+#panel-left{width:300px;border-right:1px solid rgba(255,255,255,.055)}
+#panel-center{flex:1;min-width:250px;border-right:1px solid rgba(255,255,255,.055)}
+#panel-right{width:320px}
+
+/* ── RESIZER HANDLES ─────────────────────────────── */
+.resizer{
+  position:absolute;top:0;right:-4px;bottom:0;width:8px;
+  cursor:col-resize;z-index:50;
+  background:transparent;
+  transition:background .15s}
+.resizer:hover,.resizer.active{background:rgba(201,168,76,.35)}
+.resizer::after{
+  content:'';position:absolute;top:50%;left:3px;
+  width:2px;height:40px;margin-top:-20px;
+  background:rgba(255,255,255,.1);border-radius:1px}
+
+/* ── TV IFRAME ───────────────────────────────────── */
+#tv-wrap{flex:0 0 55%;min-height:180px;overflow:hidden;position:relative}
+#tv-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+#center-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
+
+/* ── FOOTER ──────────────────────────────────────── */
+#ftr{position:fixed;bottom:0;left:0;right:0;height:24px;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;background:#0c0e15;
+  border-top:1px solid rgba(255,255,255,.055)}
+.foot-l,.foot-r{font-size:9px;color:#323c4e}
+
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+
+/* ── SHELL ── */
+#shell{display:flex;flex-direction:column;width:100vw;height:100vh;overflow:hidden}
+
+/* ── HEADER ── */
+#hdr{height:40px;flex:0 0 40px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background:#07080c;gap:8px;z-index:100}
+
+/* ── PANELS ROW ── */
+#panels{flex:1;display:flex;flex-direction:row;overflow:hidden;min-height:0}
+
+/* ── INDIVIDUAL PANELS ── */
+.panel{overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-width:180px;background:#07080c;position:relative}
+#panel-left{width:300px;border-right:none}
+#panel-center{flex:1;min-width:300px;overflow:hidden}
+#panel-right{width:320px;border-left:none}
+
+/* ── RESIZER ── */
+.resizer{width:5px;flex:0 0 5px;cursor:col-resize;background:rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06);transition:background .15s;z-index:10;user-select:none}
+.resizer:hover,.resizer.dragging{background:rgba(201,168,76,.35)}
+
+/* ── CENTER INNER ── */
+
+
+
+
+
+/* ── FOOTER ── */
+#ftr{height:22px;flex:0 0 22px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-top:1px solid rgba(255,255,255,.05);background:#0a0b10}
+#ftr span{font-size:9px;color:#2e3748}
+
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 
 /* TABLE LAYOUT */
-#wrap{display:table;width:100vw;height:100vh;table-layout:fixed;border-collapse:collapse;overflow:hidden}
-#row-hdr{display:table-row;height:40px}
-#row-body{display:table-row}
-#row-ftr{display:table-row;height:24px}
-#cell-hdr{display:table-cell;vertical-align:middle;background:#07080c;border-bottom:1px solid rgba(255,255,255,.055);padding:0 16px}
+
+
+#row-
+
+
 #cell-hdr-inner{display:flex;align-items:center;justify-content:space-between;gap:10px;height:100%}
-#cell-left{display:table-cell;width:300px;vertical-align:top;overflow-y:auto;overflow-x:hidden;border-right:1px solid rgba(255,255,255,.055);background:#07080c}
-#cell-center{display:table-cell;vertical-align:top;overflow:hidden;max-width:0;height:100%}
-#cell-right{display:table-cell;width:320px;vertical-align:top;overflow-y:auto;overflow-x:hidden;background:#07080c}
-#cell-ftr{display:table-cell;vertical-align:middle;background:#0c0e15;border-top:1px solid rgba(255,255,255,.055);padding:0 16px}
-#c-inner{display:flex;flex-direction:column;height:100%;overflow:hidden;width:100%}
-#c-tv{flex:0 0 55%;min-height:200px;overflow:hidden;width:100%}
-#c-tv iframe{display:block;width:100%;height:100%;border:none}
-#c-tv iframe{display:block;width:100%;height:100%;border:none;min-height:200px}
-#c-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
-.col-inner{display:flex;flex-direction:column}
-.foot-inner{display:flex;align-items:center;justify-content:space-between;height:100%}
+
+
+
+
+
+
+
+
+
+
+
 .foot-l,.foot-r{font-size:9px;color:#323c4e}
 
 /* RESET */
@@ -371,30 +452,38 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .foot-l,.foot-r{font-size:9px;color:var(--text3)}
 
 
+
+
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="row-hdr">
-    <div id="cell-hdr">
-      <div id="cell-hdr-inner">
-        <div class="logo"><div class="logo-mark">GOLD</div><div class="logo-sub">XAU/USD · Intraday Signal Dashboard</div></div>
-        <div class="hdr-sessions">
-          <div class="sess-badge off" id="sAsia">AZJA</div>
-          <div class="sess-badge off" id="sLondon">LONDYN</div>
-          <div class="sess-badge off" id="sOverlap">⚡ OVERLAP</div>
-          <div class="sess-badge off" id="sNY">NEW YORK</div>
-        </div>
-        <div class="hdr-right">
-          <div class="status-badge"><div class="dot" id="dotStatus"></div><span id="lblStatus">ŁADOWANIE</span></div>
-          <div class="hdr-clock" id="hdrClock">—</div>
-          <button class="hdr-btn" onclick="loadData()">⟳ Odśwież</button>
-        </div>
-      </div>
-    </div>
+
+<!-- HEADER -->
+<header id="hdr">
+  <div class="logo">
+    <div class="logo-mark">GOLD</div>
+    <div class="logo-sub">XAU/USD · Intraday Signal Dashboard</div>
   </div>
-  <div id="row-body">
-    <div id="cell-left"><div class="col-inner">
+  <div class="hdr-sessions">
+    <div class="sess-badge off" id="sAsia">AZJA</div>
+    <div class="sess-badge off" id="sLondon">LONDYN</div>
+    <div class="sess-badge off" id="sOverlap">⚡ OVERLAP</div>
+    <div class="sess-badge off" id="sNY">NEW YORK</div>
+  </div>
+  <div class="hdr-right">
+    <div class="status-badge"><div class="dot" id="dotStatus"></div><span id="lblStatus">ŁADOWANIE</span></div>
+    <div class="hdr-clock" id="hdrClock">—</div>
+    <button class="hdr-btn" onclick="loadData()">⟳ Odśwież</button>
+  </div>
+</header>
+
+<!-- THREE RESIZABLE PANELS -->
+<div id="panels">
+
+  <!-- LEFT PANEL -->
+  <div class="panel" id="panel-left">
+    <div class="resizer" id="res-left"></div>
+    <div class="panel-body">
 <div class="left">
     <div class="sec">
       <div class="price-sym">XAU / USD · Spot Gold · GC=F</div>
@@ -498,72 +587,26 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
     <div class="sec" style="display:none"><!-- placeholder ohlc --></div>
     </div>
-
-    <div class="sec">
-      <div class="sec-title">Sygnał krótki · Scalping (15min–1h)</div>
-      <div class="sig-card wait" id="cardShort">
-        <div class="sig-head"><div class="sig-tf">SCALPING · 5M ↔ 15M</div><div class="sig-tag wait" id="tagShort">—</div></div>
-        <div class="sig-label" id="lblShort">Ładowanie...</div>
-        <div class="sig-reason" id="reaShort">Pobieranie danych</div>
-        <div class="sig-warn" id="warnShort"></div>
-        <div class="score-row"><div class="score-track"><div class="score-fill" id="sfShort" style="width:0%"></div></div><div class="score-n neu" id="snShort">0</div><span style="font-size:8px;color:var(--text3)">/±12</span></div>
-      </div>
     </div>
+  </div>
 
-    <div class="sec">
-      <div class="sec-title">Sygnał średni · Swing (2–6 godz)</div>
-      <div class="sig-card wait" id="cardMid">
-        <div class="sig-head"><div class="sig-tf">INTRADAY · 15M POTWIERDZONY</div><div class="sig-tag wait" id="tagMid">—</div></div>
-        <div class="sig-label" id="lblMid">Ładowanie...</div>
-        <div class="sig-reason" id="reaMid">Pobieranie danych</div>
-        <div class="sig-warn" id="warnMid"></div>
-        <div class="score-row"><div class="score-track"><div class="score-fill" id="sfMid" style="width:0%"></div></div><div class="score-n neu" id="snMid">0</div><span style="font-size:8px;color:var(--text3)">/±12</span></div>
-      </div>
+  <!-- CENTER PANEL -->
+  <div class="panel" id="panel-center">
+    <div class="resizer" id="res-center"></div>
+    <!-- TradingView -->
+    <div id="tv-wrap">
+      <iframe
+        src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw"
+        allowfullscreen>
+      </iframe>
     </div>
+    <!-- Scrollable content below TV -->
+    <div id="center-scroll">
 
-    <div class="sec">
-      <div class="sec-title">Sygnał tygodniowy · Trend (3–7 dni)</div>
-      <div class="sig-card wait" id="cardWeek">
-        <div class="sig-head"><div class="sig-tf">TREND TYGODNIOWY</div><div class="sig-tag wait" id="tagWeek">—</div></div>
-        <div class="sig-label" id="lblWeek">Ładowanie...</div>
-        <div class="sig-reason" id="reaWeek">Pobieranie danych</div>
-        <div class="sig-ctx" id="ctxWeek"></div>
-        <div class="score-row"><div class="score-track"><div class="score-fill" id="sfWeek" style="width:0%"></div></div><div class="score-n neu" id="snWeek">0</div><span style="font-size:8px;color:var(--text3)">/±12</span></div>
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-title">Decyzje pozycyjne</div>
-      <div class="dec-grid">
-        <div class="dec-box" id="decOL"><div class="dec-lbl-top">Otwarcie LONG ▲</div><div class="dec-lbl" id="decOLl">—</div><div class="dec-reason" id="decOLr">—</div></div>
-        <div class="dec-box" id="decOS"><div class="dec-lbl-top">Otwarcie SHORT ▼</div><div class="dec-lbl" id="decOSl">—</div><div class="dec-reason" id="decOSr">—</div></div>
-        <div class="dec-box" id="decCL"><div class="dec-lbl-top">Zamknięcie LONG ▲</div><div class="dec-lbl" id="decCLl">—</div><div class="dec-reason" id="decCLr">—</div></div>
-        <div class="dec-box" id="decCS"><div class="dec-lbl-top">Zamknięcie SHORT ▼</div><div class="dec-lbl" id="decCSl">—</div><div class="dec-reason" id="decCSr">—</div></div>
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-title">Wskaźniki techniczne</div>
-      <div class="ind-grid">
-        <div class="ind-cell"><div class="ind-l">RSI 14</div><div class="ind-v" id="vRsi">—</div><div class="ind-t neutral" id="tRsi">—</div></div>
-        <div class="ind-cell"><div class="ind-l">MACD hist</div><div class="ind-v" id="vMacd">—</div><div class="ind-t neutral" id="tMacd">—</div></div>
-        <div class="ind-cell"><div class="ind-l">BB pozycja</div><div class="ind-v" id="vBb">—</div><div class="ind-t neutral" id="tBb">—</div></div>
-        <div class="ind-cell"><div class="ind-l">EMA trend</div><div class="ind-v" id="vEma">—</div><div class="ind-t neutral" id="tEma">—</div></div>
-      </div>
-    </div>
-
-    <div class="sec" style="flex:1">
-      <div class="sec-title">Historia sygnałów</div>
-      <div id="histList"><div style="font-size:9px;color:var(--text3)">Brak historii</div></div>
-    </div>
-  </div></div>
-
-    <div id="cell-center">
-      <div id="c-inner">
-        <div id="c-tv">
+<div id="c-tv">
           <iframe src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw" allowfullscreen style="display:block;width:100%;height:100%;border:none;min-height:200px"></iframe>
         </div>
-        <div id="c-scroll">
+        
           <div class="chart-hdr" style="height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.055);background:#07080c">
             <span style="font-size:8px;color:#323c4e;text-transform:uppercase;letter-spacing:.09em">TRADINGVIEW · XAU/USD · 15M</span>
             <span style="font-size:8px;color:#27b97a;display:flex;align-items:center;gap:4px"><span class="dot live"></span>LIVE</span>
@@ -621,11 +664,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
       </div>
     
         </div>
-      </div>
+      
     </div>
-    <div id="cell-right"><div class="col-inner">
+  </div>
 
-        <div class="macro-panel">
+  <!-- RIGHT PANEL -->
+  <div class="panel" id="panel-right">
+    <div class="panel-body">
+<div class="macro-panel">
       <div class="sec-title">Kontekst makro — korelacje z XAU</div>
 
       <!-- Gold composite score -->
@@ -660,20 +706,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
         <div class="corr-row"><div class="corr-lbl">Srebro</div><div class="corr-track"><div class="corr-fill pos" id="cr_ag" style="width:0%"></div></div><div class="corr-num pos" id="cn_ag">—</div></div>
       </div>
     </div>
-
-    <div class="right-sec">
-      <div class="sec-title">Sesje giełdowe (CET)</div>
-      <div class="sess-row"><div class="sess-dot asia"></div><div style="flex:1"><div class="sess-name">Tokio / Azja</div><div class="sess-time">01:00–09:00 CET</div><div class="sess-note">Niski wolumen XAU</div></div><div class="sess-status closed" id="stAsia">—</div></div>
-      <div class="sess-row"><div class="sess-dot london"></div><div style="flex:1"><div class="sess-name">Londyn / Europa</div><div class="sess-time">08:00–17:00 CET</div><div class="sess-note">Główny wolumen złota</div></div><div class="sess-status closed" id="stLondon">—</div></div>
-      <div class="sess-row" style="background:rgba(201,168,76,.03)"><div class="sess-dot overlap"></div><div style="flex:1"><div class="sess-name" style="color:var(--gold2)">⚡ Overlap London–NY</div><div class="sess-time">14:00–17:00 CET</div><div class="sess-note">Największa zmienność dnia</div></div><div class="sess-status closed" id="stOverlap">—</div></div>
-      <div class="sess-row"><div class="sess-dot ny"></div><div style="flex:1"><div class="sess-name">Nowy Jork / COMEX</div><div class="sess-time">14:30–23:00 CET</div><div class="sess-note">COMEX futures — silne ruchy</div></div><div class="sess-status closed" id="stNY">—</div></div>
     </div>
-    <div class="right-sec"><div class="sec-title">Kluczowe okienka dnia (CET)</div><div id="winList"></div></div>
-    <div class="right-sec grow"><div class="sec-title">Kalendarz makro — dziś</div><div id="eventList"></div></div>
   </div>
 
+</div><!-- /panels -->
 
-</div><!-- /main -->
+<!-- FOOTER -->
+<footer id="ftr">
+  <span class="foot-l">XAU/USD · Twelve Data 5M+15M · Odśwież co 60s</span>
+  <span class="foot-r" id="footR">—</span>
+</footer>
+
+<div class="toast" id="toast"></div>
 
 <!-- API SETTINGS PANEL -->
 <div class="api-panel" id="apiPanel">
@@ -705,9 +749,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     </div>
   </div>
 </div>
-
-
-
 <!-- CHAT FAB BUTTON -->
 <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Doradca AI" style="display:none">◈</button>
 
@@ -732,9 +773,24 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
   <div class="chat-input-row">
     <textarea class="chat-input" id="chatInput" placeholder="Pytaj o złoto..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
-    <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">↑</button>
+    <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">↑</button
+    </div>
+
+  </div><!-- /panels -->
+
+  <!-- FOOTER -->
+  <div id="ftr">
+    <span>XAU/USD · Twelve Data (5min+15min) · Odśwież co 60s</span>
+    <span id="footR">—</span>
   </div>
-</div>
+
+</div><!-- /shell -->
+
+<div class="toast" id="toast"></div>
+<!-- API SETTINGS PANEL -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Doradca AI" style="display:none">◈</button>
+
+
 
   </div><!-- /row-body -->
 
@@ -757,7 +813,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 <div class="toast" id="toast"></div>
 
 <!-- API SETTINGS PANEL -->
+
 <script>
+
+
 
 
 // ══ STATE ═══════════════════════════════════════════════════════════════════
@@ -1981,6 +2040,138 @@ document.addEventListener('DOMContentLoaded',function(){
     var settBtn=document.createElement('div');
     settBtn.className='api-indicator';
     settBtn.innerHTML='⚙ API';
+    settBtn.addEventListener('click',openApiSettings);
+    hdrRight.insertBefore(settBtn,hdrRight.firstChild);
+  }
+  updateClock();
+  updateSessions();
+  renderWindows();
+  renderEvents();
+  var keysLoaded=loadApiKeys();
+  if(keysLoaded)initDashboard();
+  setInterval(updateClock,1000);
+  setInterval(updateSessions,30000);
+  setInterval(function(){renderWindows();renderEvents();},60000);
+});
+
+
+// ── RESIZABLE PANELS ──────────────────────────────────────────────────────────
+(function(){
+  function makeResizer(resizerId, leftPanelId, rightPanelId){
+    var resizer=document.getElementById(resizerId);
+    var leftPanel=document.getElementById(leftPanelId);
+    var rightPanel=document.getElementById(rightPanelId);
+    if(!resizer||!leftPanel||!rightPanel)return;
+
+    var startX,startLeft,startRight;
+
+    resizer.addEventListener('mousedown',function(e){
+      startX=e.clientX;
+      startLeft=leftPanel.getBoundingClientRect().width;
+      startRight=rightPanel.getBoundingClientRect().width;
+      resizer.classList.add('dragging');
+      document.body.style.cursor='col-resize';
+      document.body.style.userSelect='none';
+
+      function onMove(e){
+        var dx=e.clientX-startX;
+        var newLeft=Math.max(180,startLeft+dx);
+        var newRight=Math.max(180,startRight-dx);
+        leftPanel.style.width=newLeft+'px';
+        leftPanel.style.flex='0 0 '+newLeft+'px';
+        rightPanel.style.width=newRight+'px';
+        rightPanel.style.flex='0 0 '+newRight+'px';
+      }
+      function onUp(){
+        resizer.classList.remove('dragging');
+        document.body.style.cursor='';
+        document.body.style.userSelect='';
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+      }
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+      e.preventDefault();
+    });
+  }
+
+  makeResizer('res-left','panel-left','panel-center');
+  makeResizer('res-right','panel-center','panel-right');
+})();
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',function(){
+  var saveBtn=document.getElementById('apiSaveBtn');
+  var skipBtn=document.getElementById('apiSkipBtn');
+  if(saveBtn)saveBtn.addEventListener('click',saveApiKeys);
+  if(skipBtn)skipBtn.addEventListener('click',skipApiSetup);
+  var hdrRight=document.querySelector('.hdr-right');
+  if(hdrRight){
+    var settBtn=document.createElement('div');
+    settBtn.className='api-indicator';
+    settBtn.innerHTML='⚙ API';
+    settBtn.addEventListener('click',openApiSettings);
+    hdrRight.insertBefore(settBtn,hdrRight.firstChild);
+  }
+  updateClock();
+  updateSessions();
+  renderWindows();
+  renderEvents();
+  var keysLoaded=loadApiKeys();
+  if(keysLoaded)initDashboard();
+  setInterval(updateClock,1000);
+  setInterval(updateSessions,30000);
+  setInterval(function(){renderWindows();renderEvents();},60000);
+});
+
+
+// ── RESIZABLE PANELS ──────────────────────────────
+(function(){
+  function makeResizer(resizerId, panelId, nextPanelId){
+    var resizer=document.getElementById(resizerId);
+    var panel=document.getElementById(panelId);
+    if(!resizer||!panel)return;
+    var startX,startW;
+    resizer.addEventListener('mousedown',function(e){
+      startX=e.clientX;
+      startW=panel.offsetWidth;
+      resizer.classList.add('active');
+      document.body.style.cursor='col-resize';
+      document.body.style.userSelect='none';
+      function onMove(e){
+        var dx=e.clientX-startX;
+        var newW=Math.max(180,Math.min(window.innerWidth-400,startW+dx));
+        panel.style.width=newW+'px';
+        panel.style.flex='none';
+      }
+      function onUp(){
+        resizer.classList.remove('active');
+        document.body.style.cursor='';
+        document.body.style.userSelect='';
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+      }
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+      e.preventDefault();
+    });
+  }
+  makeResizer('res-left','panel-left','panel-center');
+  makeResizer('res-center','panel-center','panel-right');
+})();
+
+// ── INIT ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',function(){
+  var saveBtn=document.getElementById('apiSaveBtn');
+  var skipBtn=document.getElementById('apiSkipBtn');
+  if(saveBtn)saveBtn.addEventListener('click',saveApiKeys);
+  if(skipBtn)skipBtn.addEventListener('click',skipApiSetup);
+  var hdrRight=document.querySelector('.hdr-right');
+  if(hdrRight){
+    var settBtn=document.createElement('div');
+    settBtn.className='api-indicator';
+    settBtn.innerHTML='⚙ API';
+    settBtn.style.cursor='pointer';
     settBtn.addEventListener('click',openApiSettings);
     hdrRight.insertBefore(settBtn,hdrRight.firstChild);
   }
