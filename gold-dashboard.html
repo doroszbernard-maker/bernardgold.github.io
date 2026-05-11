@@ -18,12 +18,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 #cell-hdr{display:table-cell;vertical-align:middle;background:#07080c;border-bottom:1px solid rgba(255,255,255,.055);padding:0 16px}
 #cell-hdr-inner{display:flex;align-items:center;justify-content:space-between;gap:10px;height:100%}
 #cell-left{display:table-cell;width:300px;vertical-align:top;overflow-y:auto;overflow-x:hidden;border-right:1px solid rgba(255,255,255,.055);background:#07080c}
-#cell-center{display:table-cell;vertical-align:top;overflow:hidden;max-width:0}
+#cell-center{display:table-cell;vertical-align:top;overflow:hidden;max-width:0;height:100%}
 #cell-right{display:table-cell;width:320px;vertical-align:top;overflow-y:auto;overflow-x:hidden;background:#07080c}
 #cell-ftr{display:table-cell;vertical-align:middle;background:#0c0e15;border-top:1px solid rgba(255,255,255,.055);padding:0 16px}
-#c-inner{display:flex;flex-direction:column;height:calc(100vh - 64px);overflow:hidden;width:100%;max-width:100%}
-#c-tv{flex:0 0 55%;overflow:hidden;min-height:180px;width:100%;max-width:100%}
+#c-inner{display:flex;flex-direction:column;height:100%;overflow:hidden;width:100%}
+#c-tv{flex:0 0 55%;min-height:200px;overflow:hidden;width:100%}
 #c-tv iframe{display:block;width:100%;height:100%;border:none}
+#c-tv iframe{display:block;width:100%;height:100%;border:none;min-height:200px}
 #c-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
 .col-inner{display:flex;flex-direction:column}
 .foot-inner{display:flex;align-items:center;justify-content:space-between;height:100%}
@@ -395,7 +396,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <div id="row-body">
     <div id="cell-left"><div class="col-inner">
 <div class="left">
-<div class="left">
     <div class="sec">
       <div class="price-sym">XAU / USD · Spot Gold · GC=F</div>
       <div class="price-big" id="priceVal">—</div>
@@ -556,18 +556,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
       <div class="sec-title">Historia sygnałów</div>
       <div id="histList"><div style="font-size:9px;color:var(--text3)">Brak historii</div></div>
     </div>
-  </div>
+  </div></div>
 
-  <!-- CENTER -->
-      </div>
-    </div>
-
-    <!-- CENTER COLUMN -->
-    </div></div>
     <div id="cell-center">
       <div id="c-inner">
         <div id="c-tv">
-          <iframe src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw" allowfullscreen></iframe>
+          <iframe src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw" allowfullscreen style="display:block;width:100%;height:100%;border:none;min-height:200px"></iframe>
         </div>
         <div id="c-scroll">
           <div class="chart-hdr" style="height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.055);background:#07080c">
@@ -755,11 +749,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 
 </body>
-</html
-      
-    </div></div>
-  </div>
-  <div id="row-ftr">
+</html><div id="row-ftr">
     <div id="cell-ftr">
       <div class="foot-inner">
         <span class="foot-l">XAU/USD · Twelve Data (5min+15min) · Yahoo Finance (makro) · Odśwież co 60s</span>
@@ -1810,6 +1800,121 @@ function buildPredCharts(closes,e20,atr,dec,candles){
     {id:'P3',canvasId:'cP3',bdId:'bdP3',atrId:'atrP3',noteId:'noteP3',lvlId:'lvlP3',
      hist:60,futLen:5,atrMult:1.0,futLabel:function(i){return'+'+(i+1)+'d';}},
   ].forEach(function(cfg){buildOnePred(cfg,closes,e20,atr,dec);});
+}
+
+// ══ BUILD ONE PREDICTION CHART ═══════════════════════════════════════════════
+function buildOnePred(cfg,closes,e20,atr,dec){
+  if(charts[cfg.id])try{charts[cfg.id].destroy();}catch(e){}
+  var hist=cfg.hist,futLen=cfg.futLen,atrMult=cfg.atrMult;
+  var priceSlice=closes.slice(-hist);
+  var emaSlice=(e20||[]).slice(-hist);
+  var cur=priceSlice[priceSlice.length-1];
+  var score=dec?dec.score:0;
+  var probUp=Math.max(20,Math.min(80,50+score*3));
+  var isUp=probUp>50;
+  var gc=isUp?'rgba(29,184,122,':'rgba(224,69,69,';
+  var histMin=Math.min.apply(null,priceSlice);
+  var histMax=Math.max.apply(null,priceSlice);
+  var swing=histMax-histMin;
+  var atrVal=Math.max((atr||20)*atrMult,5);
+  var zoneSize=Math.max(atrVal,swing*0.40,atrVal*2);
+  var fibRange=swing>0?swing:zoneSize;
+  var f382=histMax-0.382*fibRange;
+  var f500=histMax-0.500*fibRange;
+  var f618=histMax-0.618*fibRange;
+  var tp=isUp?cur+zoneSize*0.85:cur-zoneSize*0.85;
+  var sl=isUp?cur-zoneSize*0.45:cur+zoneSize*0.45;
+  var zTop=isUp?cur+zoneSize:cur+zoneSize*0.15;
+  var zBot=isUp?cur+zoneSize*0.05:cur-zoneSize;
+  var yMin=Math.min(histMin,zBot,sl)-zoneSize*0.25;
+  var yMax=Math.max(histMax,zTop,tp)+zoneSize*0.25;
+  var hLbl=priceSlice.map(function(_,i){var d=hist-1-i;return d===0?'Teraz':(d%5===0?'-'+d:'');});
+  var fLbl=Array.from({length:futLen},function(_,i){return cfg.futLabel(i);});
+  var allLbl=[].concat(hLbl,fLbl);
+  var total=hist+futLen;
+  var priceLine=[].concat(priceSlice,new Array(futLen).fill(null));
+  var emaLine=[].concat(emaSlice,new Array(futLen).fill(null));
+  var zoneTopArr=[].concat(new Array(hist).fill(null),new Array(futLen).fill(zTop));
+  var zoneBotArr=[].concat(new Array(hist).fill(null),new Array(futLen).fill(zBot));
+  var tpLine=new Array(total).fill(tp);
+  var slLine=new Array(total).fill(sl);
+  var fibs=[
+    {v:histMax,c:'rgba(224,69,69,0.45)',lbl:'Swing H'},
+    {v:f382,c:'rgba(255,165,0,0.45)',lbl:'F38.2%'},
+    {v:f500,c:'rgba(201,168,76,0.5)',lbl:'F50%'},
+    {v:f618,c:'rgba(29,184,122,0.45)',lbl:'F61.8%'},
+    {v:histMin,c:'rgba(29,184,122,0.6)',lbl:'Swing L'},
+  ].filter(function(f){return f.v>yMin&&f.v<yMax;});
+  var datasets=[
+    {data:zoneTopArr,borderColor:gc+'0.3)',borderWidth:1.5,borderDash:[3,2],backgroundColor:gc+'0.10)',fill:'+1',pointRadius:0,tension:0,order:5},
+    {data:zoneBotArr,borderColor:gc+'0.3)',borderWidth:1.5,borderDash:[3,2],backgroundColor:'transparent',fill:false,pointRadius:0,tension:0,order:6},
+    {data:tpLine,borderColor:gc+'0.75)',borderWidth:1.5,borderDash:[6,3],backgroundColor:'transparent',fill:false,pointRadius:0,order:7},
+    {data:slLine,borderColor:'rgba(224,69,69,0.55)',borderWidth:1.5,borderDash:[6,3],backgroundColor:'transparent',fill:false,pointRadius:0,order:8},
+    {data:emaLine,borderColor:'rgba(201,168,76,0.5)',borderWidth:1.3,backgroundColor:'transparent',fill:false,pointRadius:0,tension:.3,order:3},
+    {data:priceLine,borderColor:'#cdd5e0',borderWidth:2.5,backgroundColor:'transparent',fill:false,
+     pointRadius:[].concat(new Array(hist-1).fill(0),[6]),
+     pointBackgroundColor:'#fff',pointBorderColor:'#111',pointBorderWidth:1.5,tension:.3,order:1},
+  ];
+  fibs.forEach(function(f){
+    datasets.push({data:new Array(total).fill(f.v),borderColor:f.c,borderWidth:1,borderDash:[4,4],backgroundColor:'transparent',fill:false,pointRadius:0,order:10});
+  });
+  var bd=document.getElementById(cfg.bdId);
+  if(bd){bd.textContent=isUp?'▲ '+probUp.toFixed(0)+'% WZROST':'▼ '+(100-probUp).toFixed(0)+'% SPADEK';bd.className='mini-badge '+(isUp?'buy':'sell');}
+  var atrEl=document.getElementById(cfg.atrId);
+  if(atrEl)atrEl.textContent='Strefa: ±'+zoneSize.toFixed(0)+' USD';
+  var noteEl=document.getElementById(cfg.noteId);
+  if(noteEl)noteEl.textContent=cfg.note||'';
+  var lvlEl=document.getElementById(cfg.lvlId);
+  if(lvlEl)lvlEl.innerHTML=
+    '<div class="pred-lvl"><div class="pred-lvl-l">Wsparcie</div><div class="pred-lvl-v" style="color:var(--green)">'+fmt(histMin)+'</div></div>'+
+    '<div class="pred-lvl"><div class="pred-lvl-l">Take Profit</div><div class="pred-lvl-v" style="color:'+(isUp?'var(--green)':'var(--red)')+'">'+fmt(tp)+'</div></div>'+
+    '<div class="pred-lvl"><div class="pred-lvl-l">Stop Loss</div><div class="pred-lvl-v" style="color:'+(isUp?'var(--red)':'var(--green)')+'">'+fmt(sl)+'</div></div>';
+  var canvas=document.getElementById(cfg.canvasId);
+  if(!canvas)return;
+  var plugId='predsep'+cfg.id;
+  charts[cfg.id]=new Chart(canvas,{
+    type:'line',data:{labels:allLbl,datasets:datasets},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'rgba(6,8,14,0.95)',borderColor:'rgba(255,255,255,0.08)',borderWidth:1,
+          titleColor:'#5c6d82',bodyColor:'#cdd5e0',
+          titleFont:{family:"'JetBrains Mono',monospace",size:8},bodyFont:{family:"'JetBrains Mono',monospace",size:9},
+          callbacks:{label:function(c){if(c.parsed.y==null)return null;return' '+c.parsed.y.toFixed(2)+' USD';}}}},
+      scales:{
+        x:{ticks:{color:'#2e3748',font:{size:8,family:"'JetBrains Mono',monospace"},maxTicksLimit:10},grid:{color:'rgba(255,255,255,0.02)'}},
+        y:{position:'right',min:yMin,max:yMax,
+          ticks:{color:'#2e3748',font:{size:8,family:"'JetBrains Mono',monospace"},maxTicksLimit:6,callback:function(v){return v.toFixed(0);}},
+          grid:{color:'rgba(255,255,255,0.025)'}}
+      }},
+    plugins:[{id:plugId,afterDraw:function(ch){
+      var ctx=ch.ctx;
+      var top=ch.chartArea.top,bottom=ch.chartArea.bottom,left=ch.chartArea.left,right=ch.chartArea.right;
+      var xS=ch.scales.x,yS=ch.scales.y;
+      var nx=xS.getPixelForValue(hist-1);
+      ctx.save();
+      ctx.beginPath();ctx.moveTo(nx,top);ctx.lineTo(nx,bottom);
+      ctx.strokeStyle='rgba(201,168,76,0.55)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='rgba(201,168,76,0.9)';ctx.font='bold 8px JetBrains Mono';ctx.fillText('TERAZ',nx+3,top+11);
+      var ax=nx+18,ay=top+28;
+      ctx.strokeStyle=isUp?'rgba(29,184,122,0.95)':'rgba(224,69,69,0.95)';ctx.lineWidth=2.5;ctx.beginPath();
+      if(isUp){ctx.moveTo(ax,ay+14);ctx.lineTo(ax,ay);ctx.moveTo(ax-5,ay+7);ctx.lineTo(ax,ay);ctx.lineTo(ax+5,ay+7);}
+      else{ctx.moveTo(ax,ay);ctx.lineTo(ax,ay+14);ctx.moveTo(ax-5,ay+7);ctx.lineTo(ax,ay+14);ctx.lineTo(ax+5,ay+7);}
+      ctx.stroke();
+      ctx.fillStyle=isUp?'rgba(29,184,122,0.9)':'rgba(224,69,69,0.9)';ctx.font='bold 10px JetBrains Mono';
+      ctx.fillText((isUp?'▲ ':'▼ ')+(isUp?probUp:100-probUp).toFixed(0)+'%',ax+9,ay+10);
+      var tpY=yS.getPixelForValue(tp);
+      ctx.fillStyle=gc+'0.85)';ctx.font='bold 8px JetBrains Mono';ctx.fillText('TP '+fmt(tp),right-54,tpY-3);
+      var slY=yS.getPixelForValue(sl);
+      ctx.fillStyle='rgba(224,69,69,0.8)';ctx.font='bold 8px JetBrains Mono';ctx.fillText('SL '+fmt(sl),right-54,slY+10);
+      fibs.forEach(function(f){var fy=yS.getPixelForValue(f.v);ctx.fillStyle=f.c;ctx.font='7px JetBrains Mono';ctx.fillText(f.lbl+' '+f.v.toFixed(0),left+4,fy-2);});
+      var cy=yS.getPixelForValue(cur);
+      ctx.beginPath();ctx.moveTo(left,cy);ctx.lineTo(right,cy);
+      ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='rgba(200,200,220,0.55)';ctx.font='bold 8px JetBrains Mono';ctx.fillText(cur.toFixed(2),right-52,cy-3);
+      ctx.restore();
+    }}]
+  });
 }
 
 // ══ PEARSON CORRELATION ═══════════════════════════════════════════════════════
