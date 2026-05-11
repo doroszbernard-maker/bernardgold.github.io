@@ -7,93 +7,137 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Bebas+Neue&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
+/* === RESET === */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'JetBrains Mono',monospace;font-size:12px;overflow:hidden}
-#hdr{position:fixed;top:0;left:0;right:0;height:40px;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;background:#07080c;border-bottom:1px solid rgba(255,255,255,.055)}
-#panels{position:fixed;top:40px;left:0;right:0;bottom:24px;display:flex;flex-direction:row;overflow:hidden}
-.panel{position:relative;display:flex;flex-direction:column;overflow:hidden;min-width:160px}
-.panel-body{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
-#panel-left{width:300px;flex:0 0 300px;border-right:1px solid rgba(255,255,255,.055)}
-#panel-center{flex:1;min-width:200px;border-right:1px solid rgba(255,255,255,.055)}
-#panel-right{width:320px;flex:0 0 320px}
-.resizer{position:absolute;top:0;right:-4px;bottom:0;width:8px;cursor:col-resize;z-index:50;background:transparent;transition:background .15s}
-.resizer:hover,.resizer.active{background:rgba(201,168,76,.4)}
-.resizer::after{content:'';position:absolute;top:50%;left:3px;width:2px;height:40px;margin-top:-20px;background:rgba(255,255,255,.1);border-radius:1px}
-#tv-wrap{flex:0 0 55%;min-height:180px;overflow:hidden;position:relative}
-#tv-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
-#center-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
-#ftr{position:fixed;bottom:0;left:0;right:0;height:24px;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:#0c0e15;border-top:1px solid rgba(255,255,255,.055)}
+html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e0;font-family:'JetBrains Mono',monospace;font-size:12px}
+
+/* === LAYOUT === */
+#hdr{
+  position:fixed;top:0;left:0;right:0;height:40px;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;gap:10px;
+  background:#07080c;border-bottom:1px solid rgba(255,255,255,.055);
+}
+#ftr{
+  position:fixed;bottom:0;left:0;right:0;height:24px;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;
+  background:#0c0e15;border-top:1px solid rgba(255,255,255,.055);
+}
 .foot-l,.foot-r{font-size:9px;color:#323c4e}
 
+/* PANELS - the key layout */
+#panels{
+  position:fixed;top:40px;left:0;right:0;bottom:24px;
+  display:flex;flex-direction:row;
+  overflow:hidden;
+}
+.panel{
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  position:relative;
+  min-width:160px;
+}
+.panel-body{
+  flex:1;
+  overflow-y:auto;overflow-x:hidden;
+  min-height:0;
+}
+#panel-left{
+  width:300px;min-width:160px;max-width:600px;
+  flex:0 0 300px;
+  border-right:1px solid rgba(255,255,255,.055);
+}
+#panel-center{
+  flex:1;min-width:200px;
+  border-right:1px solid rgba(255,255,255,.055);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+#panel-right{
+  width:320px;min-width:160px;max-width:600px;
+  flex:0 0 320px;
+}
+
+/* TV iframe */
+#tv-wrap{
+  flex:0 0 55%;min-height:180px;
+  position:relative;overflow:hidden;
+}
+#tv-wrap iframe{
+  position:absolute;top:0;left:0;
+  width:100%;height:100%;border:none;
+}
+#center-scroll{
+  flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;
+}
+
+/* Resizer handles */
+.resizer{
+  position:absolute;top:0;bottom:0;width:6px;
+  cursor:col-resize;z-index:50;
+  background:transparent;
+  transition:background .2s;
+}
+.resizer:hover,.resizer.dragging{background:rgba(201,168,76,.5)}
+#res-left{right:0}
+#res-center{right:0}
+
+
 /* ── RESET ───────────────────────────────────────── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 
 
 /* ── HEADER ─────────────────────────────────────── */
-#hdr{position:fixed;top:0;left:0;right:0;height:40px;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:0 14px;background:#07080c;
-  border-bottom:1px solid rgba(255,255,255,.055)}
+
 
 /* ── PANEL CONTAINER ─────────────────────────────── */
-#panels{position:fixed;top:40px;left:0;right:0;bottom:24px;
-  display:flex;flex-direction:row;overflow:hidden}
+
 
 /* ── RESIZABLE PANELS ────────────────────────────── */
-.panel{position:relative;display:flex;flex-direction:column;
-  overflow:hidden;min-width:180px}
+
 .panel-
 
-#panel-left{width:300px;border-right:1px solid rgba(255,255,255,.055)}
-#panel-center{flex:1;min-width:250px;border-right:1px solid rgba(255,255,255,.055)}
-#panel-right{width:320px;overflow:hidden}
+
+
+
 
 /* ── RESIZER HANDLES ─────────────────────────────── */
-.resizer{
-  position:absolute;top:0;right:-4px;bottom:0;width:8px;
-  cursor:col-resize;z-index:50;
-  background:transparent;
-  transition:background .15s}
-.resizer:hover,.resizer.active{background:rgba(201,168,76,.35)}
-.resizer::after{
-  content:'';position:absolute;top:50%;left:3px;
-  width:2px;height:40px;margin-top:-20px;
-  background:rgba(255,255,255,.1);border-radius:1px}
+
+
+
 
 /* ── TV IFRAME ───────────────────────────────────── */
-#tv-wrap{flex:0 0 55%;min-height:180px;overflow:hidden;position:relative}
-#tv-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
-#center-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
+
+
+
 
 /* ── FOOTER ──────────────────────────────────────── */
-#ftr{position:fixed;bottom:0;left:0;right:0;height:24px;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 14px;background:#0c0e15;
-  border-top:1px solid rgba(255,255,255,.055)}
-.foot-l,.foot-r{font-size:9px;color:#323c4e}
+
+.foot-l,
 
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 
 
 /* ── SHELL ── */
 #shell{display:flex;flex-direction:column;width:100vw;height:100vh;overflow:hidden}
 
 /* ── HEADER ── */
-#hdr{height:40px;flex:0 0 40px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);background:#07080c;gap:8px;z-index:100}
+
 
 /* ── PANELS ROW ── */
-#panels{flex:1;display:flex;flex-direction:row;overflow:hidden;min-height:0}
+
 
 /* ── INDIVIDUAL PANELS ── */
-.panel{overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;min-width:180px;background:#07080c;position:relative}
-#panel-left{width:300px;border-right:none}
-#panel-center{flex:1;min-width:300px;overflow:hidden}
-#panel-right{width:320px;border-left:none}
+
+
+
+
 
 /* ── RESIZER ── */
-.resizer{width:5px;flex:0 0 5px;cursor:col-resize;background:rgba(255,255,255,.04);border-left:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06);transition:background .15s;z-index:10;user-select:none}
-.resizer:hover,.resizer.dragging{background:rgba(201,168,76,.35)}
+
+
 
 /* ── CENTER INNER ── */
 
@@ -102,20 +146,16 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
 
 
 /* ── FOOTER ── */
-#ftr{height:22px;flex:0 0 22px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-top:1px solid rgba(255,255,255,.05);background:#0a0b10}
+
 #ftr span{font-size:9px;color:#2e3748}
 
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 
 
 /* TABLE LAYOUT */
 
 
-#row-
-
-
-#cell-hdr-inner{display:flex;align-items:center;justify-content:space-between;gap:10px;height:100%}
 
 
 
@@ -127,10 +167,11 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
 
 
 
-.foot-l,.foot-r{font-size:9px;color:#323c4e}
+
+.foot-l,
 
 /* RESET */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 
 /* FULL SCREEN FIXED LAYOUT */
 
@@ -467,7 +508,7 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
 
 .toast{display:none;position:fixed;bottom:14px;right:14px;background:var(--bg3);border:1px solid var(--border3);border-radius:var(--r);padding:8px 13px;font-size:10px;color:var(--text2);z-index:999;max-width:280px}
 
-.foot-l,.foot-r{font-size:9px;color:var(--text3)}
+.foot-l,
 
 
 
@@ -476,8 +517,13 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
 </style>
 </head>
 <body>
+
+<!-- HEADER -->
 <header id="hdr">
-  <div class="logo"><div class="logo-mark">GOLD</div><div class="logo-sub">XAU/USD · Intraday Signal Dashboard</div></div>
+  <div class="logo">
+    <div class="logo-mark">GOLD</div>
+    <div class="logo-sub">XAU/USD · Intraday Signal Dashboard</div>
+  </div>
   <div class="hdr-sessions">
     <div class="sess-badge off" id="sAsia">AZJA</div>
     <div class="sess-badge off" id="sLondon">LONDYN</div>
@@ -485,419 +531,266 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
     <div class="sess-badge off" id="sNY">NEW YORK</div>
   </div>
   <div class="hdr-right">
-    <div class="status-badge"><div class="dot" id="dotStatus"></div><span id="lblStatus">ŁADOWANIE</span></div>
+    <div class="status-badge">
+      <div class="dot" id="dotStatus"></div>
+      <span id="lblStatus">ŁADOWANIE</span>
+    </div>
     <div class="hdr-clock" id="hdrClock">—</div>
     <button class="hdr-btn" onclick="loadData()">⟳ Odśwież</button>
   </div>
 </header>
+
+<!-- THREE PANELS -->
 <div id="panels">
+
+  <!-- LEFT -->
   <div class="panel" id="panel-left">
     <div class="resizer" id="res-left"></div>
     <div class="panel-body">
-<div class="left">
+
 <div class="sec">
-      <div class="price-sym">XAU / USD · Spot Gold</div>
-      <div class="price-big" id="priceVal">—</div>
-      <div class="price-row2">
-        <div class="chg-pill up" id="chgPill">—</div>
-        <span style="font-size:9px;color:var(--text3)" id="chgAbs">—</span>
-      </div>
-      <div class="ohlc-mini">
-        <div class="ohlc-cell"><div class="ohlc-l">High 52T</div><div class="ohlc-v" id="oH">—</div></div>
-        <div class="ohlc-cell"><div class="ohlc-l">Low 52T</div><div class="ohlc-v" id="oL">—</div></div>
-        <div class="ohlc-cell"><div class="ohlc-l">Poprz. zamkn.</div><div class="ohlc-v" id="oPrev">—</div></div>
-        <div class="ohlc-cell"><div class="ohlc-l">Wolumen</div><div class="ohlc-v" id="oVol">—</div></div>
-      </div>
-    </div>
-
-    <!-- Short signal -->
-    <div class="sec">
-      <div class="sec-title">Sygnał krótki (15min–1h)</div>
-      <div class="sig-card wait" id="cardShort">
-        <div class="sig-head">
-          <div class="sig-tf">SCALPING · 15M/1H</div>
-          <div class="sig-tag wait" id="tagShort">—</div>
-        </div>
-        <div class="sig-label" id="lblShort">Ładowanie...</div>
-        <div class="sig-reason" id="reaShort">Pobieranie danych Yahoo Finance</div>
-        <div class="sig-warn" id="warnShort"></div>
-        <div class="score-row">
-          <div class="score-track"><div class="score-fill" id="sfShort" style="width:0%"></div></div>
-          <div class="score-n neu" id="snShort">0</div>
-          <span style="font-size:8px;color:var(--text3)">/±12</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mid signal -->
-    <div class="sec">
-      <div class="sec-title">Sygnał średni (2–6 godz)</div>
-      <div class="sig-card wait" id="cardMid">
-        <div class="sig-head">
-          <div class="sig-tf">INTRADAY SWING · 4H</div>
-          <div class="sig-tag wait" id="tagMid">—</div>
-        </div>
-        <div class="sig-label" id="lblMid">Ładowanie...</div>
-        <div class="sig-reason" id="reaMid">Pobieranie danych Yahoo Finance</div>
-        <div class="sig-warn" id="warnMid"></div>
-        <div class="score-row">
-          <div class="score-track"><div class="score-fill" id="sfMid" style="width:0%"></div></div>
-          <div class="score-n neu" id="snMid">0</div>
-          <span style="font-size:8px;color:var(--text3)">/±12</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Indicators -->
-    <div class="sec">
-      <div class="sec-title">Wskaźniki techniczne</div>
-      <div class="ind-grid">
-        <div class="ind-cell"><div class="ind-l">RSI 14</div><div class="ind-v" id="vRsi">—</div><div class="ind-t neutral" id="tRsi">—</div></div>
-        <div class="ind-cell"><div class="ind-l">MACD hist</div><div class="ind-v" id="vMacd">—</div><div class="ind-t neutral" id="tMacd">—</div></div>
-        <div class="ind-cell"><div class="ind-l">BB pozycja</div><div class="ind-v" id="vBb">—</div><div class="ind-t neutral" id="tBb">—</div></div>
-        <div class="ind-cell"><div class="ind-l">EMA trend</div><div class="ind-v" id="vEma">—</div><div class="ind-t neutral" id="tEma">—</div></div>
-      </div>
-    </div>
-
-    <!-- Windows -->
-    <div class="sec">
-      <div class="sec-title">Kluczowe okienka dnia (CET)</div>
-      <div id="winList"></div>
-    </div>
-
-    <!-- Events -->
-    <div class="sec" style="flex:1">
-      <div class="sec-title">Makro — dziś</div>
-      <div id="eventList"></div>
-    </div>
-
-    <!-- History -->
-    <div class="sec">
-      <div class="sec-title">Historia sygnałów</div>
-      <div id="histList"><div style="font-size:9px;color:var(--text3)">Brak</div></div>
-    </div>
-
+  <div class="price-sym">XAU / USD · Spot Gold · GC=F</div>
+  <div class="price-big" id="priceVal">—</div>
+  <div class="price-row2">
+    <div class="chg-pill up" id="chgPill">—</div>
+    <span style="font-size:9px;color:var(--text3)" id="chgAbs">—</span>
   </div>
-
-  <!-- ── CENTER ── -->
-  <div class="center">
-    <div class="chart-hdr">
-      <div class="chart-hdr-l">TRADINGVIEW · XAU/USD · 15M · LIVE</div>
-      <div class="chart-live"><div class="dot live"></div>REAL-TIME</div>
-    </div>
-    <div id="tvContainer"><div id="tv_xau" style="height:100%;width:100%"></div></div>
-    <div class="mini-row">
-      <div class="mini-pane">
-        <div class="mini-hdr">
-          <div class="mini-lbl">RSI (14) — dzienny</div>
-          <div class="mini-badge neutral" id="bdRsi">—</div>
-        </div>
-        <div class="mini-val2" id="rsiVal">—</div>
-        <div class="mini-cvs"><canvas id="cRsi"></canvas></div>
-      </div>
-      <div class="mini-pane">
-        <div class="mini-hdr">
-          <div class="mini-lbl">MACD histogram</div>
-          <div class="mini-badge neutral" id="bdMacd">—</div>
-        </div>
-        <div class="mini-val2" id="macdVal">—</div>
-        <div class="mini-cvs"><canvas id="cMacd"></canvas></div>
-      </div>
-    </div>
+  <div class="ohlc-mini">
+    <div class="ohlc-cell"><div class="ohlc-l">High dziś</div><div class="ohlc-v" id="oH">—</div></div>
+    <div class="ohlc-cell"><div class="ohlc-l">Low dziś</div><div class="ohlc-v" id="oL">—</div></div>
+    <div class="ohlc-cell"><div class="ohlc-l">Poprz. zamkn.</div><div class="ohlc-v" id="oPrev">—</div></div>
+    <div class="ohlc-cell"><div class="ohlc-l">Wolumen</div><div class="ohlc-v" id="oVol">—</div></div>
   </div>
-
-  <!-- ── RIGHT — AI CHAT ── -->
-  <div class="right">
-    <div class="chat-hdr">
-      <div class="chat-hdr-title">
-        <span style="font-size:16px">◈</span> Doradca AI (Claude)
-      </div>
-      <div class="chat-hdr-sub">Pytaj o pozycje, sygnały, sesje. AI widzi aktualny kontekst rynku.</div>
-      <div class="api-key-row">
-        <input class="api-key-input" type="password" id="apiKeyInput" placeholder="Wklej swój klucz Anthropic API (sk-ant-...)" />
-        <button class="api-save-btn" onclick="saveApiKey()">Zapisz</button>
-      </div>
-      <div class="api-status tip" id="apiStatus">
-        Klucz API → <a href="https://console.anthropic.com" target="_blank" style="color:var(--gold)">console.anthropic.com</a> → API Keys → Create Key
-      </div>
-    </div>
-
-    <div class="chat-msgs" id="chatMsgs">
-      <div class="msg ai">
-        <div class="msg-bubble">
-          Cześć! Jestem Twoim doradcą AI dla XAU/USD. Mogę pomóc w analizie pozycji, interpretacji sygnałów i ocenie momentu wejścia.<br><br>
-          Wklej swój klucz Anthropic API powyżej żeby zacząć. Klucz jest przechowywany tylko lokalnie w przeglądarce — nie jest nigdzie wysyłany poza Anthropic API.
-        </div>
-        <div class="msg-meta">Claude · Doradca</div>
-      </div>
-    </div>
-
-    <div class="quick-btns" id="quickBtns">
-      <button class="quick-btn" onclick="quickSend('Czy teraz dobry moment na otwarcie pozycji long?')">Long teraz?</button>
-      <button class="quick-btn" onclick="quickSend('Czy teraz dobry moment na otwarcie pozycji short?')">Short teraz?</button>
-      <button class="quick-btn" onclick="quickSend('Jak oceniasz aktualny sygnał techiczny na złocie?')">Oceń sygnał</button>
-      <button class="quick-btn" onclick="quickSend('Jakie ryzyko widzisz w tej chwili na XAU?')">Ryzyko?</button>
-      <button class="quick-btn" onclick="quickSend('Kiedy najlepiej handlować złotem dziś?')">Kiedy handlować?</button>
-      <button class="quick-btn" onclick="quickSend('Wyjaśnij mi aktualny scoring sygnałów')">Wyjaśnij scoring</button>
-    </div>
-
-    <div class="chat-input-row">
-      <textarea class="chat-input" id="chatInput" placeholder="Pytaj o pozycje, sygnały, ryzyko..." rows="1"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
-      ></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
-    </div>
-  </div>
-
 </div>
 
-    <!-- SIGNAL WEEKLY -->
-    <div class="sec">
-      <div class="sec-title">Sygnał Tygodniowy · Trend (2-7 dni)</div>
-      <div class="sig-card wait" id="cardWeek">
-        <div class="sig-hdr">
-          <div class="sig-tag wait" id="tagWeek">BOCZNY</div>
-          <div class="sig-badge" id="lblWeek">— TREND TYGODNIOWY</div>
-        </div>
-        <div class="sig-reason" id="reaWeek">Brak wyraźnego trendu tygodniowego</div>
-        <div class="sig-ctx" id="ctxWeek"></div>
-        <div class="score-bar"><div class="score-fill pos" id="sfWeek" style="width:0%"></div></div>
-        <div class="score-row"><span class="score-lbl">Siła sygnału</span><span class="score-n neu" id="snWeek">0</span></div>
-      </div>
-    </div>
-
-    <!-- DECISIONS -->
-    <div class="sec">
-      <div class="sec-title">Decyzje pozycyjne</div>
-      <div class="dec-grid">
-        <div class="dec-box" id="decOL"><div class="dec-lbl" id="decOLl">🟡 CZEKAJ</div><div class="dec-reason" id="decOLr">Brak wyraźnego potwierdzenia</div></div>
-        <div class="dec-box" id="decOS"><div class="dec-lbl" id="decOSl">🟡 CZEKAJ</div><div class="dec-reason" id="decOSr">Brak wyraźnego potwierdzenia</div></div>
-        <div class="dec-box" id="decCL"><div class="dec-lbl" id="decCLl">⬜ MONITORUJ</div><div class="dec-reason" id="decCLr">trend neutralny — pilnuj SL</div></div>
-        <div class="dec-box" id="decCS"><div class="dec-lbl" id="decCSl">⬜ MONITORUJ</div><div class="dec-reason" id="decCSr">trend neutralny — pilnuj SL</div></div>
-      </div>
-    </div>
-
-    <!-- INDICATORS -->
-    <div class="sec">
-      <div class="sec-title">Wskaźniki techniczne</div>
-      <div class="ind-grid">
-        <div class="ind-cell"><div class="ind-lbl">RSI (14)</div><div class="ind-v" id="vRsi">—</div><div class="ind-t neutral" id="tRsi">—</div></div>
-        <div class="ind-cell"><div class="ind-lbl">MACD hist</div><div class="ind-v" id="vMacd">—</div><div class="ind-t neutral" id="tMacd">—</div></div>
-        <div class="ind-cell"><div class="ind-lbl">Bollinger</div><div class="ind-v" id="vBb">—</div><div class="ind-t neutral" id="tBb">—</div></div>
-        <div class="ind-cell"><div class="ind-lbl">EMA trend</div><div class="ind-v" id="vEma">—</div><div class="ind-t neutral" id="tEma">—</div></div>
-      </div>
-    </div>
-    <!-- SIGNAL HISTORY -->
-    <div class="sec" style="flex:1">
-      <div class="sec-title">Historia sygnałów</div>
-      <div id="histList"><div style="font-size:9px;color:var(--text3)">Brak historii</div></div>
-    </div>
-<!-- MOMENTUM ALERT -->
-    <div class="sec">
-      <div class="momentum-alert" id="momentumAlert">
-        <div class="ma-title" id="maTitle">—</div>
-        <div class="ma-desc" id="maDesc">—</div>
-      </div>
-
-      <!-- SL/TP SUGGESTION -->
-      <div class="sec-title">Sugerowane SL / TP</div>
-      <div class="sltp-box">
-        <div class="sltp-row">
-          <div class="sltp-label">Take Profit (lok. High 8h)</div>
-          <div class="sltp-val tp" id="sltpTP">—</div>
-        </div>
-        <div class="sltp-row">
-          <div class="sltp-label">Stop Loss (lok. Low 8h)</div>
-          <div class="sltp-val sl" id="sltpSL">—</div>
-        </div>
-        <div class="sltp-row">
-          <div class="sltp-label">Zasięg ruchu (pkt)</div>
-          <div class="sltp-val usd" id="sltpRange">—</div>
-        </div>
-        <div class="sltp-divider"></div>
-        <div class="sltp-calc">
-          <div class="sltp-calc-cell">
-            <div class="sltp-calc-l">0.005 lota</div>
-            <div class="sltp-calc-v" id="calcSmall">—</div>
-          </div>
-          <div class="sltp-calc-cell">
-            <div class="sltp-calc-l">0.01 lota</div>
-            <div class="sltp-calc-v" id="calcLarge">—</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- KEY PRICE LEVELS -->
-    <div class="sec">
-      <div class="sec-title">Kluczowe poziomy cenowe</div>
-      <div class="levels-grid">
-        <div class="level-cell" id="lc_dh">
-          <div class="lc-bar" id="lb_dh" style="width:0%"></div>
-          <div class="lc-label">High dnia</div>
-          <div class="lc-price" id="lp_dh">—</div>
-          <div class="lc-dist" id="ld_dh">—</div>
-          <div class="lc-strength" id="ls_dh">—</div>
-        </div>
-        <div class="level-cell" id="lc_dl">
-          <div class="lc-bar" id="lb_dl" style="width:0%"></div>
-          <div class="lc-label">Low dnia</div>
-          <div class="lc-price" id="lp_dl">—</div>
-          <div class="lc-dist" id="ld_dl">—</div>
-          <div class="lc-strength" id="ls_dl">—</div>
-        </div>
-        <div class="level-cell" id="lc_wh">
-          <div class="lc-bar" id="lb_wh" style="width:0%"></div>
-          <div class="lc-label">High tygodnia</div>
-          <div class="lc-price" id="lp_wh">—</div>
-          <div class="lc-dist" id="ld_wh">—</div>
-          <div class="lc-strength" id="ls_wh">—</div>
-        </div>
-        <div class="level-cell" id="lc_wl">
-          <div class="lc-bar" id="lb_wl" style="width:0%"></div>
-          <div class="lc-label">Low tygodnia</div>
-          <div class="lc-price" id="lp_wl">—</div>
-          <div class="lc-dist" id="ld_wl">—</div>
-          <div class="lc-strength" id="ls_wl">—</div>
-        </div>
-        <div class="level-cell" id="lc_8h">
-          <div class="lc-bar" id="lb_8h" style="width:0%"></div>
-          <div class="lc-label">High 8h (lok. TP)</div>
-          <div class="lc-price" id="lp_8h">—</div>
-          <div class="lc-dist" id="ld_8h">—</div>
-          <div class="lc-strength" id="ls_8h">—</div>
-        </div>
-        <div class="level-cell" id="lc_8l">
-          <div class="lc-bar" id="lb_8l" style="width:0%"></div>
-          <div class="lc-label">Low 8h (lok. SL)</div>
-          <div class="lc-price" id="lp_8l">—</div>
-          <div class="lc-dist" id="ld_8l">—</div>
-          <div class="lc-strength" id="ls_8l">—</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sec" style="display:none"><!-- placeholder ohlc --></div>
-    </div>
-
-</div>
+<div class="sec">
+  <div class="momentum-alert" id="momentumAlert" style="display:none">
+    <div class="ma-title" id="maTitle">—</div>
+    <div class="ma-desc" id="maDesc">—</div>
+  </div>
+  <div class="sec-title">Sugerowane SL / TP</div>
+  <div class="sltp-box">
+    <div class="sltp-row"><div class="sltp-label">Take Profit (lok. High 8h)</div><div class="sltp-val tp" id="sltpTP">—</div></div>
+    <div class="sltp-row"><div class="sltp-label">Stop Loss (lok. Low 8h)</div><div class="sltp-val sl" id="sltpSL">—</div></div>
+    <div class="sltp-row"><div class="sltp-label">Zasięg ruchu (pkt)</div><div class="sltp-val usd" id="sltpRange">—</div></div>
+    <div class="sltp-divider"></div>
+    <div class="sltp-calc">
+      <div class="sltp-calc-cell"><div class="sltp-calc-l">0.005 lota</div><div class="sltp-calc-v" id="calcSmall">—</div></div>
+      <div class="sltp-calc-cell"><div class="sltp-calc-l">0.01 lota</div><div class="sltp-calc-v" id="calcLarge">—</div></div>
     </div>
   </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Kluczowe poziomy cenowe</div>
+  <div class="levels-grid">
+    <div class="level-cell" id="lc_dh"><div class="lc-bar" id="lb_dh"></div><div class="lc-label">High dnia</div><div class="lc-price" id="lp_dh">—</div><div class="lc-dist" id="ld_dh">—</div><div class="lc-strength" id="ls_dh">—</div></div>
+    <div class="level-cell" id="lc_dl"><div class="lc-bar" id="lb_dl"></div><div class="lc-label">Low dnia</div><div class="lc-price" id="lp_dl">—</div><div class="lc-dist" id="ld_dl">—</div><div class="lc-strength" id="ls_dl">—</div></div>
+    <div class="level-cell" id="lc_wh"><div class="lc-bar" id="lb_wh"></div><div class="lc-label">High tygodnia</div><div class="lc-price" id="lp_wh">—</div><div class="lc-dist" id="ld_wh">—</div><div class="lc-strength" id="ls_wh">—</div></div>
+    <div class="level-cell" id="lc_wl"><div class="lc-bar" id="lb_wl"></div><div class="lc-label">Low tygodnia</div><div class="lc-price" id="lp_wl">—</div><div class="lc-dist" id="ld_wl">—</div><div class="lc-strength" id="ls_wl">—</div></div>
+    <div class="level-cell" id="lc_8h"><div class="lc-bar" id="lb_8h"></div><div class="lc-label">High 8h (lok. TP)</div><div class="lc-price" id="lp_8h">—</div><div class="lc-dist" id="ld_8h">—</div><div class="lc-strength" id="ls_8h">—</div></div>
+    <div class="level-cell" id="lc_8l"><div class="lc-bar" id="lb_8l"></div><div class="lc-label">Low 8h (lok. SL)</div><div class="lc-price" id="lp_8l">—</div><div class="lc-dist" id="ld_8l">—</div><div class="lc-strength" id="ls_8l">—</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Sygnał Krótki · Scalping (15min-1h)</div>
+  <div class="sig-card wait" id="cardShort">
+    <div class="sig-hdr"><div class="sig-tag wait" id="tagShort">CZEKAJ</div><div class="sig-badge" id="lblShort">— CZEKAJ / OBSERWUJ</div></div>
+    <div class="sig-reason" id="reaShort">Ładowanie...</div>
+    <div class="sig-warn" id="warnShort" style="display:none"></div>
+    <div class="score-bar"><div class="score-fill pos" id="sfShort" style="width:0%"></div></div>
+    <div class="score-row"><span class="score-lbl">Siła sygnału</span><span class="score-n neu" id="snShort">0</span></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Sygnał Średni · Swing (2-6 godz)</div>
+  <div class="sig-card wait" id="cardMid">
+    <div class="sig-hdr"><div class="sig-tag wait" id="tagMid">CZEKAJ</div><div class="sig-badge" id="lblMid">— CZEKAJ / OBSERWUJ</div></div>
+    <div class="sig-reason" id="reaMid">Ładowanie...</div>
+    <div class="sig-warn" id="warnMid" style="display:none"></div>
+    <div class="score-bar"><div class="score-fill pos" id="sfMid" style="width:0%"></div></div>
+    <div class="score-row"><span class="score-lbl">Siła sygnału</span><span class="score-n neu" id="snMid">0</span></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Sygnał Tygodniowy · Trend (2-7 dni)</div>
+  <div class="sig-card wait" id="cardWeek">
+    <div class="sig-hdr"><div class="sig-tag wait" id="tagWeek">BOCZNY</div><div class="sig-badge" id="lblWeek">— TREND TYGODNIOWY</div></div>
+    <div class="sig-reason" id="reaWeek">Brak wyraźnego trendu tygodniowego</div>
+    <div class="sig-ctx" id="ctxWeek"></div>
+    <div class="score-bar"><div class="score-fill pos" id="sfWeek" style="width:0%"></div></div>
+    <div class="score-row"><span class="score-lbl">Siła sygnału</span><span class="score-n neu" id="snWeek">0</span></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Decyzje pozycyjne</div>
+  <div class="dec-grid">
+    <div class="dec-box" id="decOL"><div class="dec-lbl" id="decOLl">🟡 CZEKAJ</div><div class="dec-reason" id="decOLr">Brak potwierdzenia</div></div>
+    <div class="dec-box" id="decOS"><div class="dec-lbl" id="decOSl">🟡 CZEKAJ</div><div class="dec-reason" id="decOSr">Brak potwierdzenia</div></div>
+    <div class="dec-box" id="decCL"><div class="dec-lbl" id="decCLl">⬜ MONITORUJ</div><div class="dec-reason" id="decCLr">Pilnuj SL</div></div>
+    <div class="dec-box" id="decCS"><div class="dec-lbl" id="decCSl">⬜ MONITORUJ</div><div class="dec-reason" id="decCSr">Pilnuj SL</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Wskaźniki techniczne</div>
+  <div class="ind-grid">
+    <div class="ind-cell"><div class="ind-lbl">RSI (14)</div><div class="ind-v" id="vRsi">—</div><div class="ind-t neutral" id="tRsi">—</div></div>
+    <div class="ind-cell"><div class="ind-lbl">MACD hist</div><div class="ind-v" id="vMacd">—</div><div class="ind-t neutral" id="tMacd">—</div></div>
+    <div class="ind-cell"><div class="ind-lbl">Bollinger</div><div class="ind-v" id="vBb">—</div><div class="ind-t neutral" id="tBb">—</div></div>
+    <div class="ind-cell"><div class="ind-lbl">EMA trend</div><div class="ind-v" id="vEma">—</div><div class="ind-t neutral" id="tEma">—</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Historia sygnałów</div>
+  <div id="histList"><div style="font-size:9px;color:var(--text3)">Brak historii</div></div>
+</div>
+
+    </div>
+  </div>
+
+  <!-- CENTER -->
   <div class="panel" id="panel-center">
     <div class="resizer" id="res-center"></div>
     <div id="tv-wrap">
-      <iframe src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw" allowfullscreen></iframe>
+      <iframe
+        src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw"
+        allowfullscreen>
+      </iframe>
     </div>
     <div id="center-scroll">
 
+<div class="mini-row">
+  <div class="mini-pane">
+    <div class="mini-hdr"><div class="mini-lbl">RSI (14)</div><div class="mini-badge neutral" id="bdRsi">—</div></div>
+    <div class="mini-val2" id="rsiVal">—</div>
+    <div class="mini-cvs"><canvas id="cRsi"></canvas></div>
+  </div>
+  <div class="mini-pane">
+    <div class="mini-hdr"><div class="mini-lbl">MACD histogram</div><div class="mini-badge neutral" id="bdMacd">—</div></div>
+    <div class="mini-val2" id="macdVal">—</div>
+    <div class="mini-cvs"><canvas id="cMacd"></canvas></div>
+  </div>
+</div>
 
-<div id="c-tv">
-          <iframe src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&studies=STD%3ARSI%2CSTD%3AMACD%2CSTD%3ABollinger_Bands&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw" allowfullscreen style="display:block;width:100%;height:100%;border:none;min-height:200px"></iframe>
-        </div>
-        
-          <div class="chart-hdr" style="height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.055);background:#07080c">
-            <span style="font-size:8px;color:#323c4e;text-transform:uppercase;letter-spacing:.09em">TRADINGVIEW · XAU/USD · 15M</span>
-            <span style="font-size:8px;color:#27b97a;display:flex;align-items:center;gap:4px"><span class="dot live"></span>LIVE</span>
-          </div>
+<div class="pred-section">
+  <div class="pred-hdr">
+    <span class="pred-title">Predykcja kierunku ruchu</span>
+    <span class="pred-meta">RSI · MACD · BB · ATR · EMA · SCORE 12PKTÓW</span>
+  </div>
 
-          
-      <div class="mini-row">
-        <div class="mini-pane">
-          <div class="mini-hdr"><div class="mini-lbl">RSI (14)</div><div class="mini-badge neutral" id="bdRsi">—</div></div>
-          <div class="mini-val2" id="rsiVal">—</div>
-          <div class="mini-cvs"><canvas id="cRsi"></canvas></div>
-        </div>
-        <div class="mini-pane">
-          <div class="mini-hdr"><div class="mini-lbl">MACD histogram</div><div class="mini-badge neutral" id="bdMacd">—</div></div>
-          <div class="mini-val2" id="macdVal">—</div>
-          <div class="mini-cvs"><canvas id="cMacd"></canvas></div>
-        </div>
-      </div>
+  <div class="pred-card" id="pcP1">
+    <div class="pred-card-hdr">
+      <span class="pred-tf">⚡ KRÓTKI · SCALPING 2-15 MIN</span>
+      <div class="mini-badge buy" id="bdP1">—</div>
+    </div>
+    <div class="pred-meta-row"><span id="atrP1">—</span></div>
+    <div class="pred-canvas-wrap"><canvas id="cP1"></canvas></div>
+    <div class="pred-lvls" id="lvlP1"></div>
+    <div class="pred-note" id="noteP1"></div>
+  </div>
 
-      <div class="pred-section">
-        <div class="pred-hdr">
-          <div class="pred-hdr-title">Predykcja kierunku ruchu</div>
-          <div class="pred-hdr-sub">RSI · MACD · BB · EMA · ATR — dane dzienne</div>
-        </div>
+  <div class="pred-card" id="pcP2">
+    <div class="pred-card-hdr">
+      <span class="pred-tf">🕐 ŚREDNI · INTRADAY 1-6 GODZ</span>
+      <div class="mini-badge neutral" id="bdP2">—</div>
+    </div>
+    <div class="pred-meta-row"><span id="atrP2">—</span></div>
+    <div class="pred-canvas-wrap"><canvas id="cP2"></canvas></div>
+    <div class="pred-lvls" id="lvlP2"></div>
+    <div class="pred-note" id="noteP2"></div>
+  </div>
 
-        <div class="pred-card">
-          <div class="pred-card-hdr">
-            <div class="pred-card-tf">⚡ Krótki · Scalping 1–15 min</div>
-            <div class="pred-card-right"><div class="mini-badge neutral" id="bdP1">—</div><div class="pred-atr" id="atrP1">—</div></div>
-          </div>
-          <div class="pred-note" id="noteP1">—</div>
-          <div class="pred-cvs"><canvas id="cP1"></canvas></div>
-          <div class="pred-levels" id="lvlP1"></div>
-        </div>
+  <div class="pred-card" id="pcP3">
+    <div class="pred-card-hdr">
+      <span class="pred-tf">📅 SWING · DZIENNY 1-5 DNI</span>
+      <div class="mini-badge neutral" id="bdP3">—</div>
+    </div>
+    <div class="pred-meta-row"><span id="atrP3">—</span></div>
+    <div class="pred-canvas-wrap"><canvas id="cP3"></canvas></div>
+    <div class="pred-lvls" id="lvlP3"></div>
+    <div class="pred-note" id="noteP3"></div>
+  </div>
+</div>
 
-        <div class="pred-card">
-          <div class="pred-card-hdr">
-            <div class="pred-card-tf">🕐 Średni · Intraday 1–6 godz</div>
-            <div class="pred-card-right"><div class="mini-badge neutral" id="bdP2">—</div><div class="pred-atr" id="atrP2">—</div></div>
-          </div>
-          <div class="pred-note" id="noteP2">—</div>
-          <div class="pred-cvs"><canvas id="cP2"></canvas></div>
-          <div class="pred-levels" id="lvlP2"></div>
-        </div>
-
-        <div class="pred-card">
-          <div class="pred-card-hdr">
-            <div class="pred-card-tf">📅 Długi · Swing 1–5 dni</div>
-            <div class="pred-card-right"><div class="mini-badge neutral" id="bdP3">—</div><div class="pred-atr" id="atrP3">—</div></div>
-          </div>
-          <div class="pred-note" id="noteP3">—</div>
-          <div class="pred-cvs"><canvas id="cP3"></canvas></div>
-          <div class="pred-levels" id="lvlP3"></div>
-        </div>
-      </div>
-    
     </div>
   </div>
+
+  <!-- RIGHT -->
   <div class="panel" id="panel-right">
     <div class="panel-body">
-<div class="macro-panel">
-      <div class="sec-title">Kontekst makro — korelacje z XAU</div>
 
-      <!-- Gold composite score -->
-      <div class="gold-score" id="goldScoreBox">
-        <div class="gold-score-title">Makro presja na złoto</div>
-        <div class="gold-score-bar">
-          <div class="gold-score-track"><div class="gold-score-fill bull" id="gsBar" style="width:0%"></div></div>
-          <div class="gold-score-num" id="gsNum" style="color:var(--text2)">—</div>
-        </div>
-        <div class="gold-score-label" id="gsLabel">Ładowanie danych makro...</div>
-      </div>
+<div class="sec">
+  <div class="gold-score">
+    <div class="sec-title">Makro presja na złoto</div>
+    <div class="gs-bar-wrap"><div class="gs-bar-fill" id="gsBar" style="width:0%"></div><div class="gs-dot"></div></div>
+    <div class="gs-label" id="gsLabel">Ładowanie danych makro...</div>
+    <div class="gs-num" id="gsNum">—</div>
+  </div>
+</div>
 
-      <!-- Macro grid -->
-      <div class="macro-grid" id="macroGrid">
-        <div class="macro-cell" id="mc_dxy"><div class="macro-lbl">DXY · Dolar</div><div class="macro-val" id="mv_dxy">—</div><div class="macro-chg neu" id="mc_dxy_c">—</div><div class="macro-impact" id="mi_dxy">—</div></div>
-        <div class="macro-cell" id="mc_tnx"><div class="macro-lbl">TNX · Obligacje 10Y</div><div class="macro-val" id="mv_tnx">—</div><div class="macro-chg neu" id="mc_tnx_c">—</div><div class="macro-impact" id="mi_tnx">—</div></div>
-        <div class="macro-cell" id="mc_vix"><div class="macro-lbl">VIX · Strach</div><div class="macro-val" id="mv_vix">—</div><div class="macro-chg neu" id="mc_vix_c">—</div><div class="macro-impact" id="mi_vix">—</div></div>
-        <div class="macro-cell" id="mc_spx"><div class="macro-lbl">S&P 500</div><div class="macro-val" id="mv_spx">—</div><div class="macro-chg neu" id="mc_spx_c">—</div><div class="macro-impact" id="mi_spx">—</div></div>
-        <div class="macro-cell" id="mc_oil"><div class="macro-lbl">WTI · Ropa</div><div class="macro-val" id="mv_oil">—</div><div class="macro-chg neu" id="mc_oil_c">—</div><div class="macro-impact" id="mi_oil">—</div></div>
-        <div class="macro-cell" id="mc_eur"><div class="macro-lbl">EUR/USD</div><div class="macro-val" id="mv_eur">—</div><div class="macro-chg neu" id="mc_eur_c">—</div><div class="macro-impact" id="mi_eur">—</div></div>
-        <div class="macro-cell" id="mc_ag"><div class="macro-lbl">XAG · Srebro</div><div class="macro-val" id="mv_ag">—</div><div class="macro-chg neu" id="mc_ag_c">—</div><div class="macro-impact" id="mi_ag">—</div></div>
-        <div class="macro-cell" id="mc_gdx"><div class="macro-lbl">GDX · ETF Złoto</div><div class="macro-val" id="mv_gdx">—</div><div class="macro-chg neu" id="mc_gdx_c">—</div><div class="macro-impact" id="mi_gdx">—</div></div>
-      </div>
+<div class="sec">
+  <div class="macro-grid">
+    <div class="macro-cell" id="mc_dxy"><div class="mc-hdr"><span class="mc-sym">DXY · DOLAR</span></div><div class="macro-val" id="mv_dxy">—</div><div class="macro-chg" id="mc_dxy_c">—</div><div class="macro-desc">Silny USD → presja na XAU↓</div></div>
+    <div class="macro-cell" id="mc_tnx"><div class="mc-hdr"><span class="mc-sym">TNX · OBLIGACJE 10Y</span></div><div class="macro-val" id="mv_tnx">—</div><div class="macro-chg" id="mc_tnx_c">—</div><div class="macro-desc">Wyższe rentowności → słabsze XAU</div></div>
+    <div class="macro-cell" id="mc_vix"><div class="mc-hdr"><span class="mc-sym">VIX · STRACH</span></div><div class="macro-val" id="mv_vix">—</div><div class="macro-chg" id="mc_vix_c">—</div><div class="macro-desc">Większy strach → ucieczka w XAU↑</div></div>
+    <div class="macro-cell" id="mc_spx"><div class="mc-hdr"><span class="mc-sym">S&amp;P 500</span></div><div class="macro-val" id="mv_spx">—</div><div class="macro-chg" id="mc_spx_c">—</div><div class="macro-desc">Spadki SPX → czasem XAU↑ (safe haven)</div></div>
+    <div class="macro-cell" id="mc_oil"><div class="mc-hdr"><span class="mc-sym">WTI · ROPA</span></div><div class="macro-val" id="mv_oil">—</div><div class="macro-chg" id="mc_oil_c">—</div><div class="macro-desc">Droga ropa = odpływ z XAU↓ (tryb wojenny)</div></div>
+    <div class="macro-cell" id="mc_eur"><div class="mc-hdr"><span class="mc-sym">EUR/USD</span></div><div class="macro-val" id="mv_eur">—</div><div class="macro-chg" id="mc_eur_c">—</div><div class="macro-desc">Słaby USD (EUR↑) → XAU↑</div></div>
+    <div class="macro-cell" id="mc_ag"><div class="mc-hdr"><span class="mc-sym">XAG · SREBRO</span></div><div class="macro-val" id="mv_ag">—</div><div class="macro-chg" id="mc_ag_c">—</div><div class="macro-desc">Srebro podąża za złotem</div></div>
+    <div class="macro-cell" id="mc_gdx"><div class="mc-hdr"><span class="mc-sym">GDX · ETF ZŁOTO</span></div><div class="macro-val" id="mv_gdx">—</div><div class="macro-chg" id="mc_gdx_c">—</div><div class="macro-desc">Spółki złota wyprzedzają XAU</div></div>
+  </div>
+</div>
 
-      <!-- Correlation bars -->
-      <div class="corr-bar">
-        <div class="corr-title">Siła korelacji z XAU (30d)</div>
-        <div class="corr-row"><div class="corr-lbl">DXY (odwr.)</div><div class="corr-track"><div class="corr-fill neg" id="cr_dxy" style="width:0%"></div></div><div class="corr-num neg" id="cn_dxy">—</div></div>
-        <div class="corr-row"><div class="corr-lbl">TNX (odwr.)</div><div class="corr-track"><div class="corr-fill neg" id="cr_tnx" style="width:0%"></div></div><div class="corr-num neg" id="cn_tnx">—</div></div>
-        <div class="corr-row"><div class="corr-lbl">VIX (poz.)</div><div class="corr-track"><div class="corr-fill pos" id="cr_vix" style="width:0%"></div></div><div class="corr-num pos" id="cn_vix">—</div></div>
-        <div class="corr-row"><div class="corr-lbl">Ropa WTI</div><div class="corr-track"><div class="corr-fill pos" id="cr_oil" style="width:0%"></div></div><div class="corr-num pos" id="cn_oil">—</div></div>
-        <div class="corr-row"><div class="corr-lbl">Srebro</div><div class="corr-track"><div class="corr-fill pos" id="cr_ag" style="width:0%"></div></div><div class="corr-num pos" id="cn_ag">—</div></div>
-      </div>
-    </div>
+<div class="sec">
+  <div class="sec-title">Siła korelacji z XAU (30D)</div>
+  <div class="corr-list">
+    <div class="corr-row"><div class="corr-lbl">DXY (odwr.)</div><div class="corr-track"><div class="corr-fill neg" id="cr_dxy" style="width:0%"></div></div><div class="corr-num neg" id="cn_dxy">+0.00</div></div>
+    <div class="corr-row"><div class="corr-lbl">TNX (odwr.)</div><div class="corr-track"><div class="corr-fill neg" id="cr_tnx" style="width:0%"></div></div><div class="corr-num neg" id="cn_tnx">+0.00</div></div>
+    <div class="corr-row"><div class="corr-lbl">VIX (poz.)</div><div class="corr-track"><div class="corr-fill pos" id="cr_vix" style="width:0%"></div></div><div class="corr-num pos" id="cn_vix">+0.00</div></div>
+    <div class="corr-row"><div class="corr-lbl">Ropa WTI</div><div class="corr-track"><div class="corr-fill neg" id="cr_oil" style="width:0%"></div></div><div class="corr-num neg" id="cn_oil">+0.00</div></div>
+    <div class="corr-row"><div class="corr-lbl">Srebro</div><div class="corr-track"><div class="corr-fill pos" id="cr_ag" style="width:0%"></div></div><div class="corr-num pos" id="cn_ag">+0.00</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Sesje giełdowe (CET)</div>
+  <div class="sess-list">
+    <div class="sess-item"><div class="sess-dot" id="sAsia2"></div><div class="sess-info"><div class="sess-name">Tokio / Azja</div><div class="sess-time">01:00–09:00 CET</div><div class="sess-note">Niski wolumen XAU</div></div><div class="sess-status closed" id="stAsia">ZAMKNIĘTA</div></div>
+    <div class="sess-item"><div class="sess-dot" id="sLondon2"></div><div class="sess-info"><div class="sess-name">Londyn / Europa</div><div class="sess-time">08:00–17:00 CET</div><div class="sess-note">Główny wolumen złota</div></div><div class="sess-status closed" id="stLondon">ZAMKNIĘTA</div></div>
+    <div class="sess-item"><div class="sess-dot overlap" id="sOverlap2"></div><div class="sess-info"><div class="sess-name">Overlap London-NY</div><div class="sess-time">14:00–17:00 CET</div><div class="sess-note">Największa zmienność dnia</div></div><div class="sess-status closed" id="stOverlap">NIEAKTYWNY</div></div>
+    <div class="sess-item"><div class="sess-dot" id="sNY2"></div><div class="sess-info"><div class="sess-name">Nowy Jork / COMEX</div><div class="sess-time">14:30–23:00 CET</div><div class="sess-note">COMEX Futures – silne ruchy</div></div><div class="sess-status closed" id="stNY">ZAMKNIĘTA</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Kluczowe okna dnia (CET)</div>
+  <div id="winList"></div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Kalendarz makro (dziś)</div>
+  <div id="eventList"></div>
+</div>
+
     </div>
   </div>
+
 </div><!-- /panels -->
+
+<!-- FOOTER -->
 <footer id="ftr">
   <span class="foot-l">XAU/USD · Twelve Data 5M+15M+1D · Odśwież co 60s</span>
   <span class="foot-r" id="footR">—</span>
 </footer>
+
 <div class="toast" id="toast"></div>
+
 <!-- API SETTINGS PANEL -->
 <div class="api-panel" id="apiPanel">
   <div class="api-box">
@@ -992,6 +885,7 @@ html,body{width:100%;height:100%;background:#07080c;color:#cdd5e0;font-family:'J
 <div class="toast" id="toast"></div>
 
 <!-- API SETTINGS PANEL -->
+
 <script>
 
 
@@ -2302,49 +2196,59 @@ document.addEventListener('DOMContentLoaded',function(){
   setInterval(function(){renderWindows();renderEvents();},60000);
 });
 
+
+/* === PANEL RESIZE === */
 (function(){
-  function makeResizer(resEl,panelEl,dir){
-    if(!resEl||!panelEl)return;
-    var startX,startW;
-    resEl.addEventListener('mousedown',function(e){
-      startX=e.clientX;startW=panelEl.offsetWidth;
-      resEl.classList.add('active');
+  function initResize(resizerId, panelId, growLeft){
+    var rz=document.getElementById(resizerId);
+    var pn=document.getElementById(panelId);
+    if(!rz||!pn)return;
+    rz.addEventListener('mousedown',function(e){
+      e.preventDefault();
+      var x0=e.clientX, w0=pn.offsetWidth;
+      rz.classList.add('dragging');
       document.body.style.cursor='col-resize';
       document.body.style.userSelect='none';
-      function onMove(e){
-        var dx=(dir==='left')?(startX-e.clientX):(e.clientX-startX);
-        var newW=Math.max(160,Math.min(window.innerWidth-400,startW+dx));
-        panelEl.style.width=newW+'px';panelEl.style.flex='0 0 '+newW+'px';
+      function move(e){
+        var dx=growLeft?(x0-e.clientX):(e.clientX-x0);
+        var w=Math.max(160,Math.min(700,w0+dx));
+        pn.style.width=w+'px';
+        pn.style.flex='0 0 '+w+'px';
       }
-      function onUp(){
-        resEl.classList.remove('active');
-        document.body.style.cursor='';document.body.style.userSelect='';
-        document.removeEventListener('mousemove',onMove);
-        document.removeEventListener('mouseup',onUp);
+      function up(){
+        rz.classList.remove('dragging');
+        document.body.style.cursor='';
+        document.body.style.userSelect='';
+        document.removeEventListener('mousemove',move);
+        document.removeEventListener('mouseup',up);
       }
-      document.addEventListener('mousemove',onMove);
-      document.addEventListener('mouseup',onUp);
-      e.preventDefault();
+      document.addEventListener('mousemove',move);
+      document.addEventListener('mouseup',up);
     });
   }
-  makeResizer(document.getElementById('res-left'),document.getElementById('panel-left'),'right');
-  makeResizer(document.getElementById('res-center'),document.getElementById('panel-right'),'left');
+  initResize('res-left','panel-left',false);
+  initResize('res-center','panel-right',true);
 })();
+
+/* === INIT === */
 document.addEventListener('DOMContentLoaded',function(){
-  var saveBtn=document.getElementById('apiSaveBtn');
-  var skipBtn=document.getElementById('apiSkipBtn');
-  if(saveBtn)saveBtn.addEventListener('click',saveApiKeys);
-  if(skipBtn)skipBtn.addEventListener('click',skipApiSetup);
-  var hdrRight=document.querySelector('.hdr-right');
-  if(hdrRight){
-    var settBtn=document.createElement('div');
-    settBtn.className='api-indicator';settBtn.innerHTML='⚙ API';settBtn.style.cursor='pointer';
-    settBtn.addEventListener('click',openApiSettings);
-    hdrRight.insertBefore(settBtn,hdrRight.firstChild);
+  var sb=document.getElementById('apiSaveBtn');
+  var sk=document.getElementById('apiSkipBtn');
+  if(sb)sb.addEventListener('click',saveApiKeys);
+  if(sk)sk.addEventListener('click',skipApiSetup);
+  var hr=document.querySelector('.hdr-right');
+  if(hr){
+    var btn=document.createElement('div');
+    btn.className='api-indicator';btn.innerHTML='⚙ API';btn.style.cursor='pointer';
+    btn.addEventListener('click',openApiSettings);
+    hr.insertBefore(btn,hr.firstChild);
   }
-  updateClock();updateSessions();renderWindows();renderEvents();
-  var keysLoaded=loadApiKeys();
-  if(keysLoaded)initDashboard();
+  updateClock();
+  updateSessions();
+  renderWindows();
+  renderEvents();
+  var ok=loadApiKeys();
+  if(ok)initDashboard();
   setInterval(updateClock,1000);
   setInterval(updateSessions,30000);
   setInterval(function(){renderWindows();renderEvents();},60000);
