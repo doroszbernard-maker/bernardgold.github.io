@@ -261,6 +261,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .sig-card{border-radius:var(--r);padding:8px 10px;border:1px solid var(--border);margin-bottom:5px;transition:all .3s;background:var(--bg2)}
 .sig-card.buy{border-color:var(--green-b);background:var(--green-bg)}
 .sig-card.sell{border-color:var(--red-b);background:var(--red-bg)}
+.sig-card.wait{border-color:var(--border);background:var(--bg2)}
 .sig-card.caution{border-color:var(--amber-b);background:var(--amber-bg)}
 .sig-card:last-child{margin-bottom:0}
 .sig-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
@@ -276,7 +277,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .sig-ctx{font-size:8px;color:var(--text3);margin-top:3px;line-height:1.5}
 .score-row{display:flex;align-items:center;gap:5px;margin-top:5px}
 .score-track{flex:1;height:3px;background:var(--bg4);border-radius:2px;position:relative;overflow:hidden}
-.score-fill{height:100%;border-radius:2px;position:absolute;top:0;transition:width .4s}
+.score-fill{height:100%;border-radius:2px;transition:width .4s}
 .score-fill.pos{background:var(--green);left:50%}
 .score-fill.neg{background:var(--red);right:50%}
 .score-n{font-size:9px;font-weight:700;min-width:22px;text-align:right}
@@ -521,7 +522,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .sig-reason{font-size:9px;color:var(--text3);margin:3px 0;line-height:1.5}
 .sig-warn{font-size:9px;color:var(--amber);margin-top:3px;padding:3px 6px;background:var(--amber-bg);border-radius:3px}
 .sig-ctx{font-size:9px;color:var(--text3);margin-top:2px}
-.score-bar{height:3px;background:var(--bg3);border-radius:2px;margin:5px 0 2px;overflow:hidden}
+.score-bar{height:3px;background:var(--bg3);border-radius:2px;margin:5px 0 2px;overflow:hidden;position:relative}
 .score-fill{height:100%;border-radius:2px;transition:width .5s}
 .score-fill.pos{background:var(--green)}
 .score-fill.neg{background:var(--red)}
@@ -1182,9 +1183,9 @@ function renderMacroPlaceholder(){
 async function loadMacroData(){
   // Use Twelve Data for macro data (same API key, no proxy needed)
   const macroSymbols={
-    dxy: {td:'DXY',   label:'DXY',  impact:'neg', desc:'Silny USD = presja na XAU↓ (odwrócona w trybie wojennym)'},
-    tnx: {td:'TNX',   label:'10Y',  impact:'neg', desc:'Wyższe rentowności = słabsze XAU'},
-    vix: {td:'VIX',   label:'VIX',  impact:'pos', desc:'Strach rośnie = XAU rośnie (safe haven)'},
+    dxy: {td:'DX-Y.NYB', label:'DXY',  impact:'neg', desc:'Silny USD = presja na XAU↓ (odwrócona w trybie wojennym)'},
+    tnx: {td:'US10Y',    label:'10Y',  impact:'neg', desc:'Wyższe rentowności = słabsze XAU'},
+    vix: {td:'VIX',      label:'VIX',  impact:'pos', desc:'Strach rośnie = XAU rośnie (safe haven)'},
     spx: {td:'SPX',   label:'SPX',  impact:'mix', desc:'Spadki SPX = czasem XAU↑ (safe haven)'},
     oil: {td:'WTI',   label:'WTI',  impact:'inv', desc:'Droga ropa = odpływ z XAU↓ (tryb wojenny 2024+)'},
     eur: {td:'EUR/USD',label:'EUR', impact:'pos', desc:'Słaby USD (EUR↑) = XAU↑'},
