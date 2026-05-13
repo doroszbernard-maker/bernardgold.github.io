@@ -556,6 +556,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .master-score-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;position:relative;margin:4px 0}
 .master-score-fill{height:100%;border-radius:3px;position:absolute;top:0;transition:width .5s,left .5s}
 
+
+.regime-badge{font-size:11px;margin-bottom:4px}
+.regime-stats{display:flex;gap:10px;font-size:8px;color:var(--text3);flex-wrap:wrap}
+
 </style>
 </head>
 <body>
@@ -591,6 +595,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="ohlc-cell"><div class="ohlc-l">Low dziś</div><div class="ohlc-v" id="oL">—</div></div>
     <div class="ohlc-cell"><div class="ohlc-l">Poprz. zamkn.</div><div class="ohlc-v" id="oPrev">—</div></div>
     <div class="ohlc-cell"><div class="ohlc-l">Wolumen</div><div class="ohlc-v" id="oVol">—</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Tryb rynkowy (auto-detekcja)</div>
+  <div id="regimeDisplay" style="padding:4px 0">
+    <div style="font-size:9px;color:var(--text3)">Wykrywanie...</div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Środowisko rynkowe (Auto-wykrywanie)</div>
+  <div id="regimeDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px;margin-bottom:5px">
+    <div style="font-size:9px;color:var(--text3)">Wykrywanie ADX + BB Width...</div>
   </div>
 </div>
 
@@ -1054,6 +1072,168 @@ function calcSwingPoints(closes,period=5){
     prevHigh:highs[highs.length-2],prevLow:lows[lows.length-2]};
 }
 
+
+// ══ MARKET REGIME DETECTION ══════════════════════════════════════════════════
+// Detects: TRENDING, RANGING (sideways), VOLATILE
+
+function calcADX(highs, lows, closes, period=14){
+  // Average Directional Index - measures trend strength regardless of direction
+  if(closes.length < period*2) return null;
+  const n=closes.length;
+  const dmPlus=[], dmMinus=[], tr=[];
+  for(let i=1;i<n;i++){
+    const upMove=highs[i]-highs[i-1];
+    const downMove=lows[i-1]-lows[i];
+    dmPlus.push(upMove>downMove&&upMove>0?upMove:0);
+    dmMinus.push(downMove>upMove&&downMove>0?downMove:0);
+    tr.push(Math.max(highs[i]-lows[i],
+      Math.abs(highs[i]-closes[i-1]),
+      Math.abs(lows[i]-closes[i-1])));
+  }
+  // Smooth with Wilder's method
+  function wilderSmooth(arr, p){
+    let sum=arr.slice(0,p).reduce((a,b)=>a+b,0);
+    const res=[sum];
+    for(let i=p;i<arr.length;i++){
+      sum=sum-sum/p+arr[i];
+      res.push(sum);
+    }
+    return res;
+  }
+  const strTR=wilderSmooth(tr,period);
+  const strDMp=wilderSmooth(dmPlus,period);
+  const strDMm=wilderSmooth(dmMinus,period);
+  const diPlus=strDMp.map((v,i)=>strTR[i]?100*v/strTR[i]:0);
+  const diMinus=strDMm.map((v,i)=>strTR[i]?100*v/strTR[i]:0);
+  const dx=diPlus.map((v,i)=>{
+    const sum=v+diMinus[i];
+    return sum?100*Math.abs(v-diMinus[i])/sum:0;
+  });
+  const adxArr=wilderSmooth(dx,period);
+  return{
+    adx:adxArr[adxArr.length-1],
+    diPlus:diPlus[diPlus.length-1],
+    diMinus:diMinus[diMinus.length-1]
+  };
+}
+
+function calcBBWidth(closes, period=20, mult=2){
+  // Bollinger Band Width - narrow = ranging, wide = volatile/trending
+  if(closes.length < period) return null;
+  const slice=closes.slice(-period);
+  const mid=slice.reduce((a,b)=>a+b,0)/period;
+  const std=Math.sqrt(slice.reduce((a,b)=>a+(b-mid)**2,0)/period);
+  const upper=mid+mult*std;
+  const lower=mid-mult*std;
+  return(upper-lower)/mid*100; // as % of price
+}
+
+// Market regime object - updated on each data load
+var marketRegime={
+  mode:'unknown',        // 'trending', 'ranging', 'volatile'
+  adx:null,
+  bbWidth:null,
+  atrRatio:null,        // current ATR / avg ATR
+  signalTF:'15min',     // which TF to use for signals
+  filterBars:2,         // how many bars needed to confirm signal change
+  tpPts:null,           // suggested TP in points
+  slPts:null,           // suggested SL in points
+  desc:'Wykrywanie...',
+};
+
+function detectMarketRegime(candles15, candles5, atr15, atrDay){
+  const c15=candles15.map(c=>c.c);
+  const h15=candles15.map(c=>c.h);
+  const l15=candles15.map(c=>c.l);
+  const c5=candles5.map(c=>c.c);
+
+  // 1. ADX on 15min (trend strength)
+  const adxData=calcADX(h15,l15,c15,14);
+  const adx=adxData?adxData.adx:null;
+
+  // 2. BB Width on 15min (volatility squeeze)
+  const bbW=calcBBWidth(c15,20,2);
+
+  // 3. ATR ratio: current 15min ATR vs daily ATR
+  // If current ATR is much smaller than daily = quiet/ranging day
+  const atrRatio=atr15&&atrDay?(atr15/atrDay):null;
+
+  // 4. Price range of last 20 candles (15min) = ~5h
+  const last20=c15.slice(-20);
+  const rangeNow=last20.length?(Math.max(...last20)-Math.min(...last20)):0;
+
+  // 5. 5min volatility - std dev of last 20 5min closes
+  const last20_5=c5.slice(-20);
+  const mean5=last20_5.reduce((a,b)=>a+b,0)/last20_5.length;
+  const stdDev5=Math.sqrt(last20_5.reduce((a,b)=>a+(b-mean5)**2,0)/last20_5.length);
+
+  // ── REGIME CLASSIFICATION ──────────────────────────────────────────────────
+  let mode, signalTF, filterBars, tpPts, slPts, desc;
+
+  if(adx!==null&&adx>28){
+    // TRENDING - strong directional movement
+    mode='trending';
+    signalTF='15min';
+    filterBars=2;            // 2×15min = 30 min confirmation
+    tpPts=Math.round(atr15*2.0*10)/10;  // 2×ATR
+    slPts=Math.round(atr15*0.8*10)/10;  // 0.8×ATR
+    desc='TREND · ADX '+adx.toFixed(0)+' · Sygnały 15M · TP ~'+tpPts+' pkt';
+  } else if(adx!==null&&adx<20&&bbW!==null&&bbW<0.4){
+    // RANGING TIGHT - very quiet, small oscillations
+    mode='ranging';
+    signalTF='5min';
+    filterBars=1;            // 1×5min confirmation only
+    // Use actual observed range to set TP/SL
+    tpPts=Math.round(Math.min(rangeNow*0.35,20));
+    slPts=Math.round(Math.min(rangeNow*0.18,10));
+    tpPts=Math.max(tpPts,8);  // minimum 8 pts
+    slPts=Math.max(slPts,5);   // minimum 5 pts
+    desc='BOCZNY (tight) · ADX '+adx.toFixed(0)+' · Sygnały 5M · TP ~'+tpPts+' pkt';
+  } else if(adx!==null&&adx<25){
+    // RANGING NORMAL - moderate oscillation (today's situation)
+    mode='ranging';
+    signalTF='5min';
+    filterBars=1;            // 1 bar confirmation on 5min
+    tpPts=Math.round(Math.min(rangeNow*0.4,25));
+    slPts=Math.round(Math.min(rangeNow*0.2,12));
+    tpPts=Math.max(tpPts,10);
+    slPts=Math.max(slPts,6);
+    desc='BOCZNY · ADX '+adx.toFixed(0)+' · Sygnały 5M · TP ~'+tpPts+' pkt';
+  } else {
+    // TRANSITIONAL or unknown
+    mode='ranging';
+    signalTF='15min';
+    filterBars=2;
+    tpPts=20;
+    slPts=10;
+    desc='PRZEJSCIOWY · Sygnały 15M · TP ~'+tpPts+' pkt';
+  }
+
+  marketRegime={mode,adx,bbWidth:bbW,atrRatio,signalTF,filterBars,tpPts,slPts,desc};
+  renderRegimePanel();
+  return marketRegime;
+}
+
+function renderRegimePanel(){
+  const el=document.getElementById('regimeDisplay');
+  if(!el)return;
+  const r=marketRegime;
+  const col=r.mode==='trending'?'var(--green)':r.mode==='ranging'?'var(--amber)':'var(--text3)';
+  const icon=r.mode==='trending'?'📈':r.mode==='ranging'?'↔':'❓';
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+    '<span style="font-size:10px;font-weight:700;color:'+col+'">'+icon+' '+r.mode.toUpperCase()+'</span>'+
+    '<span style="font-size:9px;color:var(--text3)">ADX: '+(r.adx?r.adx.toFixed(0):'—')+'</span>'+
+    '</div>'+
+    '<div style="font-size:9px;color:var(--text3);line-height:1.5">'+r.desc+'</div>'+
+    '<div style="display:flex;gap:10px;margin-top:5px;font-size:9px">'+
+    '<span>TF: <b style="color:'+col+'">'+r.signalTF+'</b></span>'+
+    '<span>Filtr: <b style="color:'+col+'">'+r.filterBars+' świece</b></span>'+
+    '<span>TP: <b style="color:var(--green)">~'+r.tpPts+' pkt</b></span>'+
+    '<span>SL: <b style="color:var(--red)">~'+r.slPts+' pkt</b></span>'+
+    '</div>';
+}
+
 // ══ SIGNAL ENGINE — MULTI-TIMEFRAME ════════════════════════════════════════
 // Recalibrated thresholds for 15min data
 function calcSignal(closes,rsi,macd,bb,e20,e50,label){
@@ -1112,26 +1292,29 @@ function calcSignal(closes,rsi,macd,bb,e20,e50,label){
 }
 
 // Signal stability filter — prevents flip every 5 min
-function applyStabilityFilter(newSig, tfLabel){
-  // Store per-timeframe last signals
+function applyStabilityFilter(newSig, tfLabel, requiredBars){
+  requiredBars=requiredBars||2;
   if(!applyStabilityFilter.history)applyStabilityFilter.history={};
   const h=applyStabilityFilter.history;
   if(!h[tfLabel])h[tfLabel]={sig:newSig,bars:1};
   else if(h[tfLabel].sig.type===newSig.type){
     h[tfLabel].bars++;
-    h[tfLabel].sig=newSig;
+    h[tfLabel].sig=newSig; // update score even if same direction
   } else {
-    h[tfLabel].bars=1;
-    h[tfLabel].pending=newSig;
+    // Direction change - put in pending
+    if(h[tfLabel].pending&&h[tfLabel].pending.type===newSig.type){
+      h[tfLabel].pendingBars=(h[tfLabel].pendingBars||0)+1;
+    } else {
+      h[tfLabel].pending=newSig;
+      h[tfLabel].pendingBars=1;
+    }
   }
-  // Only flip signal after 3 confirming bars
-  if(h[tfLabel].pending&&h[tfLabel].bars===1){
-    return h[tfLabel].sig; // hold old signal
-  }
-  if(h[tfLabel].pending){
+  // Flip only after requiredBars confirmations
+  if(h[tfLabel].pending&&h[tfLabel].pendingBars>=requiredBars){
     h[tfLabel].sig=h[tfLabel].pending;
+    h[tfLabel].bars=h[tfLabel].pendingBars;
     h[tfLabel].pending=null;
-    h[tfLabel].bars=1;
+    h[tfLabel].pendingBars=0;
   }
   return h[tfLabel].sig;
 }
@@ -1187,15 +1370,138 @@ async function fetchTD(interval, outputsize){
   }catch(e){console.warn(`TD ${interval}:`,e.message);return null;}
 }
 
+
+// ══ MARKET REGIME DETECTION ══════════════════════════════════════════════════
+// Detects trending vs ranging market automatically
+// Returns: {regime:'trend'|'range', adx, atrRatio, bbWidth, confidence}
+
+var REGIME = {regime:'range', adx:0, atrRatio:1.0, bbWidth:0, confidence:0};
+
+function calcADX(highs, lows, closes, p=14){
+  if(closes.length < p*2) return 0;
+  const n=closes.length;
+  let plusDM=[], minusDM=[], tr=[];
+  for(let i=1;i<n;i++){
+    const upMove=highs[i]-highs[i-1];
+    const downMove=lows[i-1]-lows[i];
+    plusDM.push(upMove>downMove&&upMove>0?upMove:0);
+    minusDM.push(downMove>upMove&&downMove>0?downMove:0);
+    tr.push(Math.max(highs[i]-lows[i],
+      Math.abs(highs[i]-closes[i-1]),
+      Math.abs(lows[i]-closes[i-1])));
+  }
+  // Smooth with Wilder's method
+  function wilderSmooth(arr, p){
+    let sum=arr.slice(0,p).reduce((a,b)=>a+b,0);
+    const res=[sum];
+    for(let i=p;i<arr.length;i++){
+      sum=sum-sum/p+arr[i];
+      res.push(sum);
+    }
+    return res;
+  }
+  const sTR=wilderSmooth(tr,p);
+  const sPDM=wilderSmooth(plusDM,p);
+  const sMDM=wilderSmooth(minusDM,p);
+  const dx=sTR.map((t,i)=>{
+    if(t===0)return 0;
+    const pdi=sPDM[i]/t*100;
+    const mdi=sMDM[i]/t*100;
+    const sum=pdi+mdi;
+    return sum===0?0:Math.abs(pdi-mdi)/sum*100;
+  });
+  // Average of last p dx values
+  const recentDX=dx.slice(-p);
+  return recentDX.reduce((a,b)=>a+b,0)/recentDX.length;
+}
+
+function calcBBWidth(closes, p=20, m=2){
+  if(closes.length<p) return 0;
+  const slice=closes.slice(-p);
+  const mid=slice.reduce((a,b)=>a+b,0)/p;
+  const std=Math.sqrt(slice.reduce((a,b)=>a+(b-mid)**2,0)/p);
+  return (m*std*2)/mid*100; // BB width as % of price
+}
+
+
+
+function renderRegimeDisplay(){
+  const el=document.getElementById('regimeDisplay');
+  if(!el)return;
+  const r=REGIME;
+  const isTrend=r.regime==='trend';
+  const col=isTrend?'var(--green)':'var(--amber)';
+  el.innerHTML=
+    '<div class="regime-badge" style="color:'+col+';font-weight:700">'+
+    (isTrend?'📈 TREND':'↔ BOCZNY')+
+    ' <span style="font-size:8px;opacity:.7">'+r.confidence+'% pewność</span></div>'+
+    '<div class="regime-stats">'+
+    '<span>ADX: '+r.adx+'</span>'+
+    '<span>ATR ratio: '+r.atrRatio+'</span>'+
+    '<span>BB width: '+r.bbWidth+'%</span>'+
+    '</div>'+
+    '<div style="font-size:8px;color:var(--text3);margin-top:3px">'+
+    (isTrend?
+      'Sygnały: 15min+1h · Filtr: 2 świece 15min':
+      'Sygnały: 5min · Filtr: 2 świece 5min · TP wąskie')+
+    '</div>';
+}
+
+// Adaptive signal filter based on regime
+function applyStabilityFilter(newSig, candles, regime){
+  // In range: require 2 confirming 5min candles (fast)
+  // In trend: require 2 confirming 15min candles (stable)
+  const key=regime;
+  const barsRequired=2; // always 2 bars, but bar size differs
+  if(!applyStabilityFilter.h)applyStabilityFilter.h={};
+  const h=applyStabilityFilter.h;
+  if(!h[key]){h[key]={sig:newSig,bars:1};return newSig;}
+  if(h[key].sig.type===newSig.type){
+    h[key].bars=Math.min(h[key].bars+1,10);
+    h[key].sig=newSig;
+    return newSig;
+  }
+  // Direction changed - require confirmation
+  if(!h[key].pending){h[key].pending=newSig;h[key].pendingBars=1;}
+  else if(h[key].pending.type===newSig.type){
+    h[key].pendingBars++;
+    if(h[key].pendingBars>=barsRequired){
+      h[key].sig=h[key].pending;
+      h[key].pending=null;h[key].pendingBars=0;
+      h[key].bars=barsRequired;
+    }
+  } else {
+    h[key].pending=newSig;h[key].pendingBars=1;
+  }
+  return h[key].sig;
+}
+
+// Adaptive TP/SL based on regime and recent ATR
+function getAdaptiveTPSL(cur, regime, atr5, atr15){
+  if(regime==='range'){
+    // Range: tight TP/SL - target 15-25 pts, SL 8-12 pts
+    const tp=Math.max(15,Math.min(25,atr5*2.5));
+    const sl=Math.max(8,Math.min(12,atr5*1.2));
+    return{tp:Math.round(tp*10)/10, sl:Math.round(sl*10)/10, mode:'range'};
+  } else {
+    // Trend: wider TP/SL - target 30-60 pts, SL 15-25 pts
+    const tp=Math.max(30,Math.min(60,atr15*2.0));
+    const sl=Math.max(15,Math.min(25,atr15*0.8));
+    return{tp:Math.round(tp*10)/10, sl:Math.round(sl*10)/10, mode:'trend'};
+  }
+}
+
 async function loadAllCandles(){
   setStatus('warn','Pobieranie danych...');
-  // Fetch all timeframes in parallel
-  const [c15,c60,c240,cDay]=await Promise.all([
+  // Fetch all timeframes in parallel including 5min for regime detection
+  const [c5,c15,c60,c240,cDay]=await Promise.all([
+    fetchTD('5min',200),    // 200×5min = ~17h (regime + ranging signals)
     fetchTD('15min',500),   // 500×15min = ~5 dni
     fetchTD('1h',200),      // 200×1h = ~8 dni
     fetchTD('4h',200),      // 200×4h = ~33 dni
     fetchTD('1day',5000),   // 5000 dni = ~14 lat historii
   ]);
+  if(c5)candles5=c5;
   if(c15)candles15=c15;
   if(c60)candles60=c60;
   if(c240)candles240=c240;
@@ -1255,18 +1561,40 @@ async function loadDataEnhanced(){
   const e100Day=cDay.length?calcEMA(cDay,100):e100_15;
   const atrDay=cDay.length?calcATR(cDay,hDay,lDay,14):atr15;
 
-  // Raw signals per timeframe
-  const rawShort=calcSignal(c15,rsi15,macd15,bb15,e20_15,e50_15,'15min');
-  const rawMid=calcSignal(c60.length?c60:c15,rsi60,macd60,bb60,e20_60,e50_60,'1h');
+  // Detect market regime first
+  const regime=detectMarketRegime(candles15,candles5,atr15,atrDay);
+
+  // Adaptive signals based on regime
+  let rawShort, rawMid;
+  if(regime.mode==='ranging'){
+    // RANGE MODE: use 5min for short signal (faster, catches small moves)
+    const c5m=candles5.map(c=>c.c);
+    const h5m=candles5.map(c=>c.h),l5m=candles5.map(c=>c.l);
+    if(c5m.length>30){
+      const rsi5m=calcRSI(c5m);
+      const macd5m=calcMACD(c5m);
+      const bb5m=calcBB(c5m);
+      const e20_5m=calcEMA(c5m,20),e50_5m=calcEMA(c5m,50);
+      rawShort=calcSignal(c5m,rsi5m,macd5m,bb5m,e20_5m,e50_5m,'5min');
+    } else {
+      rawShort=calcSignal(c15,rsi15,macd15,bb15,e20_15,e50_15,'15min');
+    }
+    // Mid signal: still 15min in range mode
+    rawMid=calcSignal(c15,rsi15,macd15,bb15,e20_15,e50_15,'15min');
+  } else {
+    // TREND MODE: use 15min for short, 1h for mid
+    rawShort=calcSignal(c15,rsi15,macd15,bb15,e20_15,e50_15,'15min');
+    rawMid=calcSignal(c60.length?c60:c15,rsi60,macd60,bb60,e20_60,e50_60,'1h');
+  }
   const rawTrend=c240.length?{
     type:e20_240[e20_240.length-1]>e50_240[e50_240.length-1]?'buy':'sell',
     score:e20_240[e20_240.length-1]>e50_240[e50_240.length-1]?3:-3
   }:{type:'wait',score:0};
   const rawWeekly=calcSignalWeekly(cDay.length?cDay:c15,rsiDay,macdDay,bbDay,e20Day,e50Day,e100Day);
 
-  // Apply stability filter
-  const sigShort=applyStabilityFilter(rawShort,'15min');
-  const sigMid=applyStabilityFilter(rawMid,'1h');
+  // Apply adaptive stability filter (regime-aware)
+  const sigShort=applyStabilityFilter(rawShort,regime.signalTF,regime.filterBars);
+  const sigMid=applyStabilityFilter(rawMid,'1h',2);
   const sigWeek=rawWeekly;
 
   // MASTER SCORE — weighted average of all timeframes
@@ -1343,7 +1671,28 @@ async function loadDataEnhanced(){
 
   // Price levels
   const levels=calcPriceLevels(candles15,candlesDay);
-  if(levels)renderPriceLevels(levels,cur,atr15);
+  if(levels){
+    // Adaptive SL/TP based on regime
+    if(marketRegime.mode==='ranging'&&marketRegime.tpPts){
+      const sigType=(marketSnapshot.sigShort||{type:'wait'}).type;
+      const tp=sigType==='buy'?cur+marketRegime.tpPts:cur-marketRegime.tpPts;
+      const sl=sigType==='buy'?cur-marketRegime.slPts:cur+marketRegime.slPts;
+      // Override levels with regime-based values
+      if(sigType!=='wait'){
+        const tpEl=document.getElementById('sltpTP');
+        const slEl=document.getElementById('sltpSL');
+        const rangeEl=document.getElementById('sltpRange');
+        if(tpEl)tpEl.textContent=fmt(tp);
+        if(slEl)slEl.textContent=fmt(sl);
+        if(rangeEl)rangeEl.textContent=marketRegime.tpPts+' pkt ('+marketRegime.mode+')';
+        const calcS=document.getElementById('calcSmall');
+        const calcL=document.getElementById('calcLarge');
+        if(calcS)calcS.textContent='$'+(marketRegime.tpPts*0.5).toFixed(2);
+        if(calcL)calcL.textContent='$'+(marketRegime.tpPts*1.0).toFixed(2);
+      }
+    }
+    renderPriceLevels(levels,cur,atr15);
+  }
 
   // Momentum divergence
   checkMomentumDivergence(c15,rsi15,macd15,sigShort.type==='buy');
@@ -1378,8 +1727,14 @@ async function loadDataEnhanced(){
   if(candlesDay.length>365)renderSameWeekLastYear(candlesDay,cur);
 
   setStatus('live','15M+1H+4H+1D · LIVE');
+  // Update master score display
+  const msd=document.getElementById('masterScoreDisplay');
+  if(msd)msd.textContent=(masterScore>0?'+':'')+masterScore+
+    ' · '+(regime.mode==='ranging'?'BOCZNY':'TREND')+
+    ' (ADX:'+regime.adx+')';
   const fR=document.getElementById('footR');
-  if(fR)fR.textContent='15min+1h+4h+dzienny · Score:'+masterScore+' · '+new Date().toLocaleTimeString('pl-PL');
+  if(fR)fR.textContent=(regime.mode==='ranging'?'5M+15M [BOCZNY]':'15M+1H+4H [TREND]')+
+    ' · Score:'+masterScore+' · '+new Date().toLocaleTimeString('pl-PL');
 }
 
 // Fallback without API key
@@ -1973,8 +2328,18 @@ function renderPriceLevels(levels, cur, atr){
     if(bEl)bEl.style.width=barPct+'%';
   });
 
-  // SL/TP suggestions
-  var tp=levels.h8.h, sl=levels.h8.l;
+  // SL/TP suggestions - use regime-based values in ranging mode
+  var tp, sl;
+  if(marketRegime.mode==='ranging'&&marketRegime.tpPts&&cur){
+    // In ranging: use fixed point targets based on detected range
+    const sig=marketSnapshot.sigShort||{type:'wait'};
+    tp=sig.type==='buy'?cur+marketRegime.tpPts:cur-marketRegime.tpPts;
+    sl=sig.type==='buy'?cur-marketRegime.slPts:cur+marketRegime.slPts;
+  } else {
+    // In trending: use 8h highs/lows
+    tp=levels.h8.h;
+    sl=levels.h8.l;
+  }
   var tpEl=document.getElementById('sltpTP');
   var slEl=document.getElementById('sltpSL');
   var rangeEl=document.getElementById('sltpRange');
