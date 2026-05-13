@@ -1558,7 +1558,12 @@ function renderMacro(){
     const p=d.pct;
     if(k==='dxy'){if(p>0.5)macroScore-=2;else if(p>0.2)macroScore-=1;else if(p<-0.5)macroScore+=2;else if(p<-0.2)macroScore+=1;}
     else if(k==='tnx'){if(p>0.5)macroScore+=2;else if(p>0.2)macroScore+=1;else if(p<-0.5)macroScore-=2;else if(p<-0.2)macroScore-=1;} // TLT: rises=good for gold
-    else if(k==='oil'){if(p>2)macroScore-=1;else if(p<-2)macroScore+=1;} // inverted war mode
+    else if(k==='oil'){
+      // War mode: rising oil = capital flows OUT of XAU
+      // Normal mode: rising oil = inflation = XAU rises
+      if(WAR_MODE){if(p>2)macroScore-=1;else if(p<-2)macroScore+=1;}
+      else{if(p>2)macroScore+=1;else if(p<-2)macroScore-=1;}
+    }
     else if(k==='vix'){if(p>5)macroScore+=2;else if(p>2)macroScore+=1;else if(p<-5)macroScore-=1;}
     else if(k==='spx'){if(p<-1)macroScore+=1;else if(p>2)macroScore-=1;}
     else{if(p>1)macroScore+=1;else if(p>0.3)macroScore+=1;else if(p<-1)macroScore-=1;else if(p<-0.3)macroScore-=1;}
@@ -2062,6 +2067,36 @@ function updateSessions(){
   ss('stNY',inN?'OTWARTA':'ZAMKNIĘTA',inN?'open':'closed');
 }
 
+
+var WINDOWS=[
+  {time:'08:00-09:00',label:'Otwarcie Londynu',imp:'Wysoki'},
+  {time:'09:30-10:30',label:'Dane UK / Eurozone',imp:'Sredni'},
+  {time:'14:00-14:30',label:'Pre-NY / Overlap start',imp:'Wysoki'},
+  {time:'14:30-15:30',label:'Otwarcie NYSE + dane US',imp:'Wysoki'},
+  {time:'15:30-17:00',label:'Szczyt overlap / Max wolumen',imp:'Wysoki'},
+  {time:'17:00-17:30',label:'Zamkniecie Londynu',imp:'Sredni'},
+  {time:'20:00-20:30',label:'Zamkniecie COMEX',imp:'Sredni'},
+  {time:'23:00-23:30',label:'Zamkniecie NY',imp:'Niski'},
+];
+
+var WEEK_EVENTS={
+  1:[{time:'14:30',name:'Dane makro USA',desc:'Sprawdz: investing.com/economic-calendar',imp:'high'},
+     {time:'16:00',name:'ISM Manufacturing PMI',desc:'Aktywnosc przemyslowa USA',imp:'medium'}],
+  2:[{time:'14:30',name:'CPI USA - inflacja',desc:'Wyzszy CPI = silny USD = slabsze XAU',imp:'high'}],
+  3:[{time:'14:30',name:'ADP Employment',desc:'Wyprzedza NFP',imp:'medium'},
+     {time:'20:00',name:'Minutki FOMC / decyzja Fed',desc:'OGROMNA zmiennosc XAU',imp:'high'}],
+  4:[{time:'14:30',name:'PPI USA',desc:'Inflacja producencka',imp:'medium'},
+     {time:'14:30',name:'Wnioski o zasil.',desc:'Tygodniowy rynek pracy USA',imp:'medium'}],
+  5:[{time:'14:30',name:'NFP - Non-Farm Payrolls',desc:'NAJWAZNIEJSZY raport. Silny NFP = mocny USD = spadek XAU',imp:'high'},
+     {time:'16:00',name:'Nastroje konsumentow UoM',desc:'Sentyment - dolar',imp:'medium'}],
+};
+
+var ALWAYS=[
+  {time:'Stale',name:'Dolar USD (DXY)',desc:'Silny USD = slabsze zloto.',imp:'high'},
+  {time:'Stale',name:'Geopolityka',desc:'Konflikty, napiecia - wzrost XAU.',imp:'high'},
+  {time:'8x/rok',name:'Decyzje Fed o stopach',desc:'federalreserve.gov/monetarypolicy/fomccalendar.htm',imp:'high'},
+];
+
 function renderWindows(){
   var el=document.getElementById('winList');if(!el)return;
   var now=new Date(),cur=now.getHours()*60+now.getMinutes();
@@ -2295,24 +2330,23 @@ function showToast(msg){var t=document.getElementById('toast');if(t){t.textConte
 function updateClock(){var el=document.getElementById('hdrClock');if(el)el.textContent=new Date().toLocaleTimeString('pl-PL');}
 
 async function loadFearGreed(){
+  // Use alternative.me directly - CNN has CORS restrictions
   try{
-    const res=await fetch('https://production.dataviz.cnn.io/index/fearandgreed/graphdata/previous_close');
+    const res=await fetch('https://api.alternative.me/fng/?limit=1');
     if(!res.ok)throw new Error('HTTP '+res.status);
     const d=await res.json();
-    const score=d.fear_and_greed?.score;
-    const rating=d.fear_and_greed?.rating;
-    if(score==null)throw new Error('No score');
-    extData.fearGreed={score:Math.round(score),rating:rating||'unknown'};
+    if(!d.data||!d.data[0])throw new Error('No data');
+    const val=parseInt(d.data[0].value);
+    const rating=d.data[0].value_classification;
+    extData.fearGreed={score:val,rating:rating,crypto:true};
     renderFearGreed();
   }catch(e){
-    // Fallback - try alternative.me (crypto F&G, correlated)
-    try{
-      const res2=await fetch('https://api.alternative.me/fng/?limit=1');
-      const d2=await res2.json();
-      const val=parseInt(d2.data[0].value);
-      extData.fearGreed={score:val,rating:d2.data[0].value_classification,crypto:true};
-      renderFearGreed();
-    }catch(e2){console.warn('FearGreed failed:',e2.message);}
+    console.warn('FearGreed failed:',e.message);
+    // Show placeholder
+    const el=document.getElementById('fgScore');
+    const lb=document.getElementById('fgLabel');
+    if(el)el.textContent='—';
+    if(lb)lb.textContent='Niedostępne';
   }
 }
 
