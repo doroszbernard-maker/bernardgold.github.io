@@ -551,7 +551,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .hw-label{font-size:8px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
 .hw-vals{display:flex;gap:10px;font-size:9px;font-family:var(--sans);flex-wrap:wrap}
 /* War mode btn */
-#warModeBtn{font-size:9px;padding:2px 8px;border-radius:3px;cursor:pointer;background:rgba(224,69,69,0.15);border:1px solid rgba(224,69,69,0.3);color:var(--red)}
+#warModeBtn{font-size:9px;padding:2px 8px;border-radius:3px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);transition:all .3s}
 /* Master score display */
 .master-score-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;position:relative;margin:4px 0}
 .master-score-fill{height:100%;border-radius:3px;position:absolute;top:0;transition:width .5s,left .5s}
@@ -568,7 +568,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="sess-badge off" id="sNY">NEW YORK</div>
   </div>
   <div class="hdr-right">
-    <button id="warModeBtn" onclick="toggleWarMode()">⚔ Tryb wojenny: ON</button>
+    <button id="warModeBtn">⚔ Tryb wojenny: ON</button>
     <div class="status-badge"><div class="dot" id="dotStatus"></div><span id="lblStatus">ŁADOWANIE</span></div>
     <div class="hdr-clock" id="hdrClock">—</div>
     <button class="hdr-btn" onclick="loadDataEnhanced()">⟳ Odśwież</button>
@@ -2606,14 +2606,24 @@ function pearsonCorr(a,b){
 // ══ WAR MODE TOGGLE ══════════════════════════════════════════════════════════
 function toggleWarMode(){
   WAR_MODE=!WAR_MODE;
-  const btn=document.getElementById('warModeBtn');
-  if(btn){
-    btn.textContent=WAR_MODE?'⚔ Tryb wojenny: ON':'☮ Tryb normalny';
-    btn.style.color=WAR_MODE?'var(--red)':'var(--green)';
+  updateWarModeBtn();
+  var oilCell=document.getElementById('mc_oil');
+  if(oilCell){
+    var desc=oilCell.querySelector('.macro-desc');
+    if(desc)desc.textContent=WAR_MODE?
+      'Droga ropa = odplyw z XAU (tryb wojenny)':
+      'Droga ropa = inflacja = XAU (tryb normalny)';
   }
-  showToast(WAR_MODE?'Tryb wojenny: ropa odwrócona względem XAU':'Tryb normalny: standardowe korelacje');
-  // Reload macro with new settings
+  showToast(WAR_MODE?'Tryb wojenny ON':'Tryb normalny ON');
   loadMacroData();
+}
+function updateWarModeBtn(){
+  var btn=document.getElementById('warModeBtn');
+  if(!btn)return;
+  btn.textContent=WAR_MODE?'\u2694 Tryb wojenny: ON':'\u262e Tryb normalny';
+  btn.style.color=WAR_MODE?'var(--red)':'var(--green)';
+  btn.style.borderColor=WAR_MODE?'rgba(224,69,69,0.5)':'rgba(29,184,122,0.5)';
+  btn.style.background=WAR_MODE?'rgba(224,69,69,0.1)':'rgba(29,184,122,0.1)';
 }
 
 // ══ INIT ═════════════════════════════════════════════════════════════════════
@@ -2658,7 +2668,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // War mode button
   var wm=document.getElementById('warModeBtn');
-  if(wm)wm.addEventListener('click',toggleWarMode);
+  if(wm){wm.addEventListener('click',toggleWarMode);updateWarModeBtn();}
 
   // Init clocks and sessions
   updateClock();
