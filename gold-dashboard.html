@@ -594,7 +594,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="ohlc-cell"><div class="ohlc-l">High dziś</div><div class="ohlc-v" id="oH">—</div></div>
     <div class="ohlc-cell"><div class="ohlc-l">Low dziś</div><div class="ohlc-v" id="oL">—</div></div>
     <div class="ohlc-cell"><div class="ohlc-l">Poprz. zamkn.</div><div class="ohlc-v" id="oPrev">—</div></div>
-    <div class="ohlc-cell"><div class="ohlc-l">Wolumen</div><div class="ohlc-v" id="oVol">—</div></div>
+    <div class="ohlc-cell"><div class="ohlc-l">Zakres dzienny</div><div class="ohlc-v" id="oVol">—</div></div>
   </div>
 </div>
 
@@ -621,7 +621,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <div class="sltp-box">
     <div class="sltp-row"><div class="sltp-label">Take Profit (lok. High 8h)</div><div class="sltp-val tp" id="sltpTP">—</div></div>
     <div class="sltp-row"><div class="sltp-label">Stop Loss (lok. Low 8h)</div><div class="sltp-val sl" id="sltpSL">—</div></div>
-    <div class="sltp-row"><div class="sltp-label">Zasięg ruchu (pkt)</div><div class="sltp-val usd" id="sltpRange">—</div></div>
+    <div class="sltp-row"><div class="sltp-label">Zasięg TP / R:R</div><div class="sltp-val usd" id="sltpRange">—</div></div>
+    <div style="font-size:8px;padding:3px 6px;background:var(--bg3);border-radius:3px;color:var(--text3);margin-bottom:4px" id="sltpRR">Analiza swing struktury...</div>
     <div class="sltp-divider"></div>
     <div class="sltp-calc">
       <div class="sltp-calc-cell"><div class="sltp-calc-l">0.005 lota</div><div class="sltp-calc-v" id="calcSmall">—</div></div>
@@ -1142,6 +1143,13 @@ var marketRegime={
 };
 
 function detectMarketRegime(candles15, candles5, atr15, atrDay){
+  if(!candles15||candles15.length<30){
+    marketRegime={mode:'ranging',signalTF:'15min',filterBars:2,
+      tpPts:20,slPts:10,adx:null,bbWidth:null,atrRatio:null,
+      desc:'Za mało danych — tryb domyślny'};
+    renderRegimePanel();
+    return marketRegime;
+  }
   const c15=candles15.map(c=>c.c);
   const h15=candles15.map(c=>c.h);
   const l15=candles15.map(c=>c.l);
@@ -1218,6 +1226,10 @@ function renderRegimePanel(){
   const el=document.getElementById('regimeDisplay');
   if(!el)return;
   const r=marketRegime;
+  if(!r||!r.mode){
+    el.innerHTML='<div style="font-size:9px;color:var(--text3)">Wykrywanie ADX + BB Width...</div>';
+    return;
+  }
   const col=r.mode==='trending'?'var(--green)':r.mode==='ranging'?'var(--amber)':'var(--text3)';
   const icon=r.mode==='trending'?'📈':r.mode==='ranging'?'↔':'❓';
   el.innerHTML=
@@ -1645,7 +1657,10 @@ async function loadDataEnhanced(){
     const lastDay=candlesDay[candlesDay.length-1];
     const prevDay=candlesDay[candlesDay.length-2];
     if(oPrev)oPrev.textContent=fmt(prevDay?.c||lastDay.c);
-    if(oVol)oVol.textContent=fmtVol(lastDay.v);
+    if(oVol){
+      const dayRange=(lastDay.h-lastDay.l).toFixed(1);
+      oVol.textContent=dayRange+' pkt';
+    }
   }
 
   // Render signals
@@ -1672,23 +1687,35 @@ async function loadDataEnhanced(){
   // Price levels
   const levels=calcPriceLevels(candles15,candlesDay);
   if(levels){
-    // Adaptive SL/TP based on regime
-    if(marketRegime.mode==='ranging'&&marketRegime.tpPts){
-      const sigType=(marketSnapshot.sigShort||{type:'wait'}).type;
-      const tp=sigType==='buy'?cur+marketRegime.tpPts:cur-marketRegime.tpPts;
-      const sl=sigType==='buy'?cur-marketRegime.slPts:cur+marketRegime.slPts;
-      // Override levels with regime-based values
-      if(sigType!=='wait'){
+    // Analytical SL/TP based on swing structure
+    const sigType=(marketSnapshot.sigShort||{type:'wait'}).type;
+    if(sigType!=='wait'){
+      const isLong=sigType==='buy';
+      // Use 5min candles for ranging (more granular swings), 15min for trending
+      const sltp=calcAnalyticalSLTP(
+        marketRegime.mode==='ranging'&&candles5.length>30?candles5:candles15,
+        cur,isLong,atr15
+      );
+      if(sltp){
         const tpEl=document.getElementById('sltpTP');
         const slEl=document.getElementById('sltpSL');
         const rangeEl=document.getElementById('sltpRange');
-        if(tpEl)tpEl.textContent=fmt(tp);
-        if(slEl)slEl.textContent=fmt(sl);
-        if(rangeEl)rangeEl.textContent=marketRegime.tpPts+' pkt ('+marketRegime.mode+')';
         const calcS=document.getElementById('calcSmall');
         const calcL=document.getElementById('calcLarge');
-        if(calcS)calcS.textContent='$'+(marketRegime.tpPts*0.5).toFixed(2);
-        if(calcL)calcL.textContent='$'+(marketRegime.tpPts*1.0).toFixed(2);
+        const rrEl=document.getElementById('sltpRR');
+        if(tpEl){tpEl.textContent=fmt(sltp.tp);tpEl.style.color=isLong?'var(--green)':'var(--red)';}
+        if(slEl){slEl.textContent=fmt(sltp.sl);slEl.style.color=isLong?'var(--red)':'var(--green)';}
+        if(rangeEl)rangeEl.textContent=sltp.tpPts.toFixed(1)+' pkt (R:R = '+sltp.rr+':1)';
+        if(calcS)calcS.textContent='$'+(sltp.tpPts*0.5).toFixed(2);
+        if(calcL)calcL.textContent='$'+(sltp.tpPts*1.0).toFixed(2);
+        if(rrEl){
+          rrEl.textContent='R:R '+sltp.rr+':1 · TP: '+sltp.tpDesc+' · SL: '+sltp.slDesc;
+          rrEl.style.color=parseFloat(sltp.rr)>=1.5?'var(--green)':'var(--amber)';
+        }
+        // Store for AI context
+        marketSnapshot.analyticalTP=sltp.tp;
+        marketSnapshot.analyticalSL=sltp.sl;
+        marketSnapshot.rr=sltp.rr;
       }
     }
     renderPriceLevels(levels,cur,atr15);
@@ -2992,6 +3019,100 @@ function updateWarModeBtn(){
 }
 
 // ══ INIT ═════════════════════════════════════════════════════════════════════
+
+// ══ ANALYTICAL SL/TP ═════════════════════════════════════════════════════════
+// Calculates TP and SL based on real market structure
+function calcAnalyticalSLTP(candles, cur, isLong, atr){
+  if(!candles||candles.length<20)return null;
+  const closes=candles.map(c=>c.c);
+  const highs=candles.map(c=>c.h);
+  const lows=candles.map(c=>c.l);
+  const atrVal=atr||20;
+  const n=closes.length;
+
+  // Find swing highs and lows (local extremes)
+  const swingH=[],swingL=[];
+  const period=3; // look 3 bars each side
+  for(let i=period;i<n-period;i++){
+    let isH=true,isL=true;
+    for(let j=i-period;j<=i+period;j++){
+      if(j===i)continue;
+      if(highs[j]>=highs[i])isH=false;
+      if(lows[j]<=lows[i])isL=false;
+    }
+    if(isH)swingH.push({price:highs[i],idx:i});
+    if(isL)swingL.push({price:lows[i],idx:i});
+  }
+
+  let tp=null,sl=null,tpDesc='',slDesc='';
+  const minTPpts=atrVal*0.8;  // TP must be at least 0.8×ATR away
+  const minSLpts=atrVal*0.4;  // SL must be at least 0.4×ATR away
+
+  if(isLong){
+    // TP: nearest swing HIGH above current price (at least minTPpts away)
+    const candidatesTP=swingH
+      .filter(s=>s.price>cur+minTPpts)
+      .sort((a,b)=>a.price-b.price); // closest first
+    if(candidatesTP.length){
+      tp=candidatesTP[0].price;
+      tpDesc='Swing High '+fmt(tp);
+    } else {
+      // No swing high above - use ATR extension
+      tp=cur+atrVal*1.5;
+      tpDesc='ATR×1.5 (brak swing H)';
+    }
+
+    // SL: last swing LOW below current price (most recent)
+    const candidatesSL=swingL
+      .filter(s=>s.price<cur-minSLpts)
+      .sort((a,b)=>b.idx-a.idx); // most recent first
+    if(candidatesSL.length){
+      sl=candidatesSL[0].price-atrVal*0.1; // small buffer below swing low
+      slDesc='Swing Low '+fmt(sl);
+    } else {
+      sl=cur-atrVal*0.8;
+      slDesc='ATR×0.8 (brak swing L)';
+    }
+  } else {
+    // SHORT
+    // TP: nearest swing LOW below current price
+    const candidatesTP=swingL
+      .filter(s=>s.price<cur-minTPpts)
+      .sort((a,b)=>b.price-a.price); // closest first (highest of those below)
+    if(candidatesTP.length){
+      tp=candidatesTP[0].price;
+      tpDesc='Swing Low '+fmt(tp);
+    } else {
+      tp=cur-atrVal*1.5;
+      tpDesc='ATR×1.5 (brak swing L)';
+    }
+
+    // SL: last swing HIGH above current price
+    const candidatesSL=swingH
+      .filter(s=>s.price>cur+minSLpts)
+      .sort((a,b)=>b.idx-a.idx); // most recent first
+    if(candidatesSL.length){
+      sl=candidatesSL[0].price+atrVal*0.1; // small buffer above swing high
+      slDesc='Swing High '+fmt(sl);
+    } else {
+      sl=cur+atrVal*0.8;
+      slDesc='ATR×0.8 (brak swing H)';
+    }
+  }
+
+  // Safety checks
+  if(isLong&&tp<=cur)tp=cur+atrVal*1.5;
+  if(!isLong&&tp>=cur)tp=cur-atrVal*1.5;
+  if(isLong&&sl>=cur)sl=cur-atrVal*0.8;
+  if(!isLong&&sl<=cur)sl=cur+atrVal*0.8;
+
+  const tpPts=Math.abs(tp-cur);
+  const slPts=Math.abs(sl-cur);
+  const rr=(tpPts/slPts).toFixed(1); // risk/reward ratio
+
+  return{tp,sl,tpPts,slPts,tpDesc,slDesc,rr};
+}
+
 function initDashboard(){
   // Load all data
   loadDataEnhanced();
