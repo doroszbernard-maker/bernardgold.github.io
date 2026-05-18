@@ -1366,36 +1366,104 @@ function applyStabilityFilter(newSig, tfLabel, requiredBars){
   return h[tfLabel].sig;
 }
 
-function calcDecisions(closes,rsi,macd,bb,e20,e50,atr){
+function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect){
   const n=closes.length-1;
   const rv=rsi[n]||50,cur=closes[n];
   const em20=e20[n],em50=e50?e50[n]:null;
-  const mh=macd.hist[n]||0,ml=macd.line[n]||0,ms=macd.signal[n]||0;
+  const mh=macd.hist[n]||0;
   const bv=bb[n];
-  const atrVal=atr||20;
-  let score=masterScore; // use master score
+  const isRanging=marketRegime&&marketRegime.mode==='ranging';
 
-  // Open Long
-  const oLok=score>=3&&rv<60&&em20>em50;
-  const oL=oLok?'✅ OTWÓRZ LONG':'🔴 NIE OTWIERAJ LONG';
-  const oLr=oLok?'Score '+score+', RSI '+rv?.toFixed(1)+', trend wzrostowy':'Score '+score+' za słaby lub warunki niespełnione';
+  // Use RAW signal score (not masterScore) in ranging mode
+  // masterScore weights 4 TFs - too diluted for scalping
+  // In ranging: use sigShort score directly (5min signal)
+  // In trending: use masterScore
+  const rawScore=isRanging?
+    (sigShortDirect?sigShortDirect.score:masterScore):
+    masterScore;
 
-  // Open Short
-  const oSok=score<=-3&&rv>40&&em20<em50;
-  const oS=oSok?'✅ OTWÓRZ SHORT':'🔴 NIE OTWIERAJ SHORT';
-  const oSr=oSok?'Score '+score+', RSI '+rv?.toFixed(1)+', trend spadkowy':'Score '+score+' za słaby lub warunki niespełnione';
+  // Adaptive thresholds based on regime
+  const openThresh=isRanging?2:3;  // easier to open in ranging (scalping)
+  const closeThresh=isRanging?1:2; // easier to close too
 
-  // Close Long
-  const cLwarn=score<=-2||(rv>65)|| (bv&&cur>=bv.upper);
-  const cL=cLwarn?'🔴 ZAMKNIJ LONG':'🟡 MONITORUJ';
-  const cLr=cLwarn?'Momentum słabnie — '+(rv>65?'RSI wykupiony':score<=-2?'sygnał odwrócony':'cena przy górnym BB'):'Trend neutralny — pilnuj SL';
+  // Additional confirmation for ranging - use BB position and RSI
+  // In ranging, EMA cross is not reliable (sideways EMA)
+  // Instead use: RSI + MACD hist + BB position
+  const bbBull=bv&&cur<=bv.mid;   // below midline = potential bounce up
+  const bbBear=bv&&cur>=bv.mid;   // above midline = potential bounce down
+  const rsiBull=rv<55;             // not overbought
+  const rsiBear=rv>45;             // not oversold
+  const macdBull=mh>=0;
+  const macdBear=mh<=0;
 
-  // Close Short
-  const cSwarn=score>=2||(rv<35)||(bv&&cur<=bv.lower);
-  const cS=cSwarn?'🔴 ZAMKNIJ SHORT':'🟡 MONITORUJ';
-  const cSr=cSwarn?'Momentum słabnie — '+(rv<35?'RSI wyprzedany':score>=2?'sygnał odwrócony':'cena przy dolnym BB'):'Trend neutralny — pilnuj SL';
+  let oL,oLr,oS,oSr,cL,cLr,cS,cSr;
 
-  return{oL,oLr,oS,oSr,cL,cLr,cS,cSr,score};
+  if(isRanging){
+    // RANGING MODE - decisions based on 5min signal + RSI + BB
+    const oLok=rawScore>=openThresh&&rsiBull&&bbBull;
+    oL=oLok?'✅ OTWÓRZ LONG':'🔴 NIE OTWIERAJ LONG';
+    oLr=oLok?
+      'Score 5M: '+rawScore+' · RSI: '+rv.toFixed(0)+' · poniżej BB mid':
+      'Score 5M: '+rawScore+' (próg: '+openThresh+') · RSI: '+rv.toFixed(0);
+
+    const oSok=rawScore<=-openThresh&&rsiBear&&bbBear;
+    oS=oSok?'✅ OTWÓRZ SHORT':'🔴 NIE OTWIERAJ SHORT';
+    oSr=oSok?
+      'Score 5M: '+rawScore+' · RSI: '+rv.toFixed(0)+' · powyżej BB mid':
+      'Score 5M: '+rawScore+' (próg: -'+openThresh+') · RSI: '+rv.toFixed(0);
+
+    // Close: when signal reverses or RSI at extreme
+    const cLwarn=rawScore<=-closeThresh||(rv>62)||(bv&&cur>=bv.upper*0.998);
+    cL=cLwarn?'🔴 ZAMKNIJ LONG':'🟡 MONITORUJ';
+    cLr=cLwarn?
+      (rv>62?'RSI: '+rv.toFixed(0)+' — zbliża się wykupienie':
+       rawScore<=-closeThresh?'Sygnał 5M odwrócony ('+rawScore+')':
+       'Cena przy górnym BB — potencjalny szczyt'):
+      'Trzymaj — trend neutralny, pilnuj SL';
+
+    const cSwarn=rawScore>=closeThresh||(rv<38)||(bv&&cur<=bv.lower*1.002);
+    cS=cSwarn?'🔴 ZAMKNIJ SHORT':'🟡 MONITORUJ';
+    cSr=cSwarn?
+      (rv<38?'RSI: '+rv.toFixed(0)+' — zbliża się wyprzedanie':
+       rawScore>=closeThresh?'Sygnał 5M odwrócony ('+rawScore+')':
+       'Cena przy dolnym BB — potencjalne dno'):
+      'Trzymaj — trend neutralny, pilnuj SL';
+
+  } else {
+    // TRENDING MODE - use masterScore + EMA confirmation
+    const trendUp=em20&&em50&&em20>em50;
+    const trendDown=em20&&em50&&em20<em50;
+
+    const oLok=rawScore>=openThresh&&rv<62&&trendUp;
+    oL=oLok?'✅ OTWÓRZ LONG':'🔴 NIE OTWIERAJ LONG';
+    oLr=oLok?
+      'Score: '+rawScore+' · RSI: '+rv.toFixed(0)+' · EMA wzrostowa':
+      'Score: '+rawScore+' (próg: '+openThresh+') · '+(trendUp?'':'EMA bez trendu · ')+'RSI: '+rv.toFixed(0);
+
+    const oSok=rawScore<=-openThresh&&rv>38&&trendDown;
+    oS=oSok?'✅ OTWÓRZ SHORT':'🔴 NIE OTWIERAJ SHORT';
+    oSr=oSok?
+      'Score: '+rawScore+' · RSI: '+rv.toFixed(0)+' · EMA spadkowa':
+      'Score: '+rawScore+' (próg: -'+openThresh+') · '+(trendDown?'':'EMA bez trendu · ')+'RSI: '+rv.toFixed(0);
+
+    const cLwarn=rawScore<=-closeThresh||(rv>65)||(bv&&cur>=bv.upper);
+    cL=cLwarn?'🔴 ZAMKNIJ LONG':'🟡 MONITORUJ';
+    cLr=cLwarn?
+      (rv>65?'RSI wykupiony ('+rv.toFixed(0)+')':
+       rawScore<=-closeThresh?'Sygnał odwrócony ('+rawScore+')':
+       'Cena przy górnym BB'):
+      'Trend aktywny — pilnuj SL';
+
+    const cSwarn=rawScore>=closeThresh||(rv<35)||(bv&&cur<=bv.lower);
+    cS=cSwarn?'🔴 ZAMKNIJ SHORT':'🟡 MONITORUJ';
+    cSr=cSwarn?
+      (rv<35?'RSI wyprzedany ('+rv.toFixed(0)+')':
+       rawScore>=closeThresh?'Sygnał odwrócony ('+rawScore+')':
+       'Cena przy dolnym BB'):
+      'Trend aktywny — pilnuj SL';
+  }
+
+  return{oL,oLr,oS,oSr,cL,cLr,cS,cSr,score:rawScore,isRanging};
 }
 
 // ══ DATA FETCHING ═════════════════════════════════════════════════════════════
@@ -1668,7 +1736,7 @@ async function loadDataEnhanced(){
   };
 
   // Decisions using master score
-  const dec=calcDecisions(c15,rsi15,macd15,bb15,e20_15,e50_15,atr15);
+  const dec=calcDecisions(c15,rsi15,macd15,bb15,e20_15,e50_15,atr15,sigShortFinal||sigShort);
 
   // Update price display
   const chg=cur-prev,pct=chg/prev*100;
