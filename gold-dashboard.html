@@ -600,6 +600,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 <div class="sec">
   <div class="sec-title">Tryb rynkowy (auto-detekcja)</div>
+  <div style="display:flex;gap:4px;margin-bottom:6px">
+    <button id="regimeBtnAuto" onclick="setRegimeOverride(null)"
+      style="flex:1;font-size:8px;padding:3px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--gold2);color:#000;font-family:var(--mono)">
+      AUTO
+    </button>
+    <button id="regimeBtnRanging" onclick="setRegimeOverride('ranging')"
+      style="flex:1;font-size:8px;padding:3px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-family:var(--mono)">
+      ↔ BOCZNY
+    </button>
+    <button id="regimeBtnTrending" onclick="setRegimeOverride('trending')"
+      style="flex:1;font-size:8px;padding:3px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-family:var(--mono)">
+      📈 TREND
+    </button>
+  </div>
   <div id="regimeDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px;margin-bottom:5px">
     <div style="font-size:9px;color:var(--text3)">Wykrywanie...</div>
   </div>
@@ -990,6 +1004,7 @@ let marketSnapshot={};
 let candles5=[], candles15=[], candles60=[], candles240=[], candlesDay=[];
 // War mode toggle
 let WAR_MODE=true;
+var REGIME_OVERRIDE=null;
 // Signal stability filter - last N confirmed signals
 let lastConfirmedSignal={type:'wait',score:0,bars:0};
 // Master score (shared across all panels)
@@ -1073,8 +1088,8 @@ function calcSwingPoints(closes,period=5){
 // Detects: TRENDING, RANGING (sideways), VOLATILE
 
 function calcADX(highs, lows, closes, period=14){
-  // Average Directional Index - measures trend strength regardless of direction
-  if(closes.length < period*2) return null;
+  // ADX with correct Wilder smoothing
+  if(closes.length < period*3) return null;
   const n=closes.length;
   const dmPlus=[], dmMinus=[], tr=[];
   for(let i=1;i<n;i++){
@@ -1086,30 +1101,37 @@ function calcADX(highs, lows, closes, period=14){
       Math.abs(highs[i]-closes[i-1]),
       Math.abs(lows[i]-closes[i-1])));
   }
-  // Smooth with Wilder's method
+  // Correct Wilder smoothing: first value = sum/period (average), then roll
   function wilderSmooth(arr, p){
-    let sum=arr.slice(0,p).reduce((a,b)=>a+b,0);
-    const res=[sum];
+    if(arr.length<p) return [];
+    let val=arr.slice(0,p).reduce((a,b)=>a+b,0)/p; // average, not sum
+    const res=new Array(p-1).fill(null);
+    res.push(val);
     for(let i=p;i<arr.length;i++){
-      sum=sum-sum/p+arr[i];
-      res.push(sum);
+      val=val-(val/p)+arr[i];
+      res.push(val);
     }
     return res;
   }
-  const strTR=wilderSmooth(tr,period);
-  const strDMp=wilderSmooth(dmPlus,period);
-  const strDMm=wilderSmooth(dmMinus,period);
-  const diPlus=strDMp.map((v,i)=>strTR[i]?100*v/strTR[i]:0);
-  const diMinus=strDMm.map((v,i)=>strTR[i]?100*v/strTR[i]:0);
-  const dx=diPlus.map((v,i)=>{
-    const sum=v+diMinus[i];
-    return sum?100*Math.abs(v-diMinus[i])/sum:0;
-  });
-  const adxArr=wilderSmooth(dx,period);
+  const sTR=wilderSmooth(tr,period);
+  const sDMp=wilderSmooth(dmPlus,period);
+  const sDMm=wilderSmooth(dmMinus,period);
+  const diPlus=[], diMinus=[], dx=[];
+  for(let i=0;i<sTR.length;i++){
+    if(sTR[i]==null){diPlus.push(null);diMinus.push(null);dx.push(null);continue;}
+    const dp=sTR[i]?100*sDMp[i]/sTR[i]:0;
+    const dm=sTR[i]?100*sDMm[i]/sTR[i]:0;
+    diPlus.push(dp); diMinus.push(dm);
+    const s=dp+dm;
+    dx.push(s?100*Math.abs(dp-dm)/s:0);
+  }
+  // ADX = Wilder smooth of DX
+  const validDX=dx.filter(v=>v!=null);
+  const adxArr=wilderSmooth(validDX,period);
   return{
-    adx:adxArr[adxArr.length-1],
-    diPlus:diPlus[diPlus.length-1],
-    diMinus:diMinus[diMinus.length-1]
+    adx:adxArr[adxArr.length-1]||0,
+    diPlus:diPlus[diPlus.length-1]||0,
+    diMinus:diMinus[diMinus.length-1]||0
   };
 }
 
@@ -1142,6 +1164,23 @@ function detectMarketRegime(candles15, candles5, atr15, atrDay){
     marketRegime={mode:'ranging',signalTF:'15min',filterBars:2,
       tpPts:20,slPts:10,adx:null,bbWidth:null,atrRatio:null,
       desc:'Za mało danych — tryb domyślny'};
+    renderRegimePanel();
+    return marketRegime;
+  }
+  // Manual override - user forced a regime
+  if(REGIME_OVERRIDE){
+    const forced=REGIME_OVERRIDE;
+    const isTrend=forced==='trending';
+    marketRegime={
+      mode:forced,
+      adx:null,bbWidth:null,atrRatio:null,
+      signalTF:isTrend?'15min':'5min',
+      filterBars:isTrend?2:1,
+      tpPts:isTrend?Math.round((atr15||20)*2):20,
+      slPts:isTrend?Math.round((atr15||20)*0.8):10,
+      desc:(isTrend?'TREND':'BOCZNY')+' · RĘCZNY OVERRIDE · TF: '+(isTrend?'15min':'5min'),
+      override:true
+    };
     renderRegimePanel();
     return marketRegime;
   }
@@ -1227,9 +1266,10 @@ function renderRegimePanel(){
   }
   const col=r.mode==='trending'?'var(--green)':r.mode==='ranging'?'var(--amber)':'var(--text3)';
   const icon=r.mode==='trending'?'📈':r.mode==='ranging'?'↔':'❓';
+  const overrideTag=r.override?' <span style="font-size:7px;background:var(--amber-bg);color:var(--amber);padding:1px 4px;border-radius:2px">RĘCZNIE</span>':'';
   el.innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
-    '<span style="font-size:10px;font-weight:700;color:'+col+'">'+icon+' '+r.mode.toUpperCase()+'</span>'+
+    '<span style="font-size:10px;font-weight:700;color:'+col+'">'+icon+' '+r.mode.toUpperCase()+overrideTag+'</span>'+
     '<span style="font-size:9px;color:var(--text3)">ADX: '+(r.adx?r.adx.toFixed(0):'—')+'</span>'+
     '</div>'+
     '<div style="font-size:9px;color:var(--text3);line-height:1.5">'+r.desc+'</div>'+
@@ -2718,24 +2758,35 @@ function showToast(msg){var t=document.getElementById('toast');if(t){t.textConte
 function updateClock(){var el=document.getElementById('hdrClock');if(el)el.textContent=new Date().toLocaleTimeString('pl-PL');}
 
 async function loadFearGreed(){
-  // Use alternative.me directly - CNN has CORS restrictions
-  try{
-    const res=await fetch('https://api.alternative.me/fng/?limit=1');
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const d=await res.json();
-    if(!d.data||!d.data[0])throw new Error('No data');
-    const val=parseInt(d.data[0].value);
-    const rating=d.data[0].value_classification;
-    extData.fearGreed={score:val,rating:rating,crypto:true};
-    renderFearGreed();
-  }catch(e){
-    console.warn('FearGreed failed:',e.message);
-    // Show placeholder
-    const el=document.getElementById('fgScore');
-    const lb=document.getElementById('fgLabel');
-    if(el)el.textContent='—';
-    if(lb)lb.textContent='Niedostępne';
+  const TARGET='https://api.alternative.me/fng/?limit=1';
+  // Multiple CORS proxies as fallback chain
+  const proxies=[
+    'https://corsproxy.io/?url='+encodeURIComponent(TARGET),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(TARGET),
+    'https://proxy.cors.sh/'+TARGET,
+    TARGET, // direct last (may work from some hosts)
+  ];
+  for(const url of proxies){
+    try{
+      const res=await fetch(url,{headers:{'x-requested-with':'XMLHttpRequest'}});
+      if(!res.ok)continue;
+      const text=await res.text();
+      const d=JSON.parse(text);
+      if(!d.data||!d.data[0])continue;
+      const val=parseInt(d.data[0].value);
+      const rating=d.data[0].value_classification;
+      extData.fearGreed={score:val,rating:rating,crypto:true};
+      renderFearGreed();
+      return;
+    }catch(e){
+      // Try next proxy silently
+    }
   }
+  // All failed - show manual link
+  const lb=document.getElementById('fgLabel');
+  const desc=document.getElementById('fgDesc');
+  if(lb)lb.textContent='Niedostępne';
+  if(desc)desc.innerHTML='Sprawdź ręcznie: <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" style="color:var(--gold2)">alternative.me</a>';
 }
 
 function renderFearGreed(){
@@ -3109,6 +3160,37 @@ function calcAnalyticalSLTP(candles, cur, isLong, atr){
   return{tp,sl,tpPts,slPts,tpDesc,slDesc,rr};
 }
 
+
+// ══ REGIME OVERRIDE TOGGLE ═══════════════════════════════════════════════════
+function setRegimeOverride(mode){
+  REGIME_OVERRIDE=mode; // null, 'ranging', or 'trending'
+  updateRegimeBtn();
+  // Re-run detection with override
+  if(candles15.length>0){
+    const h15=candles15.map(c=>c.h),l15=candles15.map(c=>c.l),c15=candles15.map(c=>c.c);
+    const atr15=calcATR(c15,h15,l15,14);
+    const cDay=candlesDay.map(c=>c.c),hDay=candlesDay.map(c=>c.h),lDay=candlesDay.map(c=>c.l);
+    const atrDay=cDay.length?calcATR(cDay,hDay,lDay,14):atr15;
+    detectMarketRegime(candles15,candles5,atr15,atrDay);
+  }
+  showToast(mode?'Tryb '+mode.toUpperCase()+' (ręcznie)':'Tryb AUTO-wykrywanie');
+}
+
+function updateRegimeBtn(){
+  const btns={
+    auto:document.getElementById('regimeBtnAuto'),
+    ranging:document.getElementById('regimeBtnRanging'),
+    trending:document.getElementById('regimeBtnTrending'),
+  };
+  Object.entries(btns).forEach(([k,btn])=>{
+    if(!btn)return;
+    const active=(REGIME_OVERRIDE===null&&k==='auto')||(REGIME_OVERRIDE===k);
+    btn.style.background=active?'var(--gold2)':'var(--bg3)';
+    btn.style.color=active?'#000':'var(--text3)';
+    btn.style.borderColor=active?'var(--gold2)':'var(--border)';
+  });
+}
+
 function initDashboard(){
   // Load all data
   loadDataEnhanced();
@@ -3157,6 +3239,7 @@ document.addEventListener('DOMContentLoaded', function(){
   updateSessions();
   renderWindows();
   renderEvents();
+  updateRegimeBtn();
 
   // Load API keys and start
   var ok=loadApiKeys();
