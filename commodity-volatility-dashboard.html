@@ -258,6 +258,22 @@
   .tag-season { background: rgba(77,166,255,0.08); color: var(--blue); }
   .tag-hot { background: rgba(255,68,85,0.08); color: var(--red); }
   .tag-catalyst { background: rgba(255,209,102,0.1); color: var(--yellow); }
+  /* XTB STATUS ROW */
+  .xtb-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg2);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: var(--r);
+    padding: 10px 14px;
+    margin-bottom: 12px;
+  }
+  .xtb-icon { font-size: 18px; flex-shrink: 0; }
+  .xtb-label { font-size: 8px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  .xtb-symbol { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--green); letter-spacing: 1px; }
+  .xtb-symbol.unavailable { color: var(--red); font-size: 13px; font-weight: 700; }
+  .xtb-note { font-size: 10px; color: var(--text2); line-height: 1.5; }
 
   /* RIGHT PANEL - detail */
   .right-panel {
@@ -745,6 +761,7 @@ const COMMODITIES = [
   // ── SPOŻYWKA ──────────────────────────────────────
   {
     id: 'potato',
+    xtb: null, xtbNote: 'Niedostępny – niszowy kontrakt EEX, delistowany 5 czerwca',
     name: 'Ziemniak', icon: '🥔', ticker: 'FAPP / EEX',
     category: 'food',
     prob: 78, direction: 'up', horizon: '1-2 tygodnie',
@@ -783,6 +800,7 @@ const COMMODITIES = [
   },
   {
     id: 'cocoa',
+    xtb: 'COCOA', xtbNote: 'Dostępny jako CFD – szukaj COCOA w xStation',
     name: 'Kakao', icon: '🍫', ticker: 'CC / ICE',
     category: 'food',
     prob: 71, direction: 'up', horizon: '2-4 tygodnie',
@@ -818,6 +836,7 @@ const COMMODITIES = [
   },
   {
     id: 'coffee',
+    xtb: 'COFFEE', xtbNote: 'Dostępny jako CFD – szukaj COFFEE w xStation',
     name: 'Kawa Arabika', icon: '☕', ticker: 'KC / ICE',
     category: 'food',
     prob: 62, direction: 'up', horizon: '2-6 tygodni',
@@ -853,6 +872,7 @@ const COMMODITIES = [
   },
   {
     id: 'ojuice',
+    xtb: null, xtbNote: 'Niedostępny na XTB – zbyt niszowy instrument (FCOJ)',
     name: 'Sok pomarańczowy', icon: '🍊', ticker: 'OJ / ICE',
     category: 'food',
     prob: 58, direction: 'down', horizon: '4-8 tygodni',
@@ -885,6 +905,7 @@ const COMMODITIES = [
   },
   {
     id: 'sugar',
+    xtb: 'SUGAR', xtbNote: 'Dostępny jako CFD – szukaj SUGAR w xStation',
     name: 'Cukier', icon: '🍬', ticker: 'SB / ICE',
     category: 'food',
     prob: 65, direction: 'up', horizon: '3-6 tygodni',
@@ -918,6 +939,7 @@ const COMMODITIES = [
   },
   {
     id: 'wheat',
+    xtb: 'WHEAT', xtbNote: 'Dostępny jako CFD – szukaj WHEAT w xStation',
     name: 'Pszenica', icon: '🌾', ticker: 'ZW / CBOT',
     category: 'food',
     prob: 72, direction: 'up', horizon: '2-4 tygodnie',
@@ -953,6 +975,7 @@ const COMMODITIES = [
   },
   {
     id: 'corn',
+    xtb: 'CORN', xtbNote: 'Dostępny jako CFD – szukaj CORN w xStation',
     name: 'Kukurydza', icon: '🌽', ticker: 'ZC / CBOT',
     category: 'food',
     prob: 55, direction: 'mixed', horizon: '4-8 tygodni',
@@ -987,6 +1010,7 @@ const COMMODITIES = [
   // ── ENERGIA ──────────────────────────────────────
   {
     id: 'natgas',
+    xtb: 'NATGAS', xtbNote: 'Dostępny jako CFD – szukaj NATGAS w xStation (Henry Hub / NYMEX)',
     name: 'Gaz ziemny', icon: '🔥', ticker: 'NG / NYMEX',
     category: 'energy',
     prob: 76, direction: 'up', horizon: '4-8 tygodni',
@@ -1020,6 +1044,7 @@ const COMMODITIES = [
   },
   {
     id: 'oilbrent',
+    xtb: 'OIL', xtbNote: 'Dostępny jako CFD – szukaj OIL (WTI) lub BRENT w xStation',
     name: 'Ropa Brent', icon: '🛢️', ticker: 'BZ / ICE',
     category: 'energy',
     prob: 69, direction: 'up', horizon: '2-4 tygodnie',
@@ -1054,6 +1079,7 @@ const COMMODITIES = [
   // ── METALE ──────────────────────────────────────
   {
     id: 'copper',
+    xtb: 'COPPER', xtbNote: 'Dostępny jako CFD – szukaj COPPER w xStation',
     name: 'Miedź', icon: '🪙', ticker: 'HG / COMEX',
     category: 'metals',
     prob: 74, direction: 'up', horizon: '2-6 tygodni',
@@ -1087,6 +1113,7 @@ const COMMODITIES = [
   },
   {
     id: 'gold',
+    xtb: 'GOLD', xtbNote: 'Dostępny jako CFD – szukaj GOLD w xStation',
     name: 'Złoto', icon: '✨', ticker: 'GC / COMEX',
     category: 'metals',
     prob: 60, direction: 'mixed', horizon: '2-4 tygodnie',
@@ -1120,6 +1147,7 @@ const COMMODITIES = [
   },
   {
     id: 'lean_hog',
+    xtb: 'LEANHOGS', xtbNote: 'Dostępny jako CFD – szukaj LEANHOGS w xStation',
     name: 'Wieprzowina', icon: '🐷', ticker: 'HE / CME',
     category: 'food',
     prob: 66, direction: 'down', horizon: '2-4 tygodnie',
@@ -1276,12 +1304,32 @@ function renderDetail(c) {
       <div class="factor-text">${f.text}</div>
     </li>`).join('');
 
-  panel.innerHTML = `
+  // XTB status row
+  const xtbHtml = c.xtb
+    ? `<div class="xtb-row">
+        <div class="xtb-icon">📊</div>
+        <div style="flex:1">
+          <div class="xtb-label">Symbol XTB · xStation</div>
+          <div class="xtb-symbol">${c.xtb}</div>
+        </div>
+        <div class="xtb-note" style="max-width:320px">${c.xtbNote}</div>
+      </div>`
+    : `<div class="xtb-row" style="border-color:rgba(255,68,85,0.2)">
+        <div class="xtb-icon">🚫</div>
+        <div style="flex:1">
+          <div class="xtb-label">XTB · xStation</div>
+          <div class="xtb-symbol unavailable">NIEDOSTĘPNY</div>
+        </div>
+        <div class="xtb-note" style="max-width:320px;color:var(--text3)">${c.xtbNote}</div>
+      </div>`;
+
+    panel.innerHTML = `
     <div class="alert-banner" ${c.heat !== 'hot' ? 'style="display:none"' : ''}>
       <div class="alert-icon">🔥</div>
       <div class="alert-text"><strong>GORĄCY SYGNAŁ</strong>: ${c.name} wykazuje podwyższoną szansę na znaczący ruch. Aktualna zmiana: ${c.lastMove}</div>
     </div>
 
+    ${xtbHtml}
     <div class="detail-header">
       <div class="detail-title">
         <div class="detail-icon">${c.icon}</div>
@@ -1454,7 +1502,7 @@ Odpowiedź po polsku, max 250 słów, konkretna i analityczna.`;
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }]
       })
@@ -1516,3 +1564,4 @@ setTimeout(() => selectCommodity('potato'), 300);
 </script>
 </body>
 </html>
+
