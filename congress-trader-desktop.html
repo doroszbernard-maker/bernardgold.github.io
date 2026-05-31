@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Congress Trader Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0b0d;--bg2:#111318;--bg3:#181c23;--bg4:#1e2430;
+  --border:#232a36;--border2:#2d3848;
+  --text1:#e8edf5;--text2:#8a97aa;--text3:#4a5568;
+  --accent:#e63946;--accent2:#f4a261;--accent3:#2a9d8f;--accent4:#457b9d;
+  --green:#2ec97b;--red:#e63946;--gold:#f4c542;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text1);font-family:'Barlow',sans-serif;font-size:14px;line-height:1.5}
+
+/* HEADER */
+#hdr{position:fixed;top:0;left:0;right:0;height:44px;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--bg);border-bottom:1px solid var(--border)}
+.logo-mark{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+.logo-sub{font-family:'Space Mono',monospace;font-size:8px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-left:10px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.key-btn{font-family:'Space Mono',monospace;font-size:9px;padding:5px 12px;border:1px solid var(--border2);border-radius:3px;background:transparent;color:var(--text3);cursor:pointer;letter-spacing:.08em;text-transform:uppercase;transition:all .15s}
+.key-btn:hover{border-color:var(--accent4);color:var(--text2)}
+.key-status{font-family:'Space Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:.06em}
+.key-status.ok{color:var(--green)}
+
+/* LAYOUT */
+#panels{position:fixed;top:44px;left:0;right:0;bottom:0;display:flex;overflow:hidden}
+#sidebar{width:300px;flex:0 0 300px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--bg2)}
+#content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* SIDEBAR */
+.sb-top{flex-shrink:0;padding:14px;border-bottom:1px solid var(--border)}
+.sb-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.search-wrap{position:relative;margin-bottom:8px}
+.search-wrap input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:7px 10px 7px 28px;color:var(--text1);font-family:'Barlow',sans-serif;font-size:12px;outline:none;transition:border .2s}
+.search-wrap input:focus{border-color:var(--accent4)}
+.search-wrap::before{content:'⌕';position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
+.filter-row{display:flex;gap:4px;flex-wrap:wrap}
+.fpill{font-family:'Space Mono',monospace;font-size:8px;padding:3px 8px;border:1px solid var(--border2);border-radius:12px;background:transparent;color:var(--text3);cursor:pointer;letter-spacing:.05em;text-transform:uppercase;transition:all .15s;white-space:nowrap}
+.fpill:hover,.fpill.active{background:var(--accent4);border-color:var(--accent4);color:#fff}
+.sb-list{flex:1;overflow-y:auto;padding:8px}
+.sb-list::-webkit-scrollbar{width:3px}
+.sb-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.member-card{display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:6px;cursor:pointer;transition:all .15s;border:1px solid transparent;margin-bottom:3px}
+.member-card:hover{background:var(--bg3);border-color:var(--border)}
+.member-card.active{background:var(--bg4);border-color:var(--accent4)}
+.mc-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;flex-shrink:0}
+.avatar-r{background:rgba(230,57,70,.15);color:var(--red)}
+.avatar-d{background:rgba(69,123,157,.15);color:var(--accent4)}
+.mc-info{flex:1;min-width:0}
+.mc-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-meta{font-size:10px;color:var(--text3);font-family:'Space Mono',monospace}
+.mc-score{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;flex-shrink:0}
+.score-hot{background:rgba(244,197,66,.12);color:var(--gold)}
+.score-warm{background:rgba(44,201,123,.1);color:var(--green)}
+.score-cool{background:rgba(138,151,170,.1);color:var(--text2)}
+.sb-footer{flex-shrink:0;padding:10px 14px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);line-height:1.7}
+
+/* WELCOME */
+#welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px}
+.welcome-icon{font-size:48px;margin-bottom:20px;opacity:.25}
+.welcome-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;color:var(--text2);margin-bottom:8px}
+.welcome-sub{font-size:13px;color:var(--text3);max-width:360px}
+
+/* DETAIL */
+#detail{display:none;flex-direction:column;height:100%;overflow:hidden}
+
+/* member header */
+.detail-header{flex-shrink:0;padding:18px 24px 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.dh-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+.dh-avatar{width:52px;height:52px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px}
+.dh-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:30px;color:var(--text1);letter-spacing:.02em;line-height:1.1}
+.dh-meta{font-size:12px;color:var(--text2);margin-top:3px}
+.dh-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.tag{font-family:'Space Mono',monospace;font-size:8px;padding:2px 7px;border-radius:2px;border:1px solid var(--border2);color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.tag-red{border-color:rgba(230,57,70,.3);color:var(--red);background:rgba(230,57,70,.06)}
+.tag-blue{border-color:rgba(69,123,157,.3);color:var(--accent4);background:rgba(69,123,157,.06)}
+.tag-gold{border-color:rgba(244,197,66,.3);color:var(--gold);background:rgba(244,197,66,.06)}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.stat-cell{background:var(--bg3);padding:10px 14px}
+.sc-label{font-family:'Space Mono',monospace;font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.sc-val{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;color:var(--text1)}
+.sc-sub{font-size:9px;color:var(--text3);margin-top:1px}
+.disclaimer{margin-top:12px;padding:8px 12px;background:rgba(230,57,70,.05);border:1px solid rgba(230,57,70,.18);border-radius:4px;font-size:10px;color:var(--text3);line-height:1.6}
+.disclaimer strong{color:var(--red)}
+
+/* TABS */
+.tabs{flex-shrink:0;display:flex;border-bottom:1px solid var(--border);padding:0 24px;background:var(--bg)}
+.tab-btn{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px;white-space:nowrap}
+.tab-btn:hover{color:var(--text2)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* PANELS */
+.tab-panels{flex:1;overflow:hidden;position:relative}
+.tab-panel{position:absolute;inset:0;overflow-y:auto;padding:24px;display:none}
+.tab-panel::-webkit-scrollbar{width:3px}
+.tab-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.tab-panel.active{display:block}
+
+/* prompt card */
+.prompt-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px}
+.pc-label{font-family:'Space Mono',monospace;font-size:8px;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px}
+.pc-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;color:var(--text1);margin-bottom:4px}
+.pc-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.run-btn{display:inline-flex;align-items:center;gap:7px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:9px 20px;border-radius:4px;cursor:pointer;border:none;transition:all .2s;background:var(--accent);color:#fff}
+.run-btn:hover{background:#c1121f}
+.run-btn:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed}
+
+/* loading */
+.loading-bar{height:2px;background:var(--bg4);border-radius:1px;overflow:hidden;margin-bottom:12px;display:none}
+.loading-bar.active{display:block}
+.loading-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:1px;animation:lpulse 1.5s ease-in-out infinite}
+@keyframes lpulse{0%{width:0%;margin-left:0}50%{width:40%;margin-left:30%}100%{width:0%;margin-left:100%}}
+
+/* ai response */
+.ai-response{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:20px;display:none}
+.ai-response.visible{display:block}
+.air-header{display:flex;align-items:center;gap:7px;margin-bottom:14px;font-family:'Space Mono',monospace;font-size:8px;color:var(--accent3);letter-spacing:.12em;text-transform:uppercase}
+.air-dot{width:6px;height:6px;border-radius:50%;background:var(--accent3);flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.air-body{font-size:13px;color:var(--text1);line-height:1.85;font-family:'Barlow',sans-serif}
+.air-body strong{color:var(--gold)}
+
+/* API KEY MODAL */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#modal-overlay.open{display:flex}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:28px 32px;width:420px;max-width:90vw}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold);margin-bottom:4px}
+.modal-sub{font-size:11px;color:var(--text3);margin-bottom:22px;line-height:1.6}
+.modal-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.modal-status{font-size:9px;padding:2px 6px;border-radius:2px}
+.status-ok{color:var(--green);background:rgba(46,201,123,.1)}
+.status-empty{color:var(--text3)}
+.modal-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:9px 12px;color:var(--text1);font-family:'Space Mono',monospace;font-size:11px;outline:none;margin-bottom:6px;transition:border .2s}
+.modal-input:focus{border-color:var(--accent4)}
+.modal-hint{font-size:10px;color:var(--text3);margin-bottom:18px}
+.modal-hint a{color:var(--accent4);text-decoration:none}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.btn-save{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:8px 22px;border-radius:4px;border:none;background:var(--accent);color:#fff;cursor:pointer;transition:all .2s}
+.btn-save:hover{background:#c1121f}
+.btn-cancel{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:8px 16px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;transition:all .2s}
+.btn-cancel:hover{border-color:var(--text2);color:var(--text2)}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:8px 18px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text1);z-index:300;transition:transform .3s;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div style="display:flex;align-items:baseline;gap:0">
+    <span class="logo-mark">Congress Trader</span>
+    <span class="logo-sub">· STOCK Act Political Intelligence</span>
+  </div>
+  <div class="hdr-right">
+    <span class="key-status" id="keyStatus">⚠ Brak klucza Anthropic</span>
+    <button class="key-btn" onclick="openModal()">⚙ Ustaw klucz API</button>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div id="panels">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-top">
+      <div class="sb-label">🔥 Top Congressional Traders</div>
+      <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="Szukaj po nazwisku lub stanie..." oninput="renderList()">
+      </div>
+      <div class="filter-row">
+        <button class="fpill active" onclick="setFilter('all',this)">All</button>
+        <button class="fpill" onclick="setFilter('R',this)">Republican</button>
+        <button class="fpill" onclick="setFilter('D',this)">Democrat</button>
+        <button class="fpill" onclick="setFilter('Senate',this)">Senate</button>
+        <button class="fpill" onclick="setFilter('House',this)">House</button>
+        <button class="fpill" onclick="setFilter('HOT',this)">🔥 Hot</button>
+      </div>
+    </div>
+    <div class="sb-list" id="memberList"></div>
+    <div class="sb-footer">
+      Dane: Capitol Trades · Quiver Quant<br>
+      Oficjalne portale House &amp; Senate<br>
+      <span style="color:var(--red)">⚠ Tylko do celów edukacyjnych</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- Welcome -->
+    <div id="welcome">
+      <div class="welcome-icon">🏛️</div>
+      <div class="welcome-title">Wybierz kongresistę</div>
+      <div class="welcome-sub">Wybierz osobę z listy po lewej, aby uruchomić 4-etapową analizę AI opartą na publicznych ujawnieniach STOCK Act</div>
+    </div>
+
+    <!-- Detail -->
+    <div id="detail">
+      <div class="detail-header">
+        <div class="dh-top">
+          <div class="dh-avatar" id="dhAvatar"></div>
+          <div>
+            <div class="dh-name" id="dhName"></div>
+            <div class="dh-meta" id="dhMeta"></div>
+            <div class="dh-tags" id="dhTags"></div>
+          </div>
+        </div>
+        <div class="stats-row" id="statsRow"></div>
+        <div class="disclaimer"><strong>⚠ Tylko do celów edukacyjnych.</strong> Analiza AI jest spekulatywna i oparta wyłącznie na publicznych danych STOCK Act. To NIE jest doradztwo inwestycyjne. Zawsze weryfikuj z oficjalnymi źródłami.</div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(0,this)">① Komitety → Sektory</button>
+        <button class="tab-btn" onclick="switchTab(1,this)">② Wzorzec tradingu</button>
+        <button class="tab-btn" onclick="switchTab(2,this)">③ Legislacja × Historia</button>
+        <button class="tab-btn" onclick="switchTab(3,this)">④ Watchlist 45 dni</button>
+      </div>
+
+      <div class="tab-panels">
+
+        <!-- TAB 0 -->
+        <div class="tab-panel active" id="tab0">
+          <div class="prompt-card">
+            <div class="pc-label">Prompt #1 · Political Intelligence Analysis</div>
+            <div class="pc-title">Committee Assignments → Sector Mapping</div>
+            <div class="pc-desc">AI analizuje przynależność do komitetów i mapuje je na najbardziej prawdopodobne sektory do tradingu. Top 5 sektorów z wiodącymi akcjami i powiązaniem legislacyjnym.</div>
+            <button class="run-btn" id="btn0" onclick="runAnalysis(0)">▶ Uruchom analizę</button>
+          </div>
+          <div class="loading-bar" id="load0"><div class="loading-fill"></div></div>
+          <div class="ai-response" id="resp0">
+            <div class="air-header"><div class="air-dot"></div>AI ANALYSIS · SECTOR MAP</div>
+            <div class="air-body" id="text0"></div>
+          </div>
+        </div>
+
+        <!-- TAB 1 -->
+        <div class="tab-panel" id="tab1">
+          <div class="prompt-card">
+            <div class="pc-label">Prompt #2 · Behavioral Analysis</div>
+            <div class="pc-title">3-Year Trading Pattern Profile</div>
+            <div class="pc-desc">AI bada 3 lata ujawnień STOCK Act — timing względem legislacji, rotacja sektorów, preferencje instrumentów i unikalny podpis tradingowy kongresisty.</div>
+            <button class="run-btn" id="btn1" onclick="runAnalysis(1)">▶ Uruchom analizę</button>
+          </div>
+          <div class="loading-bar" id="load1"><div class="loading-fill"></div></div>
+          <div class="ai-response" id="resp1">
+            <div class="air-header"><div class="air-dot"></div>AI ANALYSIS · BEHAVIORAL PROFILE</div>
+            <div class="air-body" id="text1"></div>
+          </div>
+        </div>
+
+        <!-- TAB 2 -->
+        <div class="tab-panel" id="tab2">
+          <div class="prompt-card">
+            <div class="pc-label">Prompt #3 · Cross-Reference Intelligence</div>
+            <div class="pc-title">Active Bills × Historical Trades</div>
+            <div class="pc-desc">AI identyfikuje aktywne ustawy w komitetach kongresisty, spółki które skorzystają na ich uchwaleniu, i krzyżuje z historią tradingu. Flaguje potencjalne konflikty interesów.</div>
+            <button class="run-btn" id="btn2" onclick="runAnalysis(2)">▶ Uruchom analizę</button>
+          </div>
+          <div class="loading-bar" id="load2"><div class="loading-fill"></div></div>
+          <div class="ai-response" id="resp2">
+            <div class="air-header"><div class="air-dot"></div>AI ANALYSIS · LEGISLATION X-REF</div>
+            <div class="air-body" id="text2"></div>
+          </div>
+        </div>
+
+        <!-- TAB 3 -->
+        <div class="tab-panel" id="tab3">
+          <div class="prompt-card">
+            <div class="pc-label">Prompt #4 · Predictive Intelligence</div>
+            <div class="pc-title">Forward-Looking 45-Day Watchlist</div>
+            <div class="pc-desc">AI syntetyzuje wszystkie analizy i buduje predykcyjną listę 7–10 akcji najbardziej prawdopodobnych do kupna/sprzedaży w ciągu 45 dni, z katalizatorami i oknami disclosure.</div>
+            <button class="run-btn" id="btn3" onclick="runAnalysis(3)">▶ Uruchom analizę</button>
+          </div>
+          <div class="loading-bar" id="load3"><div class="loading-fill"></div></div>
+          <div class="ai-response" id="resp3">
+            <div class="air-header"><div class="air-dot"></div>AI ANALYSIS · PREDICTIVE WATCHLIST</div>
+            <div class="air-body" id="text3"></div>
+          </div>
+        </div>
+
+      </div><!-- /tab-panels -->
+    </div><!-- /detail -->
+
+  </div><!-- /content -->
+</div><!-- /panels -->
+
+<!-- API KEY MODAL -->
+<div id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal-box">
+    <div class="modal-title">⚙ Klucz Anthropic API</div>
+    <div class="modal-sub">Klucz jest zapisywany tylko lokalnie w Twojej przeglądarce (localStorage).<br>Nie jest widoczny na GitHub ani nigdzie indziej.</div>
+    <div class="modal-label">
+      <span>Anthropic API Key</span>
+      <span class="modal-status status-empty" id="modalStatus">Nie ustawiony</span>
+    </div>
+    <input class="modal-input" type="password" id="antKeyInput" placeholder="Wklej klucz (sk-ant-...)">
+    <div class="modal-hint">Bezpłatny klucz: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys → Create Key</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Anuluj</button>
+      <button class="btn-save" onclick="saveKey()">Zapisz klucz</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const MEMBERS = [
+  {id:'pelosi',name:'Nancy Pelosi',party:'D',chamber:'House',state:'CA',
+   title:'Former Speaker · House (CA-11)',
+   committees:['House Minority Leader','Appropriations (prev)','Intelligence (prev)'],
+   sectors:['Technology','Semiconductors','Defense','Financials'],
+   knownFor:"Tech options (NVDA, AAPL, GOOG, MSFT) — husband Paul Pelosi's trades widely tracked",
+   tradeCount:127,tradeVol:'$5M–$25M+',winRate:'~78%',alert:'🔥🔥🔥',
+   scoreLabel:'HOT',scoreClass:'score-hot',tags:['Former Speaker','Options Trader','Tech Focus'],initials:'NP'},
+  {id:'mccormick',name:'Dave McCormick',party:'R',chamber:'Senate',state:'PA',
+   title:'Senator · Pennsylvania',
+   committees:['Banking','Armed Services','Foreign Relations'],
+   sectors:['Financials','Defense','Technology','Energy'],
+   knownFor:'Former Bridgewater CEO — sophisticated finance background; new senator to watch',
+   tradeCount:31,tradeVol:'$1M–$10M',winRate:'~72%',alert:'🔥🔥🔥',
+   scoreLabel:'HOT',scoreClass:'score-hot',tags:['Ex-Bridgewater CEO','Finance Pro','Banking'],initials:'DM'},
+  {id:'tuberville',name:'Tommy Tuberville',party:'R',chamber:'Senate',state:'AL',
+   title:'Senator · Alabama',
+   committees:['Armed Services','Agriculture','Veterans Affairs','HELP'],
+   sectors:['Defense','Agriculture','Healthcare','Energy'],
+   knownFor:'132+ trades in 2021 — some disclosed late, triggering STOCK Act scrutiny',
+   tradeCount:132,tradeVol:'$1M–$5M',winRate:'~61%',alert:'🔥🔥🔥',
+   scoreLabel:'HOT',scoreClass:'score-hot',tags:['Most Trades','Late Filer','Armed Services'],initials:'TT'},
+  {id:'warner',name:'Mark Warner',party:'D',chamber:'Senate',state:'VA',
+   title:'Senator · Virginia · Intel Chair',
+   committees:['Intelligence (Chair)','Banking','Finance','Rules'],
+   sectors:['Technology','Cybersecurity','Financials','Telecom'],
+   knownFor:'Former VC/tech entrepreneur — Intel Committee Chair with significant tech & cyber exposure',
+   tradeCount:29,tradeVol:'$1M–$5M',winRate:'~71%',alert:'🔥🔥',
+   scoreLabel:'WARM',scoreClass:'score-warm',tags:['Intel Chair','Former VC','Tech'],initials:'MW'},
+  {id:'garcia',name:'Mike Garcia',party:'R',chamber:'House',state:'CA',
+   title:'House Member · CA-27',
+   committees:['Appropriations','Science Space & Tech','Armed Services'],
+   sectors:['Defense','Aerospace','Technology','Space'],
+   knownFor:'Ex-Navy pilot — LMT, RTX, NOC positions frequently disclosed',
+   tradeCount:52,tradeVol:'$250K–$1M',winRate:'~66%',alert:'🔥🔥',
+   scoreLabel:'WARM',scoreClass:'score-warm',tags:['Defense','Aerospace','Ex-Military'],initials:'MG'},
+  {id:'ossoff',name:'Jon Ossoff',party:'D',chamber:'Senate',state:'GA',
+   title:'Senator · Georgia',
+   committees:['Intelligence','Judiciary','Investigations','Foreign Relations'],
+   sectors:['Technology','Defense','Cybersecurity','Financials'],
+   knownFor:'Tech and defense trades aligned with Intel Committee; $1M+ in tech stocks',
+   tradeCount:22,tradeVol:'$500K–$2M',winRate:'~70%',alert:'🔥🔥',
+   scoreLabel:'WARM',scoreClass:'score-warm',tags:['Intel Committee','Cyber','Tech'],initials:'JO'},
+  {id:'khanna',name:'Ro Khanna',party:'D',chamber:'House',state:'CA',
+   title:'House Member · CA-17 (Silicon Valley)',
+   committees:['Armed Services','Oversight','Budget'],
+   sectors:['Technology','Semiconductors','Defense','Clean Energy'],
+   knownFor:'Silicon Valley rep — NVDA, TSMC, AMD positions disclosed; strong tech alignment',
+   tradeCount:35,tradeVol:'$500K–$3M',winRate:'~75%',alert:'🔥🔥',
+   scoreLabel:'WARM',scoreClass:'score-warm',tags:['Silicon Valley','Tech','Armed Services'],initials:'RK'},
+  {id:'pfluger',name:'August Pfluger',party:'R',chamber:'House',state:'TX',
+   title:'House Member · TX-11',
+   committees:['Intelligence','Homeland Security','Energy & Commerce'],
+   sectors:['Energy','Cybersecurity','Defense','Technology'],
+   knownFor:'Oil & gas trades while on Energy & Intelligence committees',
+   tradeCount:44,tradeVol:'$500K–$3M',winRate:'~67%',alert:'🔥🔥',
+   scoreLabel:'WARM',scoreClass:'score-warm',tags:['Intelligence','Energy','Texas Oil'],initials:'AP'},
+  {id:'mullin',name:'Markwayne Mullin',party:'R',chamber:'Senate',state:'OK',
+   title:'Senator · Oklahoma',
+   committees:['Armed Services','Environment & Public Works','Indian Affairs','HELP'],
+   sectors:['Energy','Defense','Healthcare','Utilities'],
+   knownFor:'Energy sector bias (Oklahoma oil); active in defense and healthcare stocks',
+   tradeCount:47,tradeVol:'$500K–$2M',winRate:'~63%',alert:'🔥🔥',
+   scoreLabel:'WARM',scoreClass:'score-warm',tags:['Energy','Oklahoma','Armed Services'],initials:'MM'},
+  {id:'collins',name:'Susan Collins',party:'R',chamber:'Senate',state:'ME',
+   title:'Senator · Maine',
+   committees:['Appropriations','HELP (Health)','Intelligence','Aging'],
+   sectors:['Healthcare','Defense','Biotech','Technology'],
+   knownFor:'Healthcare & pharma trades around ACA and drug pricing legislation',
+   tradeCount:38,tradeVol:'$1M–$5M',winRate:'~65%',alert:'🔥🔥',
+   scoreLabel:'WARM',scoreClass:'score-warm',tags:['Appropriations','Healthcare','Intel'],initials:'SC'},
+  {id:'capito',name:'Shelley Moore Capito',party:'R',chamber:'Senate',state:'WV',
+   title:'Senator · West Virginia',
+   committees:['Appropriations','Environment & Public Works','Rules','Commerce'],
+   sectors:['Energy','Infrastructure','Utilities','Materials'],
+   knownFor:'Energy trades correlating with infrastructure bill debates',
+   tradeCount:19,tradeVol:'$250K–$1M',winRate:'~62%',alert:'🔥',
+   scoreLabel:'COOL',scoreClass:'score-cool',tags:['Energy','Infrastructure','Appropriations'],initials:'SC'},
+  {id:'feenstra',name:'Randy Feenstra',party:'R',chamber:'House',state:'IA',
+   title:'House Member · IA-4',
+   committees:['Ways and Means','Agriculture'],
+   sectors:['Agriculture','Financials','Healthcare','Consumer'],
+   knownFor:'Agricultural commodities and consumer staples aligned with Ways & Means',
+   tradeCount:28,tradeVol:'$250K–$1M',winRate:'~58%',alert:'🔥',
+   scoreLabel:'COOL',scoreClass:'score-cool',tags:['Ways & Means','Agriculture','Iowa'],initials:'RF'},
+];
+
+const PROMPTS = [
+  m=>`You are a political intelligence analyst specializing in congressional trading patterns.
+
+Member: ${m.name} | Party: ${m.party==='R'?'Republican':'Democrat'} | Chamber: ${m.chamber} | State: ${m.state}
+Committees: ${m.committees.join(', ')}
+Known trading context: ${m.knownFor}
+Primary sectors: ${m.sectors.join(', ')}
+
+Task: Map their committee assignments to the TOP 5 most likely trading sectors.
+For each sector provide:
+1. The sector name and direct committee connection
+2. 3 leading stocks with tickers
+3. The legislative leverage (what bills/regulations they oversee)
+4. Information edge rating: HIGH / MEDIUM / LOW with reasoning
+
+Be specific. Use real legislation examples. Flag notable committee-trade overlaps.`,
+
+  m=>`You are a behavioral trading analyst for congressional STOCK Act disclosures.
+
+Member: ${m.name} | ${m.party==='R'?'Republican':'Democrat'} | ${m.chamber}
+Committees: ${m.committees.join(', ')}
+Trading context: ${m.knownFor}
+Trade count: ${m.tradeCount}+ | Volume: ${m.tradeVol} | Sectors: ${m.sectors.join(', ')}
+
+Build their behavioral trading profile:
+1. **TIMING PATTERNS** — How do trades correlate with legislation? Before or after? Typical window?
+2. **SECTOR ROTATION** — Which sectors do they return to repeatedly and why?
+3. **INSTRUMENT PREFERENCE** — Stocks, options, ETFs? Hold duration?
+4. **RED FLAGS** — What patterns should investors monitor as leading signals?
+5. **BEHAVIORAL SIGNATURE** — Their unique trading fingerprint vs other congressional traders
+
+Note suspicious alignments between trading and legislative timelines.`,
+
+  m=>`You are a legislative intelligence analyst cross-referencing bills with market trades.
+
+Member: ${m.name} | ${m.party==='R'?'Republican':'Democrat'}
+Committees: ${m.committees.join(', ')}
+Key sectors: ${m.sectors.join(', ')}
+Trading history: ${m.knownFor}
+
+Cross-reference analysis:
+1. **ACTIVE LEGISLATION** — 4-6 major bills currently in their committees (2025). For each: purpose, sector beneficiaries, status.
+2. **CONFLICT INTERSECTIONS** — Where do their trades overlap with legislation they vote on? Rate HIGH / MEDIUM / LOW conflict potential.
+3. **SECTOR BENEFICIARIES** — Top 3 companies impacted by each bill.
+4. **TIMING ALERTS** — Which votes or hearings in the next 60 days create disclosure windows?
+
+Use real bill names and company examples.`,
+
+  m=>`You are a predictive analyst building a congressional trading watchlist.
+
+Member: ${m.name} | ${m.party==='R'?'Republican':'Democrat'}
+Committees: ${m.committees.join(', ')}
+Primary sectors: ${m.sectors.join(', ')}
+Trading history: ${m.knownFor}
+Volume: ${m.tradeVol} | Trades: ${m.tradeCount}+
+
+Build a 45-Day Forward Watchlist of 7-10 stocks most likely to be traded.
+
+For EACH stock:
+**[TICKER] — Company**
+- Legislative Catalyst: specific trigger
+- Historical Precedent: prior trades in this stock/sector?
+- Price Context: current setup
+- Meaningful Move: % target, options implication
+- Disclosure Window: when would it appear in STOCK Act filings?
+- Confidence: HIGH / MEDIUM / LOW
+
+End with TOP 3 priority picks and flag which has the tightest disclosure window.
+Educational analysis only. All predictions speculative.`
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let currentMember = null;
+let activeFilter = 'all';
+let ANT_KEY = '';
+
+// ── KEY MANAGEMENT ────────────────────────────────────────────────────────────
+function loadKey(){
+  ANT_KEY = localStorage.getItem('cti_ant_key') || '';
+  updateKeyStatus();
+}
+function updateKeyStatus(){
+  const el = document.getElementById('keyStatus');
+  if(ANT_KEY){
+    el.textContent = '✓ Klucz Anthropic ustawiony';
+    el.className = 'key-status ok';
+  } else {
+    el.textContent = '⚠ Brak klucza Anthropic';
+    el.className = 'key-status';
+  }
+}
+function openModal(){
+  const inp = document.getElementById('antKeyInput');
+  inp.value = ANT_KEY || '';
+  document.getElementById('modalStatus').textContent = ANT_KEY ? '✓ Ustawiony' : 'Nie ustawiony';
+  document.getElementById('modalStatus').className = 'modal-status ' + (ANT_KEY ? 'status-ok' : 'status-empty');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+function handleOverlayClick(e){ if(e.target.id==='modal-overlay') closeModal(); }
+function saveKey(){
+  const val = document.getElementById('antKeyInput').value.trim();
+  if(val){ ANT_KEY = val; localStorage.setItem('cti_ant_key', val); }
+  updateKeyStatus();
+  closeModal();
+  showToast('Klucz zapisany ✓');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ── RENDER LIST ───────────────────────────────────────────────────────────────
+function renderList(){
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const list = document.getElementById('memberList');
+  const filtered = MEMBERS.filter(m=>{
+    const ms = !search || m.name.toLowerCase().includes(search) || m.state.toLowerCase().includes(search);
+    const mf = activeFilter==='all'
+      || (activeFilter==='R' && m.party==='R')
+      || (activeFilter==='D' && m.party==='D')
+      || (activeFilter==='Senate' && m.chamber==='Senate')
+      || (activeFilter==='House' && m.chamber==='House')
+      || (activeFilter==='HOT' && m.scoreLabel==='HOT');
+    return ms && mf;
+  });
+  list.innerHTML = filtered.map(m=>`
+    <div class="member-card ${currentMember && currentMember.id===m.id?'active':''}" onclick="selectMember('${m.id}')">
+      <div class="mc-avatar ${m.party==='R'?'avatar-r':'avatar-d'}">${m.initials}</div>
+      <div class="mc-info">
+        <div class="mc-name">${m.name}</div>
+        <div class="mc-meta">${m.party} · ${m.chamber} · ${m.state} · ${m.tradeCount} trades</div>
+      </div>
+      <div class="mc-score ${m.scoreClass}">${m.alert}</div>
+    </div>
+  `).join('');
+}
+
+function setFilter(f, btn){
+  activeFilter = f;
+  document.querySelectorAll('.fpill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+// ── SELECT MEMBER ─────────────────────────────────────────────────────────────
+function selectMember(id){
+  currentMember = MEMBERS.find(m=>m.id===id);
+  if(!currentMember) return;
+
+  for(let i=0;i<4;i++){
+    document.getElementById('text'+i).innerHTML='';
+    document.getElementById('resp'+i).classList.remove('visible');
+    document.getElementById('btn'+i).disabled=false;
+    document.getElementById('btn'+i).textContent='▶ Uruchom analizę';
+    document.getElementById('load'+i).classList.remove('active');
+  }
+
+  renderList();
+
+  // avatar
+  const av = document.getElementById('dhAvatar');
+  av.textContent = currentMember.initials;
+  av.style.background = currentMember.party==='R'?'rgba(230,57,70,.15)':'rgba(69,123,157,.15)';
+  av.style.color = currentMember.party==='R'?'var(--red)':'var(--accent4)';
+
+  document.getElementById('dhName').textContent = currentMember.name;
+  document.getElementById('dhMeta').textContent = currentMember.title;
+
+  document.getElementById('dhTags').innerHTML = [
+    '<span class="tag '+(currentMember.party==='R'?'tag-red':'tag-blue')+'">'+(currentMember.party==='R'?'Republican':'Democrat')+'</span>',
+    '<span class="tag">'+currentMember.chamber+'</span>',
+    ...(currentMember.tags||[]).map(t=>'<span class="tag tag-gold">'+t+'</span>')
+  ].join('');
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-cell">
+      <div class="sc-label">Disclosed Trades</div>
+      <div class="sc-val">${currentMember.tradeCount}+</div>
+      <div class="sc-sub">STOCK Act filings</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Trade Volume</div>
+      <div class="sc-val" style="font-size:15px;padding-top:3px">${currentMember.tradeVol}</div>
+      <div class="sc-sub">estimated range</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Est. Win Rate</div>
+      <div class="sc-val" style="color:var(--green)">${currentMember.winRate}</div>
+      <div class="sc-sub">disclosed positions</div>
+    </div>
+    <div class="stat-cell">
+      <div class="sc-label">Alert Level</div>
+      <div class="sc-val" style="font-size:18px">${currentMember.alert}</div>
+      <div class="sc-sub">${currentMember.scoreLabel} trader</div>
+    </div>
+  `;
+
+  document.getElementById('welcome').style.display='none';
+  document.getElementById('detail').style.display='flex';
+  switchTab(0, document.querySelector('.tab-btn'));
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(idx, btn){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.querySelectorAll('.tab-panel').forEach((p,i)=>p.classList.toggle('active',i===idx));
+}
+
+// ── AI ANALYSIS ───────────────────────────────────────────────────────────────
+async function runAnalysis(tabIdx){
+  if(!currentMember) return;
+  if(!ANT_KEY){ openModal(); showToast('Najpierw ustaw klucz Anthropic'); return; }
+
+  const btn = document.getElementById('btn'+tabIdx);
+  const load = document.getElementById('load'+tabIdx);
+  const resp = document.getElementById('resp'+tabIdx);
+  const textEl = document.getElementById('text'+tabIdx);
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Analizuję...';
+  load.classList.add('active');
+  resp.classList.add('visible');
+  textEl.innerHTML = '<span style="color:var(--text3)">Generuję analizę...</span>';
+
+  try {
+    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.anthropic.com/v1/messages');
+    const res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANT_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 1200,
+        messages: [{role:'user', content: PROMPTS[tabIdx](currentMember)}]
+      })
+    });
+
+    const data = await res.json();
+
+    if(data.error){
+      textEl.innerHTML = '<span style="color:var(--red)">Błąd API: '+data.error.message+'</span>';
+    } else {
+      const text = (data.content||[]).map(b=>b.text||'').join('');
+      textEl.innerHTML = fmt(text);
+    }
+
+  } catch(e){
+    textEl.innerHTML = '<span style="color:var(--red)">Błąd połączenia: '+e.message+'</span>';
+  }
+
+  load.classList.remove('active');
+  btn.disabled = false;
+  btn.textContent = '↻ Uruchom ponownie';
+}
+
+function fmt(text){
+  return text
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^#{1,3}\s(.+)$/gm,'<strong style="color:var(--accent2);font-size:15px;display:block;margin-top:8px">$1</strong>')
+    .replace(/^[-•]\s(.+)$/gm,'&nbsp;&nbsp;· $1')
+    .replace(/\n/g,'<br>');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadKey();
+renderList();
+</script>
+</body>
+</html>
