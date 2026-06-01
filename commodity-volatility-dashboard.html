@@ -696,6 +696,62 @@
     border-bottom: 1px solid var(--border);
     margin: 0 8px 2px;
   }
+
+  /* ── LIVE PRICE & REFRESH ── */
+  .header-live { display:flex; align-items:center; gap:8px; }
+  .live-dot-hdr { width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0; }
+  .refresh-info { font-size:9px;color:var(--text3); }
+  .refresh-btn { background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:4px 9px;border-radius:20px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;transition:all 0.15s; }
+  .refresh-btn:hover { color:var(--green);border-color:var(--green); }
+  .refresh-btn:disabled { opacity:0.4;cursor:not-allowed; }
+
+  /* ── CARD LIVE ROW ── */
+  .card-live-row { display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:5px;border-top:1px solid var(--border); }
+  .card-live-price { font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--text1); }
+  .card-live-chg { font-size:9px; }
+  .clc-up { color:var(--green); }
+  .clc-dn { color:var(--red); }
+  .card-live-loading { font-size:9px;color:var(--text3); }
+
+  /* ── BUY SIGNAL MINI (karta) ── */
+  .buy-mini { font-size:8px;padding:2px 6px;border-radius:3px;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:0.3px;white-space:nowrap; }
+  .bm-strong { background:rgba(0,229,160,0.15);color:#00e5a0; }
+  .bm-ok     { background:rgba(0,194,130,0.12);color:#00c282; }
+  .bm-watch  { background:rgba(255,209,102,0.12);color:#ffd166; }
+  .bm-wait   { background:rgba(255,140,66,0.12);color:#ff8c42; }
+  .bm-avoid  { background:rgba(255,68,85,0.12);color:#ff4455; }
+  .bm-none   { background:var(--bg4);color:var(--text3); }
+
+  /* ── VERDICT BOX (detail) ── */
+  .verdict-section { border-radius:var(--r);padding:14px 16px;margin-bottom:12px;text-align:center; }
+  .verdict-top { display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px; }
+  .verdict-emoji { font-size:32px;line-height:1; }
+  .verdict-label { font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:1px; }
+  .verdict-sub { font-size:10px;color:var(--text2);margin-bottom:8px; }
+  .verdict-reasons { display:flex;flex-wrap:wrap;gap:4px;justify-content:center; }
+  .vr-chip { font-size:9px;padding:2px 7px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:3px;color:var(--text2); }
+
+  /* ── TECH GRID ── */
+  .tech-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px; }
+  .tech-box { background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px; }
+  .tech-lbl { font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px; }
+  .tech-val { font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:1px; }
+  .tech-sub { font-size:8px;color:var(--text3); }
+
+  /* ── RSI BAR ── */
+  .rsi-track { height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;position:relative;margin:4px 0; }
+  .rsi-fill { height:100%;border-radius:3px; }
+  .rsi-zones { display:flex;justify-content:space-between;font-size:7px;color:var(--text3); }
+
+  /* ── LIVE PRICE IN HEADER (detail) ── */
+  .live-price-bar { display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);margin-bottom:10px; }
+  .lp-label { font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px; }
+  .lp-price { font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--text1); }
+  .lp-chg { font-family:'Syne',sans-serif;font-weight:700;font-size:12px; }
+  .lp-loading { font-size:11px;color:var(--text3);animation:blink 1s infinite; }
+
+    .weekly-badge:hover { background: rgba(0,229,160,0.2); }
+  .weekly-badge.stale { border-color: rgba(255,209,102,0.3); color: var(--yellow); background: rgba(255,209,102,0.08); }
 </style>
 </head>
 <body>
@@ -706,7 +762,13 @@
     <div class="badge">VOLATILITY SCANNER</div>
   </div>
   <div class="header-right">
+    <div class="header-live">
+      <div class="live-dot-hdr"></div>
+      <span class="refresh-info" id="refreshStatus">Kliknij Odśwież</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="fetchAllPrices()">⟳ Odśwież</button>
+    </div>
     <div class="date-badge" id="currentDate">26 maja 2026 · Tydzień 22</div>
+    <button class="api-btn" id="weeklyBadge" onclick="openWeeklyModal()" style="border-color:rgba(0,229,160,0.25);color:var(--green)">📅 Aktualizuj tydzien</button>
     <button class="api-btn" onclick="openApiModal()">◈ Claude AI</button>
   </div>
 </div>
@@ -736,6 +798,25 @@
   </div>
 </div>
 
+
+<!-- WEEKLY UPDATE MODAL -->
+<div id="weeklyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:24px;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto">
+    <div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:var(--text1);margin-bottom:4px">Aktualizacja tygodniowa AI</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:14px;line-height:1.6">Claude AI przeanalizuje kazdy towar i wygeneruje nowe wskazania na ten tydzien. Dane zapisywane lokalnie - aktywne przy kazdym kolejnym otwarciu.</div>
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">Opcjonalnie: kontekst tygodnia</div>
+    <textarea id="weeklyContext" placeholder="Np: Fed meeting w srode. Chiny stymulacja. Susza Kansas. Ceasefire talks Iran..." style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text1);padding:8px 10px;border-radius:4px;font-family:Space Mono,monospace;font-size:10px;resize:vertical;min-height:60px;outline:none;margin-bottom:10px"></textarea>
+    <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">Status</div>
+    <div id="wmStatus" style="font-size:10px;color:var(--text2);line-height:1.7;background:var(--bg3);border-radius:4px;padding:8px 10px;margin-bottom:8px;min-height:36px">Kliknij Generuj aby rozpoczac analize.</div>
+    <div id="wmProgress" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button id="wmRunBtn" onclick="runWeeklyUpdate()" style="flex:1;background:rgba(0,229,160,0.12);border:1px solid rgba(0,229,160,0.3);color:var(--green);padding:9px;border-radius:4px;cursor:pointer;font-family:Space Mono,monospace;font-size:10px;font-weight:bold">Generuj aktualizacje</button>
+      <button onclick="closeWeeklyModal()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:9px 14px;border-radius:4px;cursor:pointer;font-family:Space Mono,monospace;font-size:10px">Zamknij</button>
+    </div>
+    <div id="wmLastUpdate" style="font-size:8px;color:var(--text3);text-align:center;padding-top:10px;margin-top:8px;border-top:1px solid var(--border)"></div>
+  </div>
+</div>
+
 <!-- API Modal -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
@@ -761,6 +842,7 @@ const COMMODITIES = [
   // ── SPOŻYWKA ──────────────────────────────────────
   {
     id: 'potato',
+    yfTicker: null,
     xtb: null, xtbNote: 'Niedostępny – niszowy kontrakt EEX, delistowany 5 czerwca',
     name: 'Ziemniak', icon: '🥔', ticker: 'FAPP / EEX',
     category: 'food',
@@ -800,6 +882,7 @@ const COMMODITIES = [
   },
   {
     id: 'cocoa',
+    yfTicker: 'CC=F',
     xtb: 'COCOA', xtbNote: 'Dostępny jako CFD – szukaj COCOA w xStation',
     name: 'Kakao', icon: '🍫', ticker: 'CC / ICE',
     category: 'food',
@@ -836,6 +919,7 @@ const COMMODITIES = [
   },
   {
     id: 'coffee',
+    yfTicker: 'KC=F',
     xtb: 'COFFEE', xtbNote: 'Dostępny jako CFD – szukaj COFFEE w xStation',
     name: 'Kawa Arabika', icon: '☕', ticker: 'KC / ICE',
     category: 'food',
@@ -872,6 +956,7 @@ const COMMODITIES = [
   },
   {
     id: 'ojuice',
+    yfTicker: 'OJ=F',
     xtb: null, xtbNote: 'Niedostępny na XTB – zbyt niszowy instrument (FCOJ)',
     name: 'Sok pomarańczowy', icon: '🍊', ticker: 'OJ / ICE',
     category: 'food',
@@ -905,6 +990,7 @@ const COMMODITIES = [
   },
   {
     id: 'sugar',
+    yfTicker: 'SB=F',
     xtb: 'SUGAR', xtbNote: 'Dostępny jako CFD – szukaj SUGAR w xStation',
     name: 'Cukier', icon: '🍬', ticker: 'SB / ICE',
     category: 'food',
@@ -939,6 +1025,7 @@ const COMMODITIES = [
   },
   {
     id: 'wheat',
+    yfTicker: 'ZW=F',
     xtb: 'WHEAT', xtbNote: 'Dostępny jako CFD – szukaj WHEAT w xStation',
     name: 'Pszenica', icon: '🌾', ticker: 'ZW / CBOT',
     category: 'food',
@@ -975,6 +1062,7 @@ const COMMODITIES = [
   },
   {
     id: 'corn',
+    yfTicker: 'ZC=F',
     xtb: 'CORN', xtbNote: 'Dostępny jako CFD – szukaj CORN w xStation',
     name: 'Kukurydza', icon: '🌽', ticker: 'ZC / CBOT',
     category: 'food',
@@ -1010,6 +1098,7 @@ const COMMODITIES = [
   // ── ENERGIA ──────────────────────────────────────
   {
     id: 'natgas',
+    yfTicker: 'NG=F',
     xtb: 'NATGAS', xtbNote: 'Dostępny jako CFD – szukaj NATGAS w xStation (Henry Hub / NYMEX)',
     name: 'Gaz ziemny', icon: '🔥', ticker: 'NG / NYMEX',
     category: 'energy',
@@ -1044,6 +1133,7 @@ const COMMODITIES = [
   },
   {
     id: 'oilbrent',
+    yfTicker: 'BZ=F',
     xtb: 'OIL', xtbNote: 'Dostępny jako CFD – szukaj OIL (WTI) lub BRENT w xStation',
     name: 'Ropa Brent', icon: '🛢️', ticker: 'BZ / ICE',
     category: 'energy',
@@ -1079,6 +1169,7 @@ const COMMODITIES = [
   // ── METALE ──────────────────────────────────────
   {
     id: 'copper',
+    yfTicker: 'HG=F',
     xtb: 'COPPER', xtbNote: 'Dostępny jako CFD – szukaj COPPER w xStation',
     name: 'Miedź', icon: '🪙', ticker: 'HG / COMEX',
     category: 'metals',
@@ -1113,6 +1204,7 @@ const COMMODITIES = [
   },
   {
     id: 'gold',
+    yfTicker: 'GC=F',
     xtb: 'GOLD', xtbNote: 'Dostępny jako CFD – szukaj GOLD w xStation',
     name: 'Złoto', icon: '✨', ticker: 'GC / COMEX',
     category: 'metals',
@@ -1147,6 +1239,7 @@ const COMMODITIES = [
   },
   {
     id: 'lean_hog',
+    yfTicker: 'HE=F',
     xtb: 'LEANHOGS', xtbNote: 'Dostępny jako CFD – szukaj LEANHOGS w xStation',
     name: 'Wieprzowina', icon: '🐷', ticker: 'HE / CME',
     category: 'food',
@@ -1241,6 +1334,21 @@ function renderList() {
           <div class="card-tags">
             ${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}
           </div>
+          ${(() => {
+            const ld = liveData[c.id];
+            if (!ld) return '<div class="card-live-row"><span class="card-live-loading">· · · brak danych live</span></div>';
+            const pSign = ld.pct1d >= 0 ? '+' : '';
+            const chgClass = ld.pct1d >= 0 ? 'clc-up' : 'clc-dn';
+            const bs = ld.buySignal;
+            const bsHtml = bs
+              ? `<span class="buy-mini ${bs.cssClass}">${bs.emoji} ${bs.label}</span>`
+              : '<span class="buy-mini bm-none">· brak sygnału</span>';
+            const priceStr = ld.price < 10 ? ld.price.toFixed(4) : ld.price < 1000 ? ld.price.toFixed(2) : ld.price.toFixed(0);
+            return `<div class="card-live-row">
+              <div><span class="card-live-price">${priceStr}</span> <span class="card-live-chg ${chgClass}">${pSign}${ld.pct1d.toFixed(2)}%</span></div>
+              ${bsHtml}
+            </div>`;
+          })()}
         </div>`;
     });
   });
@@ -1259,83 +1367,148 @@ function selectCommodity(id) {
 
 function renderDetail(c) {
   const panel = document.getElementById('rightPanel');
+
+  // ── Pre-build all dynamic HTML strings (no nested template literals) ──
+
+  const ld = liveData[c.id];
+
+  // Live price bar
+  let livePriceHtml;
+  if (!ld) {
+    livePriceHtml = '<div class="live-price-bar"><span class="lp-label">Cena live</span><span class="lp-loading">⟳ Kliknij Odśwież w nagłówku</span></div>';
+  } else {
+    const pSign = ld.pct1d >= 0 ? '+' : '';
+    const chgColor = ld.pct1d >= 0 ? 'var(--green)' : 'var(--red)';
+    const priceStr = ld.price < 10 ? ld.price.toFixed(4) : ld.price < 1000 ? ld.price.toFixed(2) : ld.price.toFixed(0);
+    livePriceHtml = '<div class="live-price-bar">'
+      + '<div style="flex:1"><div class="lp-label">Cena live \xb7 ' + (ld.currency || '') + '</div>'
+      + '<div style="display:flex;align-items:baseline;gap:8px">'
+      + '<span class="lp-price">' + priceStr + '</span>'
+      + '<span class="lp-chg" style="color:' + chgColor + '">' + pSign + ld.pct1d.toFixed(2) + '% dzi\u015b</span>'
+      + '</div></div>'
+      + '<div style="font-size:8px;color:var(--text3);text-align:right">Yahoo Finance<br>' + (c.yfTicker || '\u2014') + '</div>'
+      + '</div>';
+  }
+
+  // Verdict + Tech section
+  let verdictHtml;
+  if (!ld || !ld.buySignal) {
+    verdictHtml = '<div class="section" style="text-align:center;padding:18px;color:var(--text3);font-size:11px">'
+      + '\ud83d\udce1 Wci\u015bnij \u27f3 Od\u015bwie\u017c aby za\u0142adowa\u0107 analiz\u0119 techniczn\u0105 i sygna\u0142 kupna</div>';
+  } else {
+    const bs = ld.buySignal;
+    const rsi = bs.rsi;
+    const rsiColor = rsi < 35 ? 'var(--green)' : rsi > 65 ? 'var(--red)' : 'var(--yellow)';
+    const rsiPct   = Math.min(100, Math.max(0, rsi));
+    const rsiLabel = rsi < 30 ? 'Ekstr. wyprzedany' : rsi < 40 ? 'Wyprzedany' : rsi < 50 ? 'Neutralny-' : rsi < 60 ? 'Neutralny' : rsi < 70 ? 'Wykupiony' : 'Ekstr. wykupiony';
+    const sma20dev = bs.sma20 ? ((bs.price - bs.sma20) / bs.sma20 * 100) : null;
+    const sma50dev = bs.sma50 ? ((bs.price - bs.sma50) / bs.sma50 * 100) : null;
+    const sma20txt = sma20dev != null ? (sma20dev > 0 ? '+' : '') + sma20dev.toFixed(1) + '% vs SMA20' : 'Brak danych';
+    const sma50txt = sma50dev != null ? (sma50dev > 0 ? '+' : '') + sma50dev.toFixed(1) + '% vs SMA50' : 'Brak danych';
+    const sma20color = sma20dev != null && sma20dev < 0 ? 'var(--green)' : 'var(--red)';
+    const sma50color = sma50dev != null && sma50dev < 0 ? 'var(--green)' : 'var(--red)';
+    const ch5Color  = bs.ch5 >= 0 ? 'var(--red)' : 'var(--green)';
+    const ch1Color  = bs.ch1 >= 0 ? 'var(--red)' : 'var(--green)';
+    const reasonsHtml = bs.reasons.map(function(r) { return '<span class="vr-chip">' + r + '</span>'; }).join('');
+    const verdictStyle = 'border:1px solid ' + bs.color + '44;background:' + bs.colorBg;
+    const scoreTxt = bs.score > 0 ? '+' + bs.score : '' + bs.score;
+
+    // Bollinger band bar
+    let bbBarHtml = '';
+    if (bs.bb) {
+      const range = bs.bb.upper - bs.bb.lower;
+      const bbPos = range > 0 ? Math.min(100, Math.max(0, (bs.price - bs.bb.lower) / range * 100)).toFixed(0) : 50;
+      bbBarHtml = '<div style="margin-top:8px">'
+        + '<div style="font-size:8px;color:var(--text3);margin-bottom:3px">Pozycja w Bollinger Bands (' + bbPos + '% od dolnego)</div>'
+        + '<div class="rsi-track" style="height:7px"><div style="height:100%;width:' + bbPos + '%;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));border-radius:3px"></div></div>'
+        + '<div style="display:flex;justify-content:space-between;font-size:7px;color:var(--text3);margin-top:2px"><span>Dolny BB</span><span>Środek</span><span>Górny BB</span></div>'
+        + '</div>';
+    }
+
+    verdictHtml =
+      '<div class="verdict-section" style="' + verdictStyle + '">'
+      + '<div class="verdict-top"><div class="verdict-emoji">' + bs.emoji + '</div>'
+      + '<div><div class="verdict-label" style="color:' + bs.color + '">' + bs.label + '</div>'
+      + '<div class="verdict-sub">Composite score: ' + scoreTxt + ' \xb7 RSI, SMA20/50, BB, momentum</div></div></div>'
+      + '<div class="verdict-reasons">' + reasonsHtml + '</div></div>'
+      + '<div class="section">'
+      + '<div class="section-title"><div class="section-dot blue"></div> Analiza techniczna (live)</div>'
+      + '<div class="tech-grid">'
+      + '<div class="tech-box"><div class="tech-lbl">RSI (14)</div>'
+      + '<div class="tech-val" style="color:' + rsiColor + '">' + (rsi != null ? rsi.toFixed(1) : '—') + '</div>'
+      + '<div class="rsi-track"><div class="rsi-fill" style="width:' + rsiPct + '%;background:' + rsiColor + '"></div></div>'
+      + '<div class="tech-sub">' + rsiLabel + '</div></div>'
+      + '<div class="tech-box"><div class="tech-lbl">vs SMA20</div>'
+      + '<div class="tech-val" style="color:' + sma20color + '">' + sma20txt + '</div>'
+      + '<div class="tech-sub">SMA20: ' + (bs.sma20 ? bs.sma20.toFixed(2) : '—') + '</div></div>'
+      + '<div class="tech-box"><div class="tech-lbl">vs SMA50</div>'
+      + '<div class="tech-val" style="color:' + sma50color + '">' + sma50txt + '</div>'
+      + '<div class="tech-sub">SMA50: ' + (bs.sma50 ? bs.sma50.toFixed(2) : '—') + '</div></div>'
+      + '<div class="tech-box"><div class="tech-lbl">Momentum 5d</div>'
+      + '<div class="tech-val" style="color:' + ch5Color + '">' + (bs.ch5 >= 0 ? '+' : '') + bs.ch5.toFixed(2) + '%</div>'
+      + '<div class="tech-sub">Dzi\u015b: ' + (bs.ch1 >= 0 ? '+' : '') + bs.ch1.toFixed(2) + '%</div></div>'
+      + '</div>' + bbBarHtml + '</div>';
+  }
+
+  // XTB row
+  const xtbHtml = c.xtb
+    ? '<div class="xtb-row"><div class="xtb-icon">\ud83d\udcca</div><div style="flex:1"><div class="xtb-label">Symbol XTB \xb7 xStation</div><div class="xtb-symbol">' + c.xtb + '</div></div><div class="xtb-note" style="max-width:320px">' + c.xtbNote + '</div></div>'
+    : '<div class="xtb-row" style="border-color:rgba(255,68,85,0.2)"><div class="xtb-icon">\ud83d\udeab</div><div style="flex:1"><div class="xtb-label">XTB \xb7 xStation</div><div class="xtb-symbol unavailable">NIEDOST\u0118PNY</div></div><div class="xtb-note" style="max-width:320px;color:var(--text3)">' + c.xtbNote + '</div></div>';
+
+  // Probability color / labels
   const probColor = c.prob >= 70 ? 'var(--red)' : c.prob >= 55 ? 'var(--orange)' : 'var(--blue)';
-  const dirLabel = c.direction === 'up' ? '↑ WZROST' : c.direction === 'down' ? '↓ SPADEK' : '↕ MIESZANY';
-  const dirColor = c.direction === 'up' ? 'var(--green)' : c.direction === 'down' ? 'var(--red)' : 'var(--yellow)';
+  const dirLabel  = c.direction === 'up' ? '\u2191 WZROST' : c.direction === 'down' ? '\u2193 SPADEK' : '\u2195 MIESZANY';
+  const dirColor  = c.direction === 'up' ? 'var(--green)' : c.direction === 'down' ? 'var(--red)' : 'var(--yellow)';
 
   // Seasonal chart bars
   const maxVal = Math.max(...c.seasonalData);
-  const seasonBars = c.seasonalData.map((v, i) => {
-    const pct = Math.round((v / maxVal) * 100);
-    const isCurrent = i === c.currentMonth;
-    const color = v > 60 ? 'var(--green)' : v > 40 ? 'var(--yellow)' : 'var(--blue)';
-    return `
-      <div class="sc-bar-wrap">
-        <div class="sc-bar-bg">
-          <div class="sc-bar-fill ${isCurrent ? 'sc-bar-current' : ''}" style="height:${pct}%;background:${isCurrent ? 'var(--yellow)' : color}"></div>
-        </div>
-        <div class="sc-label">${c.months[i]}</div>
-      </div>`;
+  const seasonBars = c.seasonalData.map(function(v, i) {
+    const pct      = Math.round((v / maxVal) * 100);
+    const isCurr   = i === c.currentMonth;
+    const barColor = isCurr ? 'var(--yellow)' : v > 60 ? 'var(--green)' : v > 40 ? 'var(--yellow)' : 'var(--blue)';
+    return '<div class="sc-bar-wrap"><div class="sc-bar-bg"><div class="sc-bar-fill'
+      + (isCurr ? ' sc-bar-current' : '') + '" style="height:' + pct + '%;background:' + barColor + '"></div></div>'
+      + '<div class="sc-label">' + c.months[i] + '</div></div>';
   }).join('');
 
-  // Historical rows
-  const histRows = c.historicalYears.map(y => `
-    <tr>
-      <td class="td-year">${y.year}</td>
-      <td>${y.event}</td>
-      <td class="${y.verdict === 'up' ? 'td-up' : 'td-dn'}">${y.change}</td>
-      <td>${y.period}</td>
-    </tr>`).join('');
+  // Historical table rows
+  const histRows = c.historicalYears.map(function(y) {
+    return '<tr><td class="td-year">' + y.year + '</td><td>' + y.event + '</td>'
+      + '<td class="' + (y.verdict === 'up' ? 'td-up' : 'td-dn') + '">' + y.change + '</td>'
+      + '<td>' + y.period + '</td></tr>';
+  }).join('');
 
-  // Catalysts
-  const catItems = c.catalysts.map(cat => {
-    const typeClass = cat.type === 'warning' ? 'warning' : cat.type === 'upcoming' ? 'upcoming' : 'active';
-    return `
-      <div class="tl-item ${typeClass}">
-        <div class="tl-date">${cat.date}</div>
-        <div class="tl-text">${cat.text}</div>
-      </div>`;
+  // Catalysts timeline
+  const catItems = c.catalysts.map(function(cat) {
+    const tc = cat.type === 'warning' ? 'warning' : cat.type === 'upcoming' ? 'upcoming' : 'active';
+    return '<div class="tl-item ' + tc + '"><div class="tl-date">' + cat.date + '</div><div class="tl-text">' + cat.text + '</div></div>';
   }).join('');
 
   // Key factors
-  const factors = c.keyFacts.map(f => `
-    <li class="factor-item">
-      <div class="factor-icon">${f.icon}</div>
-      <div class="factor-text">${f.text}</div>
-    </li>`).join('');
+  const factors = c.keyFacts.map(function(f) {
+    return '<li class="factor-item"><div class="factor-icon">' + f.icon + '</div><div class="factor-text">' + f.text + '</div></li>';
+  }).join('');
 
-  // XTB status row
-  const xtbHtml = c.xtb
-    ? `<div class="xtb-row">
-        <div class="xtb-icon">📊</div>
-        <div style="flex:1">
-          <div class="xtb-label">Symbol XTB · xStation</div>
-          <div class="xtb-symbol">${c.xtb}</div>
-        </div>
-        <div class="xtb-note" style="max-width:320px">${c.xtbNote}</div>
-      </div>`
-    : `<div class="xtb-row" style="border-color:rgba(255,68,85,0.2)">
-        <div class="xtb-icon">🚫</div>
-        <div style="flex:1">
-          <div class="xtb-label">XTB · xStation</div>
-          <div class="xtb-symbol unavailable">NIEDOSTĘPNY</div>
-        </div>
-        <div class="xtb-note" style="max-width:320px;color:var(--text3)">${c.xtbNote}</div>
-      </div>`;
+  // Alert banner (hot items)
+  const alertStyle = c.heat !== 'hot' ? 'style="display:none"' : '';
 
-    panel.innerHTML = `
-    <div class="alert-banner" ${c.heat !== 'hot' ? 'style="display:none"' : ''}>
+  // ── Final render ──────────────────────────────────────────────────
+  panel.innerHTML = `
+    <div class="alert-banner" ${alertStyle}>
       <div class="alert-icon">🔥</div>
       <div class="alert-text"><strong>GORĄCY SYGNAŁ</strong>: ${c.name} wykazuje podwyższoną szansę na znaczący ruch. Aktualna zmiana: ${c.lastMove}</div>
     </div>
 
     ${xtbHtml}
+    ${livePriceHtml}
+    ${verdictHtml}
+
     <div class="detail-header">
       <div class="detail-title">
         <div class="detail-icon">${c.icon}</div>
         <div>
           <div class="detail-name">${c.name}</div>
-          <div class="detail-subtitle">${c.ticker} · ${c.currentPrice} · Zmiana: ${c.priceChange}</div>
+          <div class="detail-subtitle">${c.ticker} · ${c.currentPrice}</div>
         </div>
       </div>
       <div class="detail-prob-big">
@@ -1346,107 +1519,49 @@ function renderDetail(c) {
     </div>
 
     <div class="momentum-row">
-      <div class="momentum-item">
-        <span class="mi-label">Sezonowość</span>
-        <span class="mi-val">${c.seasonal}%</span>
-        <span class="mi-arrow" style="color:${c.seasonal>65?'var(--green)':'var(--text3)'}">●</span>
-      </div>
-      <div class="momentum-item">
-        <span class="mi-label">Volatility</span>
-        <span class="mi-val">${c.volatility}%</span>
-        <span class="mi-arrow" style="color:${c.volatility>70?'var(--red)':'var(--text3)'}">●</span>
-      </div>
-      <div class="momentum-item">
-        <span class="mi-label">Katalyzator</span>
-        <span class="mi-val">${c.catalyst}%</span>
-        <span class="mi-arrow" style="color:${c.catalyst>70?'var(--orange)':'var(--text3)'}">●</span>
-      </div>
+      <div class="momentum-item"><span class="mi-label">Sezonowość</span><span class="mi-val">${c.seasonal}%</span><span class="mi-arrow" style="color:${c.seasonal > 65 ? 'var(--green)' : 'var(--text3)'}">●</span></div>
+      <div class="momentum-item"><span class="mi-label">Volatility</span><span class="mi-val">${c.volatility}%</span><span class="mi-arrow" style="color:${c.volatility > 70 ? 'var(--red)' : 'var(--text3)'}">●</span></div>
+      <div class="momentum-item"><span class="mi-label">Katalyzator</span><span class="mi-val">${c.catalyst}%</span><span class="mi-arrow" style="color:${c.catalyst > 70 ? 'var(--orange)' : 'var(--text3)'}">●</span></div>
     </div>
 
-    <div class="metrics-grid">
-      <div class="metric-box">
-        <div class="metric-label">Cena aktualna</div>
-        <div class="metric-val">${c.currentPrice}</div>
-        <div class="metric-sub">${c.ticker}</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">Ostatni ruch</div>
-        <div class="metric-val ${c.lastMove.includes('-') ? 'metric-dn' : 'metric-up'}">${c.lastMove}</div>
-        <div class="metric-sub">Recent change</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">Horyzont</div>
-        <div class="metric-val" style="font-size:13px">${c.horizon}</div>
-        <div class="metric-sub">Timeframe</div>
-      </div>
-      <div class="metric-box">
-        <div class="metric-label">Kierunek</div>
-        <div class="metric-val" style="color:${dirColor};font-size:13px">${dirLabel}</div>
-        <div class="metric-sub">Prognoza</div>
-      </div>
-    </div>
-
-    <!-- PROBABILITY METER -->
     <div class="section">
-      <div class="section-title"><div class="section-dot ${c.prob>=70?'red':''}"></div> Prawdopodobieństwo ruchu</div>
+      <div class="section-title"><div class="section-dot ${c.prob >= 70 ? 'red' : ''}"></div> Prawdopodobieństwo ruchu</div>
       <div class="prob-meter">
-        <div class="prob-meter-track">
-          <div class="prob-meter-fill" style="width:${c.prob}%;background:linear-gradient(90deg,${probColor}88,${probColor})"></div>
-        </div>
-        <div class="prob-meter-labels">
-          <span>0% Brak sygnału</span>
-          <span style="color:${probColor};font-weight:bold">${c.prob}% → ${dirLabel}</span>
-          <span>100% Pewny ruch</span>
-        </div>
+        <div class="prob-meter-track"><div class="prob-meter-fill" style="width:${c.prob}%;background:linear-gradient(90deg,${probColor}88,${probColor})"></div></div>
+        <div class="prob-meter-labels"><span>0% Brak sygnału</span><span style="color:${probColor};font-weight:bold">${c.prob}% → ${dirLabel}</span><span>100% Pewny ruch</span></div>
       </div>
-      <div style="font-size:10px;color:var(--text3);line-height:1.6;margin-top:6px">
-        Obliczone na podstawie: sezonowości historycznej (${c.seasonal}%), aktualnej zmienności rynku (${c.volatility}%) oraz siły katalizatorów zewnętrznych (${c.catalyst}%).
-      </div>
+      <div style="font-size:10px;color:var(--text3);line-height:1.6;margin-top:6px">Obliczone na podstawie: sezonowości historycznej (${c.seasonal}%), aktualnej zmienności rynku (${c.volatility}%) oraz siły katalizatorów zewnętrznych (${c.catalyst}%).</div>
     </div>
 
-    <!-- SEASONAL CHART -->
     <div class="section">
       <div class="section-title"><div class="section-dot blue"></div> Sezonowość historyczna (aktywny mies. = żółty)</div>
       <div class="seasonal-chart">${seasonBars}</div>
-      <div style="font-size:9px;color:var(--text3)">Względna siła cenowa per miesiąc (uśredniona, ~10 lat). Wyższy słupek = historycznie silniejszy miesiąc.</div>
+      <div style="font-size:9px;color:var(--text3)">Względna siła cenowa per miesiąc (~10 lat). Wyższy słupek = historycznie silniejszy miesiąc.</div>
     </div>
 
-    <!-- AI ANALYSIS -->
     <div class="ai-section">
       <div class="ai-header">
         <div class="ai-title"><div class="ai-dot"></div> Analiza Claude AI</div>
         <button class="ai-btn" id="aiRunBtn" onclick="runAI('${c.id}')">▶ Analizuj teraz</button>
       </div>
-      <div class="ai-output" id="aiOutput">
-        ${apiKey ? 'Naciśnij "Analizuj teraz" aby uzyskać pogłębioną analizę AI dla ' + c.name + '.' : '⚠ Ustaw klucz Anthropic API (przycisk "◈ Claude AI" w nagłówku) aby włączyć analizę.'}
-      </div>
+      <div class="ai-output" id="aiOutput">${apiKey ? 'Naciśnij "Analizuj teraz" aby uzyskać pogłębioną analizę AI dla ' + c.name + '.' : '⚠ Ustaw klucz Anthropic API (przycisk "◈ Claude AI" w nagłówku) aby włączyć analizę.'}</div>
     </div>
 
     <div class="two-col">
-      <!-- KEY FACTORS -->
       <div class="section">
         <div class="section-title"><div class="section-dot yellow"></div> Kluczowe czynniki</div>
         <ul class="factor-list">${factors}</ul>
       </div>
-      <!-- CATALYST TIMELINE -->
       <div class="section">
         <div class="section-title"><div class="section-dot purple"></div> Kalendarz katalizatorów</div>
         <div class="timeline">${catItems}</div>
       </div>
     </div>
 
-    <!-- HISTORICAL TABLE -->
     <div class="section">
       <div class="section-title"><div class="section-dot"></div> Analogie historyczne</div>
       <table class="hist-table">
-        <thead>
-          <tr>
-            <th>Rok</th>
-            <th>Wydarzenie</th>
-            <th>Zmiana</th>
-            <th>Okres</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Rok</th><th>Wydarzenie</th><th>Zmiana</th><th>Okres</th></tr></thead>
         <tbody>${histRows}</tbody>
       </table>
     </div>
@@ -1545,6 +1660,368 @@ function saveApiKey() {
   closeApiModal();
 }
 
+
+// ═══════════════════════════════════════════════════
+// LIVE DATA & TECHNICAL ANALYSIS
+// ═══════════════════════════════════════════════════
+const liveData = {};
+let lastRefresh = null;
+
+// ─── RSI ───────────────────────────────────────────
+function calcRSI(closes, period = 14) {
+  if (closes.length < period + 2) return null;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gains += d; else losses -= d;
+  }
+  let ag = gains / period, al = losses / period;
+  for (let i = period + 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    ag = (ag * (period - 1) + Math.max(d, 0)) / period;
+    al = (al * (period - 1) + Math.max(-d, 0)) / period;
+  }
+  return al === 0 ? 100 : parseFloat((100 - 100 / (1 + ag / al)).toFixed(1));
+}
+
+// ─── SMA ───────────────────────────────────────────
+function calcSMA(closes, period) {
+  if (closes.length < period) return null;
+  return closes.slice(-period).reduce((a, b) => a + b, 0) / period;
+}
+
+// ─── Bollinger Bands ───────────────────────────────
+function calcBB(closes, period = 20, mult = 2) {
+  if (closes.length < period) return null;
+  const sl = closes.slice(-period);
+  const mid = sl.reduce((a, b) => a + b, 0) / period;
+  const std = Math.sqrt(sl.reduce((a, b) => a + (b - mid) ** 2, 0) / period);
+  return { upper: mid + mult * std, mid, lower: mid - mult * std };
+}
+
+// ─── BUY MOMENT SCORE ──────────────────────────────
+function scoreBuyMoment(closes) {
+  if (!closes || closes.length < 22) return null;
+  const price = closes[closes.length - 1];
+  const rsi = calcRSI(closes, 14);
+  const sma20 = calcSMA(closes, 20);
+  const sma50 = calcSMA(closes, Math.min(50, closes.length));
+  const bb = calcBB(closes, 20);
+  const ch5 = closes.length >= 6 ? (price - closes[closes.length - 6]) / closes[closes.length - 6] * 100 : 0;
+  const ch1 = closes.length >= 2 ? (price - closes[closes.length - 2]) / closes[closes.length - 2] * 100 : 0;
+
+  let score = 0;
+  const reasons = [];
+
+  // RSI (waga 40%)
+  if (rsi !== null) {
+    if (rsi < 28) { score += 4; reasons.push('RSI ' + rsi + ' – ekstr. wyprzedany'); }
+    else if (rsi < 37) { score += 3; reasons.push('RSI ' + rsi + ' – mocno wyprzedany'); }
+    else if (rsi < 45) { score += 1; reasons.push('RSI ' + rsi + ' – lekka korekta'); }
+    else if (rsi > 72) { score -= 4; reasons.push('RSI ' + rsi + ' – ekstr. wykupiony'); }
+    else if (rsi > 63) { score -= 2; reasons.push('RSI ' + rsi + ' – wykupiony'); }
+  }
+
+  // SMA20 (waga 25%)
+  if (sma20) {
+    const dev = (price - sma20) / sma20 * 100;
+    if (dev < -6) { score += 3; reasons.push('Cena -' + Math.abs(dev).toFixed(1) + '% od SMA20'); }
+    else if (dev < -2) { score += 2; reasons.push('Cena poniżej SMA20'); }
+    else if (dev < 0) { score += 1; reasons.push('Cena blisko SMA20'); }
+    else if (dev > 8) { score -= 2; reasons.push('Cena +' + dev.toFixed(1) + '% nad SMA20'); }
+    else if (dev > 4) { score -= 1; reasons.push('Cena powyżej SMA20'); }
+  }
+
+  // SMA50 (waga 15%)
+  if (sma50) {
+    if (price < sma50 * 0.94) { score += 2; reasons.push('Cena pod SMA50 – głęboka wartość'); }
+    else if (price > sma50 * 1.10) { score -= 1; reasons.push('Cena +10% nad SMA50'); }
+  }
+
+  // Momentum 5d (waga 15%)
+  if (ch5 < -7) { score += 3; reasons.push('Korekta 5d: ' + ch5.toFixed(1) + '%'); }
+  else if (ch5 < -3) { score += 2; reasons.push('Korekta 5d: ' + ch5.toFixed(1) + '%'); }
+  else if (ch5 < -1) { score += 1; reasons.push('Lekka korekta 5d'); }
+  else if (ch5 > 12) { score -= 3; reasons.push('Silny wzrost 5d: +' + ch5.toFixed(1) + '%'); }
+  else if (ch5 > 6) { score -= 2; reasons.push('Wzrost 5d: +' + ch5.toFixed(1) + '%'); }
+  else if (ch5 > 3) { score -= 1; reasons.push('Wzrost 5d: +' + ch5.toFixed(1) + '%'); }
+
+  // Bollinger Bands (waga 5%)
+  if (bb) {
+    if (price < bb.lower) { score += 2; reasons.push('Poniżej dolnego BB'); }
+    else if (price > bb.upper) { score -= 2; reasons.push('Powyżej górnego BB'); }
+  }
+
+  // Map score to verdict
+  let label, color, colorBg, emoji, cssClass;
+  if (score >= 6) { label = 'KUP TERAZ'; color = '#00e5a0'; colorBg = 'rgba(0,229,160,0.08)'; emoji = '💚'; cssClass = 'bm-strong'; }
+  else if (score >= 3) { label = 'DOBRY MOMENT'; color = '#00c282'; colorBg = 'rgba(0,194,130,0.06)'; emoji = '🟢'; cssClass = 'bm-ok'; }
+  else if (score >= 1) { label = 'OBSERWUJ'; color = '#ffd166'; colorBg = 'rgba(255,209,102,0.06)'; emoji = '🟡'; cssClass = 'bm-watch'; }
+  else if (score >= -1) { label = 'POCZEKAJ'; color = '#ff8c42'; colorBg = 'rgba(255,140,66,0.06)'; emoji = '🟠'; cssClass = 'bm-wait'; }
+  else { label = 'ZBYT DROGI'; color = '#ff4455'; colorBg = 'rgba(255,68,85,0.06)'; emoji = '🔴'; cssClass = 'bm-avoid'; }
+
+  return { score, label, color, colorBg, emoji, cssClass, reasons, rsi, sma20, sma50, bb, ch5, ch1, price };
+}
+
+// ─── FETCH SINGLE COMMODITY ────────────────────────
+// ─── Yahoo Finance przez wiele proxy (fallback chain) ──
+async function tryYahooProxy(ticker, proxyFn) {
+  const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker
+    + '?interval=1d&range=90d&includePrePost=false';
+  const proxyUrl = proxyFn(url);
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 7000);
+  try {
+    const res = await fetch(proxyUrl, { signal: controller.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    // allorigins /get wraps in JSON with "contents" key
+    let data;
+    try { data = JSON.parse(text); } catch(e) { throw new Error('JSON parse fail'); }
+    // Handle allorigins wrapper
+    if (data.contents) data = JSON.parse(data.contents);
+    const result = data?.chart?.result?.[0];
+    if (!result) throw new Error('brak result');
+    return result;
+  } catch(e) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
+async function fetchPrice(commodity) {
+  if (!commodity.yfTicker) return null;
+
+  const proxies = [
+    url => 'https://corsproxy.io/?' + encodeURIComponent(url),
+    url => 'https://api.allorigins.win/get?url=' + encodeURIComponent(url),
+    url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+  ];
+
+  let result = null;
+  for (const proxyFn of proxies) {
+    try {
+      result = await tryYahooProxy(commodity.yfTicker, proxyFn);
+      if (result) break;
+    } catch(e) {
+      // try next proxy
+    }
+  }
+
+  if (!result) {
+    console.warn('fetchPrice ' + commodity.yfTicker + ': wszystkie proxy zawiodły');
+    return null;
+  }
+
+  try {
+    const rawCloses = result.indicators?.quote?.[0]?.close || [];
+    const closes = rawCloses.filter(v => v != null && !isNaN(v));
+    if (closes.length < 22) throw new Error('za mało danych: ' + closes.length);
+    const price = result.meta?.regularMarketPrice || closes[closes.length - 1];
+    const prev = result.meta?.previousClose || closes[closes.length - 2];
+    const pct1d = ((price - prev) / prev) * 100;
+    const currency = result.meta?.currency || '';
+    const buySignal = scoreBuyMoment(closes);
+    return { price, pct1d, closes, currency, buySignal };
+  } catch(e) {
+    console.warn('fetchPrice parse ' + commodity.yfTicker + ':', e.message);
+    return null;
+  }
+}
+
+// ─── FETCH ALL ─────────────────────────────────────
+async function fetchAllPrices() {
+  const btn = document.getElementById('refreshBtn');
+  const status = document.getElementById('refreshStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Ładuję...'; }
+  if (status) status.textContent = 'Pobieranie...';
+
+  const withTicker = COMMODITIES.filter(c => c.yfTicker);
+  // Batch po 3 żeby nie bombardować proxy
+  for (let i = 0; i < withTicker.length; i += 3) {
+    const batch = withTicker.slice(i, i + 3);
+    const results = await Promise.allSettled(batch.map(c => fetchPrice(c)));
+    results.forEach((r, j) => {
+      if (r.status === 'fulfilled' && r.value) liveData[batch[j].id] = r.value;
+    });
+    if (i + 3 < withTicker.length) await new Promise(r => setTimeout(r, 350));
+  }
+
+  lastRefresh = new Date();
+  const t = lastRefresh.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+  const cnt = Object.keys(liveData).length;
+  if (btn) { btn.disabled = false; btn.textContent = '⟳ Odśwież'; }
+  const failed = withTicker.length - cnt;
+  const statusTxt = cnt > 0
+    ? cnt + '/' + withTicker.length + ' · ' + t + (failed > 0 ? ' (' + failed + ' brak)' : '')
+    : '⚠ Proxy zablokowane – spróbuj ponownie lub zmień sieć';
+  if (status) status.textContent = statusTxt;
+
+  renderList();
+  if (activeCommodity) renderDetail(activeCommodity);
+}
+
+
+const WKEY = 'cvd_weekly_v2';
+
+function openWeeklyModal() {
+  document.getElementById('weeklyOverlay').style.display='flex';
+  refreshWmLastUpdate();
+}
+function closeWeeklyModal() {
+  document.getElementById('weeklyOverlay').style.display='none';
+}
+function refreshWmLastUpdate() {
+  var el = document.getElementById('wmLastUpdate');
+  var raw = localStorage.getItem(WKEY);
+  if (!el) return;
+  if (!raw) { el.textContent = 'Brak zapisanych danych.'; return; }
+  try {
+    var obj = JSON.parse(raw);
+    var d = new Date(obj.timestamp);
+    var days = Math.floor((Date.now() - d.getTime()) / 86400000);
+    el.textContent = 'Ostatnia aktualizacja: ' + d.toLocaleDateString('pl-PL') + ' ' + d.toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'}) + (days === 0 ? ' (dzis)' : ' (' + days + ' dni temu)');
+  } catch(e) { el.textContent = 'Blad odczytu.'; }
+}
+function applyWeeklyData(arr) {
+  if (!Array.isArray(arr)) return;
+  arr.forEach(function(upd) {
+    var com = COMMODITIES.find(function(c) { return c.id === upd.id; });
+    if (!com) return;
+    if (upd.prob != null)       com.prob        = upd.prob;
+    if (upd.direction)          com.direction   = upd.direction;
+    if (upd.horizon)            com.horizon     = upd.horizon;
+    if (upd.heat)               com.heat        = upd.heat;
+    if (upd.tags && upd.tags.length)           com.tags      = upd.tags;
+    if (upd.keyFacts && upd.keyFacts.length)   com.keyFacts  = upd.keyFacts;
+    if (upd.catalysts && upd.catalysts.length) com.catalysts = upd.catalysts;
+    if (upd.aiPromptExtra)      com.aiPromptExtra = upd.aiPromptExtra;
+    if (upd.seasonal != null)   com.seasonal    = upd.seasonal;
+    if (upd.catalyst != null)   com.catalyst    = upd.catalyst;
+  });
+}
+function loadWeeklyFromStorage() {
+  var raw = localStorage.getItem(WKEY);
+  if (!raw) return;
+  try {
+    var obj = JSON.parse(raw);
+    var ageDays = (Date.now() - new Date(obj.timestamp).getTime()) / 86400000;
+    if (ageDays > 14) return;
+    applyWeeklyData(obj.data);
+    updateWeeklyBadge(obj.timestamp);
+  } catch(e) { console.warn('Weekly load:', e); }
+}
+function updateWeeklyBadge(ts) {
+  var btn = document.getElementById('weeklyBadge');
+  if (!btn) return;
+  var days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+  if (days >= 7) {
+    btn.textContent = 'Aktualizuj tydzien!';
+    btn.style.borderColor = 'rgba(255,209,102,0.4)';
+    btn.style.color = 'var(--yellow)';
+  } else {
+    btn.textContent = 'Zaktualizowano ' + (days === 0 ? 'dzis' : days + ' dni temu');
+  }
+}
+function setWmStatus(msg) {
+  var el = document.getElementById('wmStatus');
+  if (el) el.textContent = msg;
+}
+function addWmProg(id, text, cls) {
+  var box = document.getElementById('wmProgress');
+  if (!box) return;
+  var el = document.getElementById('wmprog_' + id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'wmprog_' + id;
+    el.style.cssText = 'font-size:9px;padding:2px 0;display:flex;gap:6px;align-items:center';
+    box.appendChild(el);
+  }
+  var colors = {done:'var(--green)', active:'var(--yellow)', err:'var(--red)'};
+  el.style.color = colors[cls] || 'var(--text3)';
+  el.textContent = (cls==='done'?'+ ':cls==='err'?'x ':'. ') + text;
+}
+async function runWeeklyUpdate() {
+  if (!apiKey) { openApiModal(); closeWeeklyModal(); return; }
+  var btn = document.getElementById('wmRunBtn');
+  var progBox = document.getElementById('wmProgress');
+  if (btn) btn.disabled = true;
+  if (progBox) progBox.innerHTML = '';
+  var now = new Date();
+  var months = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','wrzesnia','pazdziernika','listopada','grudnia'];
+  var dateStr = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+  var userCtx = '';
+  var ctxEl = document.getElementById('weeklyContext');
+  if (ctxEl) userCtx = ctxEl.value.trim();
+  var commList = COMMODITIES.map(function(c) {
+    return '- ' + c.name + ' (id:' + c.id + ', ' + c.category + ', ticker:' + c.ticker + ')';
+  }).join('\n');
+  var promptParts = [
+    'Jestes ekspertem analizy rynkow towarowych. Dzisiaj jest ' + dateStr + '.',
+    userCtx ? 'KONTEKST TYGODNIA:\n' + userCtx : '',
+    'Przeanalizuj towary na 1-3 tygodnie. Uwzglednij sezonowosc, cyklicznosc, geopolityke (Iran, OPEC), makro (ropa, USD).',
+    'TOWARY:\n' + commList,
+    'Zwroc TYLKO JSON array (bez markdown, bez tekstu), schemat:',
+    '[{"id":"wheat","prob":75,"direction":"up","horizon":"1-2 tygodnie","heat":"hot","seasonal":78,"catalyst":82,',
+    '"tags":["tag1","tag2","tag3"],',
+    '"keyFacts":[{"icon":"icon","text":"fakt max 120 znakow"}],',
+    '"catalysts":[{"date":"10 CZE 2026","text":"opis","type":"upcoming","isUpcoming":true}],',
+    '"aiPromptExtra":"krotki kontekst"}]',
+    'direction: up/down/mixed. heat: hot/warm/cool. type: active/upcoming/warning. Generuj dla WSZYSTKICH ' + COMMODITIES.length + ' towarow.'
+  ];
+  var prompt = promptParts.filter(Boolean).join('\n\n');
+  setWmStatus('Wysylam do Claude AI... (20-40 sekund)');
+  addWmProg('api', 'Lacze z Claude AI...', 'active');
+  try {
+    var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.anthropic.com/v1/messages');
+    var res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!res.ok) {
+      var err = await res.json();
+      throw new Error(err.error && err.error.message ? err.error.message : 'API error ' + res.status);
+    }
+    addWmProg('api', 'Odpowiedz otrzymana', 'done');
+    addWmProg('parse', 'Parsowanie JSON...', 'active');
+    var apiResp = await res.json();
+    var rawText = apiResp.content ? apiResp.content.map(function(b) { return b.text || ''; }).join('') : '';
+    var s = rawText.indexOf('[');
+    var e = rawText.lastIndexOf(']');
+    if (s === -1 || e === -1) throw new Error('Brak JSON array w odpowiedzi');
+    var parsed = JSON.parse(rawText.slice(s, e + 1));
+    if (!Array.isArray(parsed)) throw new Error('Niepoprawny JSON');
+    addWmProg('parse', 'JSON: ' + parsed.length + ' towarow', 'done');
+    applyWeeklyData(parsed);
+    addWmProg('apply', 'Dane zaaplikowane', 'done');
+    var saveObj = { timestamp: now.toISOString(), data: parsed, ctx: userCtx };
+    localStorage.setItem(WKEY, JSON.stringify(saveObj));
+    addWmProg('save', 'Zapisano lokalnie', 'done');
+    renderList();
+    if (activeCommodity) renderDetail(activeCommodity);
+    updateWeeklyBadge(saveObj.timestamp);
+    refreshWmLastUpdate();
+    setWmStatus('Gotowe! ' + parsed.length + '/' + COMMODITIES.length + ' towarow zaktualizowanych.');
+  } catch(ex) {
+    addWmProg('err', 'Blad: ' + ex.message, 'err');
+    setWmStatus('Blad: ' + ex.message);
+    console.error('Weekly update error:', ex);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 // ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
@@ -1557,10 +2034,17 @@ function updateDate() {
 }
 
 updateDate();
+loadWeeklyFromStorage();
 renderList();
 
-// Auto-select potato (the hot one) on load
+// Auto-select potato on load
 setTimeout(() => selectCommodity('potato'), 300);
+
+// Fetch live prices after short delay
+setTimeout(fetchAllPrices, 800);
+
+// Auto-refresh co 5 minut
+setInterval(fetchAllPrices, 5 * 60 * 1000);
 </script>
 </body>
 </html>
