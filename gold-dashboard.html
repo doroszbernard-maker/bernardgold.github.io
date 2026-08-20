@@ -974,7 +974,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
   <!-- FOOTER -->
   <div id="ftr">
-    <span>XAU/USD · Twelve Data (5min+15min) · Odśwież co 60s</span>
+    <span>XAU/USD · Twelve Data (5M+15M+1H+4H+1D) · Odświeżanie co 90 s</span>
     <span id="footR">—</span>
   </div>
 
@@ -990,7 +990,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <div id="row-ftr">
     <div id="cell-ftr">
       <div class="foot-inner">
-        <span class="foot-l">XAU/USD · Twelve Data (5min+15min) · Odśwież co 60s</span>
+        <span class="foot-l">XAU/USD · Twelve Data (5M+15M+1H+4H+1D) · Odświeżanie co 90 s</span>
         <span class="foot-r" id="footR">—</span>
       </div>
     </div>
@@ -1590,9 +1590,14 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     // impuls spadkowy — long jest po złej stronie ruchu
     cL='🔴 ZAMKNIJ LONG';
     cLr='Pozycja przeciwna do ruchu. '+vetoWhy;
-  } else if(isImpulse&&imp.dir==='up'){
+  } else if(withDir==='up'){
+    // Było tu `isImpulse && imp.dir==='up'`. Gdy impuls wygasał, a struktura ruchu
+    // trzymała (cooldown), warunek przestawał być prawdziwy i decyzja zamknięcia
+    // spadała do gałęzi ogólnej — a tam score po rajdzie jest ujemny, więc panel
+    // pokazywał „ZAMKNIJ LONG" równocześnie z „OTWÓRZ LONG" obok.
     cL='🟢 TRZYMAJ · PODCIĄGAJ SL';
-    cLr='Impuls wzrostowy trwa ('+imp.votes+'/6). Nie zamykaj na RSI — przesuwaj SL pod EMA21 5M.';
+    cLr=(imp.active?('Impuls wzrostowy trwa ('+imp.votes+'/6). '):'Trend wzrostowy nienaruszony. ')+
+      'Nie zamykaj na RSI — przesuwaj SL pod EMA21 5M.';
   } else {
     var cLwarn=(rawScore<=-closeThresh)||(rv>rsiHiClose)||(!!bv&&cur>=bv.upper*(isRanging?0.998:1));
     cL=cLwarn?'🔴 ZAMKNIJ LONG':'⬜ MONITORUJ';
@@ -1606,9 +1611,10 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
   if(blockedShort){
     cS='🔴 ZAMKNIJ SHORT';
     cSr='Pozycja przeciwna do ruchu. '+vetoWhy;
-  } else if(isImpulse&&imp.dir==='down'){
+  } else if(withDir==='down'){
     cS='🟢 TRZYMAJ · PODCIĄGAJ SL';
-    cSr='Impuls spadkowy trwa ('+imp.votes+'/6). Nie zamykaj na RSI — przesuwaj SL nad EMA21 5M.';
+    cSr=(imp.active?('Impuls spadkowy trwa ('+imp.votes+'/6). '):'Trend spadkowy nienaruszony. ')+
+      'Nie zamykaj na RSI — przesuwaj SL nad EMA21 5M.';
   } else {
     var cSwarn=(rawScore>=closeThresh)||(rv<rsiLoClose)||(!!bv&&cur<=bv.lower*(isRanging?1.002:1));
     cS=cSwarn?'🔴 ZAMKNIJ SHORT':'⬜ MONITORUJ';
@@ -1619,28 +1625,77 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
       :'Trzymaj — pilnuj SL';
   }
 
+  // ── TWARDA KONTROLA SPÓJNOŚCI ────────────────────────────────────────────
+  // Cztery pola liczone są niezależnie, więc mogą się rozjechać. Żadna para
+  // „otwórz X" + „zamknij X" nie ma prawa wyjść na ekran jednocześnie — to
+  // właśnie zmusiło użytkownika do zamknięcia pozycji, która poszła dalej.
+  var conflicts=[];
+  if(longOk&&cL.indexOf('🔴')===0){
+    conflicts.push('long');
+    cL='🟢 TRZYMAJ';
+    cLr='Sygnał wejścia w long jest aktywny — sprzeczne zalecenie zamknięcia wyciszone. '+
+      'Wyjście prowadź po SL, nie po oscylatorze.';
+  }
+  if(shortOk&&cS.indexOf('🔴')===0){
+    conflicts.push('short');
+    cS='🟢 TRZYMAJ';
+    cSr='Sygnał wejścia w short jest aktywny — sprzeczne zalecenie zamknięcia wyciszone. '+
+      'Wyjście prowadź po SL, nie po oscylatorze.';
+  }
+  // Nie zachęcamy do otwierania pozycji, którą równocześnie każemy zamykać
+  if(oL.indexOf('✅')===0&&cL.indexOf('🔴')===0){oL='🟡 WSTRZYMAJ SIĘ';oLr='Sprzeczne przesłanki dla longa — poczekaj na klarowność.';}
+  if(oS.indexOf('✅')===0&&cS.indexOf('🔴')===0){oS='🟡 WSTRZYMAJ SIĘ';oSr='Sprzeczne przesłanki dla shorta — poczekaj na klarowność.';}
+
+  // ── Poziomy TP/SL dopięte do zalecenia wejścia ───────────────────────────
+  var sltp=ctx.sltp||null;
+  if(sltp){
+    if(oL.indexOf('✅')===0)oLr+='  ·  TP '+sltp.tp.toFixed(2)+' / SL '+sltp.sl.toFixed(2)+
+      ' ('+sltp.tpPts.toFixed(0)+'/'+sltp.slPts.toFixed(0)+' pkt, R:R '+sltp.rr+':1)';
+    if(oS.indexOf('✅')===0)oSr+='  ·  TP '+sltp.tp.toFixed(2)+' / SL '+sltp.sl.toFixed(2)+
+      ' ('+sltp.tpPts.toFixed(0)+'/'+sltp.slPts.toFixed(0)+' pkt, R:R '+sltp.rr+':1)';
+  }
+
   // ── Czy weto nadpisało własny sygnał dashboardu? ─────────────────────────
   var sigDir=sigShortDirect?sigShortDirect.type:'wait';
   var overridden=(sigDir==='sell'&&blockedShort)||(sigDir==='buy'&&blockedLong);
 
   return{oL:oL,oLr:oLr,oS:oS,oSr:oSr,cL:cL,cLr:cLr,cS:cS,cSr:cSr,
-    score:rawScore,isRanging:isRanging,mode:mode,
+    score:rawScore,isRanging:isRanging,mode:mode,withDir:withDir,
     veto:veto,vetoWhy:vetoWhy,vetoSrc:vetoSrc,overridden:overridden,
+    conflicts:conflicts,
     allowLong:longOk,allowShort:shortOk};
 }
 
 // ══ DATA FETCHING ═════════════════════════════════════════════════════════════
+// BŁĄD, KTÓRY BYŁ TU WCZEŚNIEJ: Twelve Data zwraca datetime w formacie
+// "2026-08-20 13:25:00", bez oznaczenia strefy. `new Date("2026-08-20 13:25:00")`
+// interpretuje taki zapis jako czas LOKALNY przeglądarki. Skoro API podaje UTC,
+// wszystkie znaczniki czasu świec były przesunięte o offset strefy (latem w Polsce
+// o 2 godziny wstecz). Konsekwencje: etykiety czasu na wykresach pokazywały godzinę
+// sprzed 2h, a REJESTR SYGNAŁÓW nigdy nie znajdował świec „po" wpisie (bo wpis miał
+// znacznik z Date.now(), a najnowsza świeca wyglądała na dwie godziny starszą),
+// więc żaden sygnał nie doczekał się oceny.
+function parseTDTime(s){
+  if(!s)return NaN;
+  // pełny ISO ze strefą — zostaw jak jest
+  if(/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s))return new Date(s).getTime();
+  // "YYYY-MM-DD HH:MM:SS" lub "YYYY-MM-DD" → wymuś UTC
+  var t=s.trim().replace(' ','T');
+  if(t.length===10)t+='T00:00:00';
+  return new Date(t+'Z').getTime();
+}
+
 async function fetchTD(interval, outputsize){
   if(!API_KEYS.td)return null;
   try{
-    const url=`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${interval}&outputsize=${outputsize}&apikey=${API_KEYS.td}`;
+    const url=`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${interval}&outputsize=${outputsize}&timezone=UTC&apikey=${API_KEYS.td}`;
     const res=await fetch(url);
     if(!res.ok)throw new Error('HTTP '+res.status);
     const d=await res.json();
     if(d.status==='error')throw new Error(d.message);
     if(!d.values||!d.values.length)throw new Error('No data');
     return d.values.reverse().map(v=>({
-      t:new Date(v.datetime).getTime(),
+      t:parseTDTime(v.datetime),
       o:parseFloat(v.open),h:parseFloat(v.high),
       l:parseFloat(v.low),c:parseFloat(v.close),
       v:parseFloat(v.volume||0)
@@ -1907,6 +1962,48 @@ function pullbackStatus(c5,dir,vwap){
   };
 }
 
+// ── JEDNO ŹRÓDŁO KIERUNKU I PEWNOŚCI DLA CAŁEGO DASHBOARDU ──────────────────
+// Wcześniej lewa kolumna (decyzje) i środkowa (wykresy predykcji) liczyły kierunek
+// osobno: decyzje po warstwie weta, wykresy po surowym `50 + score×3`. W trendzie
+// wzrostowym potrafiły więc pokazywać jednocześnie „OTWÓRZ LONG" i strzałkę
+// ▼ SPADEK. Teraz kierunek i pewność wyznacza jedna funkcja, a wszyscy odbiorcy
+// (decyzje, wykresy, SL/TP, prompt AI) czytają ten sam obiekt.
+function computeBias(regime,dec,sigShort){
+  var imp=(regime&&regime.impulse)||{};
+  var mem=(regime&&regime.mem)||{};
+  var dir=null,src='brak',conf=50,why='';
+
+  if(imp.active&&imp.dir){
+    dir=imp.dir;src='impuls '+imp.votes+'/6';conf=55+imp.votes*5;
+    why='Kierunek nadaje potwierdzony impuls, nie oscylatory.';
+  } else if(dec&&dec.allowLong){
+    dir='up';src='sygnał wejścia';conf=56+Math.min(12,Math.abs(dec.score)*2);
+    why='Aktywny sygnał wejścia w long.';
+  } else if(dec&&dec.allowShort){
+    dir='down';src='sygnał wejścia';conf=56+Math.min(12,Math.abs(dec.score)*2);
+    why='Aktywny sygnał wejścia w short.';
+  } else if(mem.cooldown&&mem.dir){
+    dir=mem.dir;src='stygnięcie po impulsie';conf=56;
+    why='Impuls wygasł, ale struktura ruchu jest nienaruszona.';
+  } else if(dec&&dec.veto){
+    dir=(dec.veto==='short')?'up':'down';src='blokada kontry';conf=54;
+    why='Kontra zablokowana — przechył pozostaje po stronie ruchu.';
+  } else if(sigShort&&sigShort.type&&sigShort.type!=='wait'){
+    dir=(sigShort.type==='buy')?'up':'down';
+    src='score '+(dec?dec.score:sigShort.score);
+    conf=50+Math.min(28,Math.abs(sigShort.score)*3);
+    why='Brak impulsu — kierunek z sygnału technicznego.';
+  } else {
+    why='Brak wyraźnego przechyłu — rynek bez kierunku.';
+  }
+  conf=Math.max(50,Math.min(88,Math.round(conf)));
+  return{
+    dir:dir,source:src,confidence:conf,why:why,
+    isLong:dir==='up',
+    probUp:dir==='up'?conf:(dir==='down'?100-conf:50)
+  };
+}
+
 // ── REJESTR SYGNAŁÓW + AUTOOCENA MFE/MAE ────────────────────────────────────
 // Bez pomiaru każde strojenie progów jest zgadywaniem. Rejestr zapisuje co
 // dashboard powiedział, a po 12 i 24 świecach 5M liczy, ile ruch dał i ile zabrał.
@@ -1922,9 +2019,14 @@ function journalSave(j){
 
 function journalRecord(entry){
   var j=journalLoad();
-  var last=j[j.length-1];
-  // nowy wpis tylko przy zmianie kierunku albo po co najmniej 15 min
+  // Deduplikacja per strumień: wpisy realne i „cienie" traktujemy osobno,
+  // inaczej naprzemienne long/short-cień kasowałyby sobie nawzajem odstęp.
+  var last=null;
+  for(var i=j.length-1;i>=0;i--){
+    if(!!j[i].shadow===!!entry.shadow){last=j[i];break;}
+  }
   if(last&&last.dir===entry.dir&&last.regime===entry.regime&&(entry.t-last.t)<15*60000)return j;
+  if(!isFinite(entry.t))return j;
   j.push(entry);
   journalSave(j);
   return j;
@@ -1956,12 +2058,18 @@ function journalPath(after,e,k){
 function journalEvaluate(c5){
   if(!c5||!c5.length)return journalLoad();
   var j=journalLoad(),changed=false;
+  var newest=c5[c5.length-1].t;
   for(var i=0;i<j.length;i++){
     var e=j[i];
     if(e.done)continue;
     if(e.dir!=='buy'&&e.dir!=='sell'){e.done=true;changed=true;continue;}
+    // Awaryjne przesunięcie: wpisy zapisane przed poprawką stref mają znacznik
+    // z zegara przeglądarki i nigdy nie doczekałyby się świec „po". Jeśli wpis
+    // jest nowszy niż najświeższa świeca o więcej niż dobę, jest nieoceniany.
+    if(e.t>newest+24*3600000){e.done=true;e.out12='skip';changed=true;continue;}
     var after=c5.filter(function(c){return c.t>e.t;});
-    if(after.length<12)continue;
+    e.pendingBars=after.length;
+    if(after.length<12){changed=true;continue;}
     var r12=journalPath(after,e,12);
     e.mfe12=r12.mfe;e.mae12=r12.mae;e.out12=r12.outcome;
     if(after.length>=24){
@@ -1978,7 +2086,7 @@ function journalEvaluate(c5){
 function journalStats(j,keyFn){
   var g={};
   j.forEach(function(e){
-    if(!e.out12||e.out12==='open')return;
+    if(!e.out12||e.out12==='open'||e.out12==='skip')return;
     var k=keyFn(e)||'—';
     if(!g[k])g[k]={n:0,tp:0,sl:0,amb:0,mfe:0,mae:0};
     g[k].n++;
@@ -2001,38 +2109,72 @@ function renderJournal(){
   var el=document.getElementById('journalDisplay');
   if(!el)return;
   var j=journalLoad();
-  var scored=j.filter(function(e){return e.out12&&e.out12!=='open';});
-  if(scored.length<3){
-    el.innerHTML='<div style="font-size:9px;color:var(--text3);line-height:1.6">'+
-      'Zebrano '+j.length+' sygnałów, ocenionych: '+scored.length+'.<br>'+
-      'Statystyka pojawi się po min. 3 ocenionych sygnałach (ocena po 1h od sygnału).</div>';
+  var real=j.filter(function(e){return !e.shadow;});
+  var shadow=j.filter(function(e){return !!e.shadow;});
+  var isScored=function(e){return e.out12&&e.out12!=='open'&&e.out12!=='skip';};
+  var scored=real.filter(isScored);
+  var scoredShadow=shadow.filter(isScored);
+  var pending=real.filter(function(e){return !isScored(e)&&e.out12!=='skip';});
+
+  var btn='<button onclick="journalReset()" style="margin-top:6px;width:100%;font-size:8px;padding:3px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-family:var(--mono)">Wyczyść rejestr</button>';
+
+  // Stan zbierania danych pokazujemy ZAWSZE — panel nie może wyglądać na martwy
+  var nextIn='';
+  if(pending.length){
+    var best=Math.max.apply(null,pending.map(function(e){return e.pendingBars||0;}));
+    var left=Math.max(0,12-best);
+    nextIn=' Najbliższa ocena za ok. '+(left*5)+' min.';
+  }
+  var head='<div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:5px">'+
+    'Sygnały: <b style="color:var(--text2)">'+real.length+'</b> zapisanych · '+
+    '<b style="color:var(--text2)">'+scored.length+'</b> ocenionych · '+
+    pending.length+' czeka na ocenę.'+nextIn+'</div>';
+
+  if(!scored.length&&!scoredShadow.length){
+    el.innerHTML=head+
+      '<div style="font-size:8px;color:var(--text3);line-height:1.5">'+
+      'Sygnał jest oceniany po 12 świecach 5-minutowych (1 godzina) od jego pojawienia się. '+
+      'Wpisy powstają tylko wtedy, gdy dashboard faktycznie dopuszcza wejście albo gdy '+
+      'filtr impulsu blokuje sygnał — a nie przy każdym odświeżeniu.</div>'+btn;
     return;
   }
-  function table(title,rows){
+
+  function table(title,rows,note){
     if(!rows.length)return '';
-    return '<div style="font-size:8px;color:var(--text3);margin:6px 0 3px;text-transform:uppercase;letter-spacing:.5px">'+title+'</div>'+
+    return '<div style="font-size:8px;color:var(--text3);margin:7px 0 3px;text-transform:uppercase;letter-spacing:.5px">'+title+'</div>'+
+      (note?'<div style="font-size:8px;color:var(--text3);margin-bottom:3px">'+note+'</div>':'')+
       rows.map(function(r){
         var col=r.rate==null?'var(--text3)':r.rate>=55?'var(--green)':r.rate<=40?'var(--red)':'var(--amber)';
         return '<div style="display:flex;justify-content:space-between;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border)">'+
           '<span style="color:var(--text2)">'+r.key+'</span>'+
           '<span><b style="color:'+col+'">'+(r.rate==null?'—':r.rate+'%')+'</b>'+
-          ' <span style="color:var(--text3)">n='+r.n+' · +'+r.mfe+'/-'+r.mae+' pkt</span></span>'+
+          ' <span style="color:var(--text3)">n='+r.n+' · +'+r.mfe+'/−'+r.mae+' pkt</span></span>'+
         '</div>';
       }).join('');
   }
-  var all=journalStats(scored,function(){return 'WSZYSTKIE';});
-  var byRegime=journalStats(scored,function(e){return e.regime;});
-  var byPhase=journalStats(scored,function(e){return e.phase;});
-  var byDir=journalStats(scored,function(e){return e.dir==='buy'?'LONG':'SHORT';});
-  el.innerHTML=
-    table('Łącznie',all)+
-    table('Wg trybu rynku',byRegime)+
-    table('Wg fazy sesji',byPhase)+
-    table('Wg kierunku',byDir)+
-    '<div style="font-size:8px;color:var(--text3);margin-top:6px;line-height:1.5">'+
-    'Trafność = TP dotknięte przed SL w ciągu 12 świec 5M. +/− = średnie MFE/MAE w pkt. '+
-    'Świece, w których padły oba poziomy, liczone jako nierozstrzygnięte.</div>'+
-    '<button onclick="journalReset()" style="margin-top:6px;width:100%;font-size:8px;padding:3px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-family:var(--mono)">Wyczyść rejestr</button>';
+
+  var out=head;
+  if(scored.length){
+    out+=table('Łącznie',journalStats(scored,function(){return 'DOPUSZCZONE SYGNAŁY';}));
+    if(scored.length>=3){
+      out+=table('Wg trybu rynku',journalStats(scored,function(e){return e.regime;}));
+      out+=table('Wg fazy sesji',journalStats(scored,function(e){return e.phase;}));
+      out+=table('Wg kierunku',journalStats(scored,function(e){return e.dir==='buy'?'LONG':'SHORT';}));
+    }
+  }
+  // Czy filtr impulsu zarabia na siebie? Niska trafność „cieni" = filtr działa.
+  if(scoredShadow.length){
+    var sh=journalStats(scoredShadow,function(){return 'ZABLOKOWANE PRZEZ FILTR';});
+    var saved=scoredShadow.filter(function(e){return e.out12==='sl';}).length;
+    out+=table('Czego filtr nie dopuścił',sh,
+      'Gdyby te sygnały zostały zagrane, '+saved+' z '+scoredShadow.length+
+      ' trafiłoby w stop loss. Im NIŻSZY procent, tym lepiej filtr robi swoje.');
+  }
+  out+='<div style="font-size:8px;color:var(--text3);margin-top:7px;line-height:1.5">'+
+    'Trafność = TP dotknięte przed SL w ciągu 12 świec 5M. +/− = średnie maksymalne '+
+    'wybicie w zysk / w stratę. Świece, w których padły oba poziomy, liczone jako '+
+    'nierozstrzygnięte i pomijane w procencie.</div>';
+  el.innerHTML=out+btn;
 }
 
 function journalReset(){
@@ -2243,15 +2385,34 @@ async function loadDataEnhanced(){
     warMode:WAR_MODE,
   };
 
-  // ── Decyzje (z warstwą weta) ─────────────────────────────────────────────
+  // ── Decyzje + jeden wspólny kierunek + poziomy SL/TP ─────────────────────
+  // Kolejność jest dwuprzebiegowa, bo zależności są splecione: decyzje potrzebują
+  // poziomów do wyświetlenia, a poziomy potrzebują kierunku, który zależy od
+  // decyzji. calcDecisions jest funkcją czystą, więc drugi przebieg nic nie psuje.
   const decBase=isFast&&c5.length>60
     ?{closes:c5,rsi:rsi5,macd:macd5,bb:bb5,e20:e20_5,e50:e50_5,atr:atr5}
     :{closes:c15,rsi:rsi15,macd:macd15,bb:bb15,e20:e20_15,e50:e50_15,atr:atr15};
-  const dec=calcDecisions(decBase.closes,decBase.rsi,decBase.macd,decBase.bb,
+
+  const decPre=calcDecisions(decBase.closes,decBase.rsi,decBase.macd,decBase.bb,
     decBase.e20,decBase.e50,decBase.atr,sigShortFinal,{cur:cur});
+
+  // JEDEN kierunek dla całego dashboardu — lewa kolumna, wykresy i prompt AI
+  const bias=computeBias(regime,decPre,sigShortFinal);
+
+  // SL/TP liczone ze struktury swingów na trzech horyzontach, wszystkie
+  // dla TEGO SAMEGO kierunku. P1 dostaje dokładnie te same liczby, które
+  // widać w panelu „Sugerowane SL / TP" po lewej.
+  const sltp5 = bias.dir&&candles5.length>40 ? calcAnalyticalSLTP(candles5,cur,bias.isLong,atr5||atr15) : null;
+  const sltp15= bias.dir&&candles15.length>40? calcAnalyticalSLTP(candles15,cur,bias.isLong,atr15) : null;
+  const sltpD = bias.dir&&candlesDay.length>40?calcAnalyticalSLTP(candlesDay,cur,bias.isLong,atrDay||atr15) : null;
+  const sltpMain=((regime.mode==='ranging'||regime.mode==='impulse')&&sltp5)?sltp5:(sltp15||sltp5);
+
+  const dec=calcDecisions(decBase.closes,decBase.rsi,decBase.macd,decBase.bb,
+    decBase.e20,decBase.e50,decBase.atr,sigShortFinal,{cur:cur,sltp:sltpMain});
   marketSnapshot.dec=dec;
   marketSnapshot.veto=dec.veto;
   marketSnapshot.vetoWhy=dec.vetoWhy;
+  marketSnapshot.bias=bias;
 
   // ── Cena ─────────────────────────────────────────────────────────────────
   const chg=cur-prev,pct=chg/prev*100;
@@ -2290,53 +2451,48 @@ async function loadDataEnhanced(){
   const lbl15=candles15.map(c=>new Date(c.t).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}));
   buildMinis(lbl15,rsi15,macd15);
 
-  // ── P1: każdy wykres predykcji dostaje swoje własne dane ─────────────────
-  // Wcześniej wszystkie trzy dostawały closes z 15min, mimo że P1 miał oś
-  // opisaną w minutach 5-minutowych, a P3 w dniach.
+  // ── Wykresy predykcji ────────────────────────────────────────────────────
+  // Każdy wykres ma własny timeframe (P1 = 5min, P2 = 15min, P3 = dzienny),
+  // wspólny kierunek z `bias` i poziomy TP/SL policzone ze struktury swingów
+  // tego samego timeframe'u — dzięki temu liczby na wykresie P1 zgadzają się
+  // co do centa z panelem SL/TP w lewej kolumnie.
   buildPredCharts({
-    s5:{closes:c5.length>30?c5:c15, e20:c5.length>30?e20_5:e20_15, atr:atr5||atr15},
-    s15:{closes:c15, e20:e20_15, atr:atr15},
-    sDay:{closes:cDay.length?cDay:c15, e20:e20Day, atr:atrDay||atr15}
-  },dec);
+    s5:{closes:c5.length>30?c5:c15, e20:c5.length>30?e20_5:e20_15, atr:atr5||atr15, sltp:sltp5},
+    s15:{closes:c15, e20:e20_15, atr:atr15, sltp:sltp15},
+    sDay:{closes:cDay.length?cDay:c15, e20:e20Day, atr:atrDay||atr15, sltp:sltpD}
+  },dec,bias,cur);
+
+  // ── Panel SL/TP (lewa kolumna) — te same liczby co wykres P1 ─────────────
+  const sltpEls={
+    tp:document.getElementById('sltpTP'), sl:document.getElementById('sltpSL'),
+    range:document.getElementById('sltpRange'), rr:document.getElementById('sltpRR'),
+    cS:document.getElementById('calcSmall'), cL:document.getElementById('calcLarge')
+  };
+  if(sltpMain){
+    if(sltpEls.tp){sltpEls.tp.textContent=fmt(sltpMain.tp);sltpEls.tp.style.color=bias.isLong?'var(--green)':'var(--red)';}
+    if(sltpEls.sl){sltpEls.sl.textContent=fmt(sltpMain.sl);sltpEls.sl.style.color=bias.isLong?'var(--red)':'var(--green)';}
+    if(sltpEls.range)sltpEls.range.textContent=sltpMain.tpPts.toFixed(1)+' pkt (R:R = '+sltpMain.rr+':1)';
+    if(sltpEls.cS)sltpEls.cS.textContent='$'+(sltpMain.tpPts*0.5).toFixed(2);
+    if(sltpEls.cL)sltpEls.cL.textContent='$'+(sltpMain.tpPts*1.0).toFixed(2);
+    if(sltpEls.rr){
+      sltpEls.rr.textContent=(bias.isLong?'LONG · ':'SHORT · ')+'R:R '+sltpMain.rr+':1 · TP: '+
+        sltpMain.tpDesc+' · SL: '+sltpMain.slDesc+' · źródło kierunku: '+bias.source;
+      sltpEls.rr.style.color=parseFloat(sltpMain.rr)>=1.5?'var(--green)':'var(--amber)';
+    }
+    marketSnapshot.analyticalTP=sltpMain.tp;
+    marketSnapshot.analyticalSL=sltpMain.sl;
+    marketSnapshot.rr=sltpMain.rr;
+  } else {
+    if(sltpEls.tp){sltpEls.tp.textContent='—';sltpEls.tp.style.color='var(--text3)';}
+    if(sltpEls.sl){sltpEls.sl.textContent='—';sltpEls.sl.style.color='var(--text3)';}
+    if(sltpEls.range)sltpEls.range.textContent='—';
+    if(sltpEls.rr){sltpEls.rr.textContent='Brak wyraźnego kierunku — poziomy nie są liczone.';
+      sltpEls.rr.style.color='var(--text3)';}
+  }
 
   // ── Poziomy cenowe (5min + dzienne) ──────────────────────────────────────
   const levels=calcPriceLevels(candles5.length?candles5:candles15,candlesDay);
-  if(levels){
-    const sigType=(sigShortFinal||sigShort||{type:'wait'}).type;
-    // W impulsie SL/TP liczymy dla kierunku IMPULSU, nie dla sygnału
-    // oscylatorowego — inaczej pokazywałyby poziomy dla pozycji zablokowanej.
-    let sltpDir=null;
-    if(imp.active&&imp.dir)sltpDir=(imp.dir==='up');
-    else if(sigType!=='wait'&&!dec.veto)sltpDir=(sigType==='buy');
-    else if(sigType!=='wait'&&dec.veto)sltpDir=(dec.veto==='short');
-    if(sltpDir!==null){
-      const sltp=calcAnalyticalSLTP(
-        (regime.mode==='ranging'||regime.mode==='impulse')&&candles5.length>30?candles5:candles15,
-        cur,sltpDir,regime.mode==='impulse'?(atr5||atr15):atr15
-      );
-      if(sltp){
-        const tpEl=document.getElementById('sltpTP');
-        const slEl=document.getElementById('sltpSL');
-        const rangeEl=document.getElementById('sltpRange');
-        const calcS=document.getElementById('calcSmall');
-        const calcL=document.getElementById('calcLarge');
-        const rrEl=document.getElementById('sltpRR');
-        if(tpEl){tpEl.textContent=fmt(sltp.tp);tpEl.style.color=sltpDir?'var(--green)':'var(--red)';}
-        if(slEl){slEl.textContent=fmt(sltp.sl);slEl.style.color=sltpDir?'var(--red)':'var(--green)';}
-        if(rangeEl)rangeEl.textContent=sltp.tpPts.toFixed(1)+' pkt (R:R = '+sltp.rr+':1)';
-        if(calcS)calcS.textContent='$'+(sltp.tpPts*0.5).toFixed(2);
-        if(calcL)calcL.textContent='$'+(sltp.tpPts*1.0).toFixed(2);
-        if(rrEl){
-          rrEl.textContent=(sltpDir?'LONG · ':'SHORT · ')+'R:R '+sltp.rr+':1 · TP: '+sltp.tpDesc+' · SL: '+sltp.slDesc;
-          rrEl.style.color=parseFloat(sltp.rr)>=1.5?'var(--green)':'var(--amber)';
-        }
-        marketSnapshot.analyticalTP=sltp.tp;
-        marketSnapshot.analyticalSL=sltp.sl;
-        marketSnapshot.rr=sltp.rr;
-      }
-    }
-    renderPriceLevels(levels,cur,atr15);
-  }
+  if(levels)renderPriceLevels(levels,cur,atr15);
 
   checkMomentumDivergence(c15,rsi15,macd15,sigShort.type==='buy');
 
@@ -2349,19 +2505,34 @@ async function loadDataEnhanced(){
     renderHistory();
   }
 
-  // Do rejestru trafia to, co dashboard FAKTYCZNIE dopuścił — pozycje
-  // zablokowane wetem nie są zapisywane jako sygnał, bo nie były rekomendacją.
+  // ── REJESTR SYGNAŁÓW ─────────────────────────────────────────────────────
+  // Znacznik czasu bierzemy z OSTATNIEJ ŚWIECY, nie z zegara przeglądarki.
+  // Wcześniej wpis dostawał Date.now(), a świece — po błędzie parsowania stref —
+  // wyglądały na starsze o offset strefy, więc `c.t > e.t` nigdy nie dawało
+  // żadnej świecy „po sygnale" i ocena nie ruszała. Wiązanie do świec czyni
+  // rejestr odpornym na zegar i strefę czasową niezależnie od tamtej poprawki.
+  const lastT=candles5.length?candles5[candles5.length-1].t:Date.now();
+  const tpP=(sltpMain&&sltpMain.tpPts)?sltpMain.tpPts:(regime.tpPts||12);
+  const slP=(sltpMain&&sltpMain.slPts)?sltpMain.slPts:(regime.slPts||8);
+
   if(dec.allowLong||dec.allowShort){
     journalRecord({
-      t:Date.now(),
-      price:cur,
-      dir:dec.allowLong?'buy':'sell',
-      regime:regime.mode,
-      phase:regime.phase?regime.phase.key:'—',
-      score:dec.score,
-      adx:regime.adx!=null?Math.round(regime.adx):null,
-      tpPts:regime.tpPts||12,
-      slPts:regime.slPts||8
+      t:lastT,price:cur,dir:dec.allowLong?'buy':'sell',shadow:false,
+      regime:regime.mode,phase:regime.phase?regime.phase.key:'—',
+      score:dec.score,adx:regime.adx!=null?Math.round(regime.adx):null,
+      tpPts:tpP,slPts:slP
+    });
+  }
+
+  // Wpis „cień" — sygnał, który filtr impulsu ZABLOKOWAŁ. Oceniany tak samo,
+  // ale liczony osobno. Dzięki temu widać, czy filtr faktycznie zarabia:
+  // ile zablokowanych wejść skończyłoby się stopem, a ile jednak zyskiem.
+  if(dec.veto&&dec.overridden){
+    journalRecord({
+      t:lastT,price:cur,dir:dec.veto==='short'?'sell':'buy',shadow:true,
+      regime:regime.mode,phase:regime.phase?regime.phase.key:'—',
+      score:dec.score,adx:regime.adx!=null?Math.round(regime.adx):null,
+      tpPts:tpP,slPts:slP
     });
   }
   journalEvaluate(candles5);
@@ -2791,7 +2962,7 @@ function buildMinis(labels,rsi,macd){
 // P1 dostaje teraz świece 5min (wcześniej wszystkie trzy wykresy dostawały 15min,
 // mimo że oś P1 była opisana w minutach 5-minutowych, a P3 w dniach).
 // Etykiety osi przeliczone na faktyczny horyzont: P1 = 1h, P2 = 2h, P3 = 5 dni.
-function buildPredCharts(series,dec){
+function buildPredCharts(series,dec,bias,curLive){
   var s=series||{};
   [
     {id:'P1',canvasId:'cP1',bdId:'bdP1',atrId:'atrP1',noteId:'noteP1',lvlId:'lvlP1',src:'s5',
@@ -2805,27 +2976,30 @@ function buildPredCharts(series,dec){
   ].forEach(function(cfg){
     var d=s[cfg.src];
     if(!d||!d.closes||d.closes.length<cfg.hist+2)return;
-    buildOnePred(cfg,d.closes,d.e20,d.atr,dec);
+    buildOnePred(cfg,d.closes,d.e20,d.atr,dec,bias,d.sltp,curLive);
   });
 }
 
-function buildOnePred(cfg,closes,e20,atr,dec){
+function buildOnePred(cfg,closes,e20,atr,dec,bias,sltp,curLive){
   if(charts[cfg.id])try{charts[cfg.id].destroy();}catch(e){}
   var hist=cfg.hist,futLen=cfg.futLen,atrMult=cfg.atrMult;
   var priceSlice=closes.slice(-hist);
   var emaSlice=(e20||[]).slice(-hist);
+  // Ostatni punkt to cena bieżąca, nie zamknięcie ostatniej świecy danego TF.
+  // Na wykresie dziennym różnica potrafiła sięgać kilkudziesięciu punktów,
+  // przez co „Teraz" na wykresie nie zgadzało się z ceną w nagłówku.
+  if(curLive!=null&&isFinite(curLive))priceSlice[priceSlice.length-1]=curLive;
   var cur=priceSlice[priceSlice.length-1];
-  var score=dec?dec.score:0;
-  var probUp=Math.max(20,Math.min(80,50+score*3));
-  // Gdy trwa impuls, kierunek prognozy nadaje impuls, a nie oscylatory —
-  // inaczej wykres rysowałby czerwoną strefę spadkową w środku wybicia w górę.
-  var _imp=(typeof marketRegime!=='undefined'&&marketRegime)?marketRegime.impulse:null;
-  if(_imp&&_imp.active&&_imp.dir){
-    probUp=_imp.dir==='up'?Math.max(probUp,55+_imp.votes*4):Math.min(probUp,45-_imp.votes*4);
-    probUp=Math.max(15,Math.min(85,probUp));
-  } else if(dec&&dec.veto){
-    // weto bez pełnego impulsu — prognoza ściągana do neutralnej
-    probUp=dec.veto==='short'?Math.max(probUp,48):Math.min(probUp,52);
+
+  // KIERUNEK I PEWNOŚĆ — z jednego wspólnego źródła (computeBias).
+  // Wcześniej wykresy liczyły to samodzielnie jako `50 + score×3`, przez co
+  // po prawej mogło być „OTWÓRZ LONG", a na wykresie strzałka ▼ SPADEK.
+  var probUp;
+  if(bias&&bias.dir){
+    probUp=bias.probUp;
+  } else {
+    var score=dec?dec.score:0;
+    probUp=Math.max(20,Math.min(80,50+score*3));
   }
   var isUp=probUp>50;
   var gc=isUp?'rgba(29,184,122,':'rgba(224,69,69,';
@@ -2838,8 +3012,17 @@ function buildOnePred(cfg,closes,e20,atr,dec){
   var f382=histMax-0.382*fibRange;
   var f500=histMax-0.500*fibRange;
   var f618=histMax-0.618*fibRange;
-  var tp=isUp?cur+zoneSize*0.85:cur-zoneSize*0.85;
-  var sl=isUp?cur-zoneSize*0.45:cur+zoneSize*0.45;
+
+  // TP/SL ze struktury swingów (ta sama funkcja co panel po lewej).
+  // Geometryczne ±zoneSize zostaje tylko jako awaryjne, gdy brak kierunku.
+  var tp,sl,lvlSrc;
+  if(sltp&&sltp.tp!=null&&sltp.sl!=null){
+    tp=sltp.tp;sl=sltp.sl;lvlSrc='swing';
+  } else {
+    tp=isUp?cur+zoneSize*0.85:cur-zoneSize*0.85;
+    sl=isUp?cur-zoneSize*0.45:cur+zoneSize*0.45;
+    lvlSrc='geom';
+  }
   var zTop=isUp?cur+zoneSize:cur+zoneSize*0.15;
   var zBot=isUp?cur+zoneSize*0.05:cur-zoneSize;
   var yMin=Math.min(histMin,zBot,sl)-zoneSize*0.25;
@@ -2875,16 +3058,23 @@ function buildOnePred(cfg,closes,e20,atr,dec){
     datasets.push({data:new Array(total).fill(f.v),borderColor:f.c,borderWidth:1,borderDash:[4,4],backgroundColor:'transparent',fill:false,pointRadius:0,order:10});
   });
   var bd=document.getElementById(cfg.bdId);
-  if(bd){bd.textContent=isUp?'▲ '+probUp.toFixed(0)+'% WZROST':'▼ '+(100-probUp).toFixed(0)+'% SPADEK';bd.className='mini-badge '+(isUp?'buy':'sell');}
+  if(bd){
+    bd.textContent=(bias&&!bias.dir)
+      ?'— BRAK KIERUNKU'
+      :(isUp?'▲ '+probUp.toFixed(0)+'% WZROST':'▼ '+(100-probUp).toFixed(0)+'% SPADEK');
+    bd.className='mini-badge '+((bias&&!bias.dir)?'neutral':(isUp?'buy':'sell'));
+  }
   var atrEl=document.getElementById(cfg.atrId);
-  if(atrEl)atrEl.textContent='Strefa: ±'+zoneSize.toFixed(0)+' USD';
+  if(atrEl)atrEl.textContent='Strefa: ±'+zoneSize.toFixed(0)+' USD'+
+    (bias&&bias.source?(' · '+bias.source):'');
   var noteEl=document.getElementById(cfg.noteId);
-  if(noteEl)noteEl.textContent=cfg.note||'';
+  if(noteEl)noteEl.textContent=(bias&&bias.why)?bias.why:(cfg.note||'');
+  var rrTxt=(sltp&&sltp.rr)?(' · R:R '+sltp.rr+':1'):'';
   var lvlEl=document.getElementById(cfg.lvlId);
   if(lvlEl)lvlEl.innerHTML=
     '<div class="pred-lvl"><div class="pred-lvl-l">Wsparcie</div><div class="pred-lvl-v" style="color:var(--green)">'+fmt(histMin)+'</div></div>'+
-    '<div class="pred-lvl"><div class="pred-lvl-l">Take Profit</div><div class="pred-lvl-v" style="color:'+(isUp?'var(--green)':'var(--red)')+'">'+fmt(tp)+'</div></div>'+
-    '<div class="pred-lvl"><div class="pred-lvl-l">Stop Loss</div><div class="pred-lvl-v" style="color:'+(isUp?'var(--red)':'var(--green)')+'">'+fmt(sl)+'</div></div>';
+    '<div class="pred-lvl"><div class="pred-lvl-l">Take Profit'+(lvlSrc==='swing'?' (swing)':'')+'</div><div class="pred-lvl-v" style="color:'+(isUp?'var(--green)':'var(--red)')+'">'+fmt(tp)+'</div></div>'+
+    '<div class="pred-lvl"><div class="pred-lvl-l">Stop Loss'+rrTxt+'</div><div class="pred-lvl-v" style="color:'+(isUp?'var(--red)':'var(--green)')+'">'+fmt(sl)+'</div></div>';
   var canvas=document.getElementById(cfg.canvasId);
   if(!canvas)return;
   var plugId='predsep'+cfg.id;
@@ -3268,6 +3458,8 @@ function buildContext(){
     'VWAP: '+(s.vwap||'?')+' cena vs VWAP: '+(s.vwapDist!=null?s.vwapDist+' pkt':'?'),
     'Impuls: '+(s.impulse?((s.impulse.dir==='up'?'WZROSTOWY':'SPADKOWY')+' '+s.impulse.votes+'/6'):'brak'),
     'Blokada pozycji: '+(s.veto?(s.veto.toUpperCase()+' - '+s.vetoWhy):'brak'),
+    'Przechyl: '+(s.bias&&s.bias.dir?((s.bias.dir==='up'?'wzrostowy':'spadkowy')+' '+s.bias.confidence+'% zrodlo:'+s.bias.source):'brak'),
+    'Poziomy: '+(s.analyticalTP?('TP '+s.analyticalTP+' SL '+s.analyticalSL+' RR '+s.rr):'brak'),
     'Decyzja LONG: '+(s.dec?s.dec.oL+' '+s.dec.oLr:'brak'),
     'Decyzja SHORT: '+(s.dec?s.dec.oS+' '+s.dec.oSr:'brak'),
     '=== KONIEC ===',
@@ -3602,6 +3794,8 @@ Tryb rynku: ${ms.regime||'brak'} | ADX 15M: ${ms.adx15||'brak'} | ADX 1h: ${ms.a
 VWAP dnia: ${ms.vwap||'brak'} | Cena vs VWAP: ${ms.vwapDist!=null?(ms.vwapDist>0?'+':'')+ms.vwapDist+' pkt':'brak'}
 Impuls kierunkowy: ${ms.impulse?((ms.impulse.dir==='up'?'WZROSTOWY':'SPADKOWY')+' ('+ms.impulse.votes+'/6 testów): '+ms.impulse.reasons.join('; ')):'brak — rynek bez wypchnięcia'}
 Blokada pozycji: ${ms.veto?(ms.veto.toUpperCase()+' — '+ms.vetoWhy):'brak'}
+Przechył dashboardu: ${ms.bias&&ms.bias.dir?((ms.bias.dir==='up'?'WZROSTOWY':'SPADKOWY')+' '+ms.bias.confidence+'% (źródło: '+ms.bias.source+')'):'brak wyraźnego kierunku'}
+Sugerowane poziomy: ${ms.analyticalTP?('TP '+ms.analyticalTP+' / SL '+ms.analyticalSL+' (R:R '+ms.rr+':1)'):'brak'}
 
 UWAGA METODOLOGICZNA: jeśli powyżej zaraportowano aktywny impuls albo blokadę pozycji,
 NIE proponuj kierunku przeciwnego do impulsu. Wskaźniki oscylacyjne (RSI, Bollinger)
