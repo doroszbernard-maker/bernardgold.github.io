@@ -619,6 +619,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
+<div class="sec">
+  <div class="sec-title">Filtr impulsu · anty-fade (5M)</div>
+  <div id="impulseDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
+    <div style="font-size:9px;color:var(--text3)">Analiza wypchnięcia kierunkowego...</div>
+  </div>
+</div>
+
 
 
 <div class="sec">
@@ -687,11 +694,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 <div class="sec">
   <div class="sec-title">Decyzje pozycyjne</div>
+  <div id="vetoBanner" style="display:none;background:var(--gold-bg);border:1px solid var(--gold-b);border-radius:var(--r2);padding:7px 9px;margin-bottom:6px"></div>
   <div class="dec-grid">
     <div class="dec-box" id="decOL"><div class="dec-lbl" id="decOLl">🟡 CZEKAJ</div><div class="dec-reason" id="decOLr">Brak potwierdzenia</div></div>
     <div class="dec-box" id="decOS"><div class="dec-lbl" id="decOSl">🟡 CZEKAJ</div><div class="dec-reason" id="decOSr">Brak potwierdzenia</div></div>
     <div class="dec-box" id="decCL"><div class="dec-lbl" id="decCLl">⬜ MONITORUJ</div><div class="dec-reason" id="decCLr">Pilnuj SL</div></div>
     <div class="dec-box" id="decCS"><div class="dec-lbl" id="decCSl">⬜ MONITORUJ</div><div class="dec-reason" id="decCSr">Pilnuj SL</div></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Rejestr sygnałów · skuteczność</div>
+  <div id="journalDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
+    <div style="font-size:9px;color:var(--text3)">Zbieranie danych...</div>
   </div>
 </div>
 
@@ -891,7 +906,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <span class="foot-r" id="footR">—</span>
 </footer>
 
-<div class="toast" id="toast"></div>
 <!-- API SETTINGS PANEL -->
 <div class="api-panel" id="apiPanel">
   <div class="api-box">
@@ -953,7 +967,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
   <div class="chat-input-row">
     <textarea class="chat-input" id="chatInput" placeholder="Pytaj o złoto..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
-    <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">↑</button
+    <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">↑</button>
     </div>
 
   </div><!-- /panels -->
@@ -966,7 +980,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 </div><!-- /shell -->
 
-<div class="toast" id="toast"></div>
 <!-- API SETTINGS PANEL -->
 <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Doradca AI" style="display:none">◈</button>
 
@@ -985,11 +998,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 </div><!-- /app -->
 
-<div class="toast" id="toast"></div>
 
 
-</body>
-</html>
 <div class="toast" id="toast"></div>
 
 <!-- API SETTINGS PANEL -->
@@ -1101,10 +1111,11 @@ function calcADX(highs, lows, closes, period=14){
       Math.abs(highs[i]-closes[i-1]),
       Math.abs(lows[i]-closes[i-1])));
   }
-  // Correct Wilder smoothing: first value = sum/period (average), then roll
-  function wilderSmooth(arr, p){
+  // Wygładzanie Wildera — SUMA kroczaca. Poprawne dla TR i DM, bo przy liczeniu
+  // DI = 100*sDM/sTR skala i tak się skraca.
+  function wilderSum(arr, p){
     if(arr.length<p) return [];
-    let val=arr.slice(0,p).reduce((a,b)=>a+b,0)/p; // average, not sum
+    let val=arr.slice(0,p).reduce((a,b)=>a+b,0);
     const res=new Array(p-1).fill(null);
     res.push(val);
     for(let i=p;i<arr.length;i++){
@@ -1113,9 +1124,25 @@ function calcADX(highs, lows, closes, period=14){
     }
     return res;
   }
-  const sTR=wilderSmooth(tr,period);
-  const sDMp=wilderSmooth(dmPlus,period);
-  const sDMm=wilderSmooth(dmMinus,period);
+  // BŁĄD, KTÓRY BYŁ TU WCZEŚNIEJ: do wygładzenia DX używano tej samej rekurencji
+  // sumy (val = val - val/p + arr[i]). Dla DX, które jest już wartością 0-100,
+  // daje to wynik ok. p razy zawyżony — ADX wychodził 200-480 zamiast 0-100,
+  // przez co KAŻDY próg trendu był zawsze spełniony. ADX Wildera to średnia
+  // krocząca: ADX = (poprzedni*(p-1) + DX) / p.
+  function wilderAvg(arr, p){
+    if(arr.length<p) return [];
+    let val=arr.slice(0,p).reduce((a,b)=>a+b,0)/p;
+    const res=new Array(p-1).fill(null);
+    res.push(val);
+    for(let i=p;i<arr.length;i++){
+      val=(val*(p-1)+arr[i])/p;
+      res.push(val);
+    }
+    return res;
+  }
+  const sTR=wilderSum(tr,period);
+  const sDMp=wilderSum(dmPlus,period);
+  const sDMm=wilderSum(dmMinus,period);
   const diPlus=[], diMinus=[], dx=[];
   for(let i=0;i<sTR.length;i++){
     if(sTR[i]==null){diPlus.push(null);diMinus.push(null);dx.push(null);continue;}
@@ -1125,13 +1152,21 @@ function calcADX(highs, lows, closes, period=14){
     const s=dp+dm;
     dx.push(s?100*Math.abs(dp-dm)/s:0);
   }
-  // ADX = Wilder smooth of DX
+  // ADX = średnia krocząca Wildera z DX (NIE suma — patrz komentarz wyżej)
   const validDX=dx.filter(v=>v!=null);
-  const adxArr=wilderSmooth(validDX,period);
+  const adxArr=wilderAvg(validDX,period);
+  const lastAdx=adxArr[adxArr.length-1]||0;
+  const prevAdx=adxArr[adxArr.length-4]!=null?adxArr[adxArr.length-4]:lastAdx; // 3 świece wstecz
+  const dpLast=diPlus[diPlus.length-1]||0;
+  const dmLast=diMinus[diMinus.length-1]||0;
   return{
-    adx:adxArr[adxArr.length-1]||0,
-    diPlus:diPlus[diPlus.length-1]||0,
-    diMinus:diMinus[diMinus.length-1]||0
+    adx:lastAdx,
+    adxPrev:prevAdx,
+    rising:lastAdx>prevAdx*1.03,
+    diPlus:dpLast,
+    diMinus:dmLast,
+    diSpread:Math.abs(dpLast-dmLast),
+    diDir:dpLast>dmLast?'up':dpLast<dmLast?'down':null
   };
 }
 
@@ -1159,123 +1194,171 @@ var marketRegime={
   desc:'Wykrywanie...',
 };
 
-function detectMarketRegime(candles15, candles5, atr15, atrDay){
+function detectMarketRegime(candles15, candles5, atr15, atrDay, candles60){
+  var cur5=(candles5&&candles5.length)?candles5[candles5.length-1].c:null;
+
+  // ── 1. SZYBKA WARSTWA: impuls na 5M (reaguje w 1-3 świecach) ──────────────
+  var imp=detectImpulse(candles5);
+  var e21_5=null;
+  if(candles5&&candles5.length>25){
+    var cl5=candles5.map(function(c){return c.c;});
+    e21_5=calcEMA(cl5,21)[cl5.length-1];
+  }
+  var mem=updateImpulseMemory(imp,cur5,e21_5);
+  IMPULSE=imp;
+  var vwap=calcVWAP(candles5,todayAnchorMs());
+  var phase=getSessionPhase();
+  var pb=pullbackStatus(candles5,imp.dir||mem.dir,vwap);
+
   if(!candles15||candles15.length<30){
     marketRegime={mode:'ranging',signalTF:'15min',filterBars:2,
-      tpPts:20,slPts:10,adx:null,bbWidth:null,atrRatio:null,
+      tpPts:20,slPts:10,adx:null,adxObj:null,adx60:null,bbWidth:null,atrRatio:null,
+      impulse:imp,mem:mem,vwap:vwap,phase:phase,pullback:pb,
       desc:'Za mało danych — tryb domyślny'};
     renderRegimePanel();
+    renderImpulsePanel(imp,mem,phase,vwap,cur5,pb);
     return marketRegime;
   }
-  // Manual override - user forced a regime
+
+  var c15=candles15.map(function(c){return c.c;});
+  var h15=candles15.map(function(c){return c.h;});
+  var l15=candles15.map(function(c){return c.l;});
+
+  // ── 2. WARSTWA WOLNA: ADX 15M (charakter godziny) + ADX 1h (charakter dnia) ─
+  var adxObj=calcADX(h15,l15,c15,14);
+  var adx=adxObj?adxObj.adx:null;
+  var adx60=null,adx60Obj=null;
+  if(candles60&&candles60.length>50){
+    adx60Obj=calcADX(candles60.map(function(c){return c.h;}),
+                     candles60.map(function(c){return c.l;}),
+                     candles60.map(function(c){return c.c;}),14);
+    adx60=adx60Obj?adx60Obj.adx:null;
+  }
+  var bbW=calcBBWidth(c15,20,2);
+  var atrRatio=(atr15&&atrDay)?(atr15/atrDay):null;
+  var last20=c15.slice(-20);
+  var rangeNow=last20.length?(Math.max.apply(null,last20)-Math.min.apply(null,last20)):0;
+
+  // Kontekst wyższego TF — używany do asymetrii progów, nie do wyzwalania sygnału
+  var trendCtx=null;
+  if(adx60!=null&&adx60>=22&&adx60Obj.diDir)trendCtx=adx60Obj.diDir;
+
+  // ── 3. RĘCZNY OVERRIDE (ale impuls nadal jest raportowany) ────────────────
   if(REGIME_OVERRIDE){
-    const forced=REGIME_OVERRIDE;
-    const isTrend=forced==='trending';
+    var forced=REGIME_OVERRIDE;
+    var isTrend=forced==='trending';
     marketRegime={
-      mode:forced,
-      adx:null,bbWidth:null,atrRatio:null,
-      signalTF:isTrend?'15min':'5min',
-      filterBars:isTrend?2:1,
+      mode:forced,adx:adx,adxObj:adxObj,adx60:adx60,bbWidth:bbW,atrRatio:atrRatio,
+      signalTF:isTrend?'15min':'5min',filterBars:isTrend?2:1,
       tpPts:isTrend?Math.round((atr15||20)*2):20,
       slPts:isTrend?Math.round((atr15||20)*0.8):10,
+      trendCtx:trendCtx,impulse:imp,mem:mem,vwap:vwap,phase:phase,pullback:pb,
       desc:(isTrend?'TREND':'BOCZNY')+' · RĘCZNY OVERRIDE · TF: '+(isTrend?'15min':'5min'),
       override:true
     };
     renderRegimePanel();
+    renderImpulsePanel(imp,mem,phase,vwap,cur5,pb);
     return marketRegime;
   }
-  const c15=candles15.map(c=>c.c);
-  const h15=candles15.map(c=>c.h);
-  const l15=candles15.map(c=>c.l);
-  const c5=candles5.map(c=>c.c);
 
-  // 1. ADX on 15min (trend strength)
-  const adxData=calcADX(h15,l15,c15,14);
-  const adx=adxData?adxData.adx:null;
+  var mode,signalTF,filterBars,tpPts,slPts,desc;
+  var a15=(atr15&&isFinite(atr15))?atr15:20;
 
-  // 2. BB Width on 15min (volatility squeeze)
-  const bbW=calcBBWidth(c15,20,2);
-
-  // 3. ATR ratio: current 15min ATR vs daily ATR
-  // If current ATR is much smaller than daily = quiet/ranging day
-  const atrRatio=atr15&&atrDay?(atr15/atrDay):null;
-
-  // 4. Price range of last 20 candles (15min) = ~5h
-  const last20=c15.slice(-20);
-  const rangeNow=last20.length?(Math.max(...last20)-Math.min(...last20)):0;
-
-  // 5. 5min volatility - std dev of last 20 5min closes
-  const last20_5=c5.slice(-20);
-  const mean5=last20_5.reduce((a,b)=>a+b,0)/last20_5.length;
-  const stdDev5=Math.sqrt(last20_5.reduce((a,b)=>a+(b-mean5)**2,0)/last20_5.length);
-
-  // ── REGIME CLASSIFICATION ──────────────────────────────────────────────────
-  let mode, signalTF, filterBars, tpPts, slPts, desc;
-
-  if(adx!==null&&adx>28){
-    // TRENDING - strong directional movement
+  if(imp.active){
+    // ── TRYB IMPULSU — nadrzędny nad ADX, bo ADX jest tu spóźniony ──────────
+    mode='impulse';
+    signalTF='5min';
+    filterBars=1;
+    tpPts=Math.round(a15*3.0*10)/10;   // z trendem gra się na szeroki zasięg
+    slPts=Math.round(a15*1.0*10)/10;
+    desc='IMPULS '+(imp.dir==='up'?'W GÓRĘ':'W DÓŁ')+' · '+imp.votes+'/6 testów · '+
+      'ADX '+(adx!=null?adx.toFixed(0):'—')+' (spóźniony) · TP ~'+tpPts+' pkt';
+  } else if(adx!=null&&(adx>=26||(adx>=20&&adxObj.rising&&adxObj.diSpread>=10))){
+    // TREND potwierdzony lub wczesny (rosnący ADX + rozjechane DI)
     mode='trending';
     signalTF='15min';
-    filterBars=2;            // 2×15min = 30 min confirmation
-    tpPts=Math.round(atr15*2.0*10)/10;  // 2×ATR
-    slPts=Math.round(atr15*0.8*10)/10;  // 0.8×ATR
-    desc='TREND · ADX '+adx.toFixed(0)+' · Sygnały 15M · TP ~'+tpPts+' pkt';
-  } else if(adx!==null&&adx<20&&bbW!==null&&bbW<0.4){
-    // RANGING TIGHT - very quiet, small oscillations
+    filterBars=2;
+    tpPts=Math.round(a15*2.0*10)/10;
+    slPts=Math.round(a15*0.8*10)/10;
+    desc='TREND '+(adxObj.diDir==='up'?'WZROSTOWY':adxObj.diDir==='down'?'SPADKOWY':'')+
+      ' · ADX '+adx.toFixed(0)+(adxObj.rising?'↑':'')+
+      ' · DI '+adxObj.diPlus.toFixed(0)+'/'+adxObj.diMinus.toFixed(0)+
+      ' · Sygnały 15M · TP ~'+tpPts+' pkt';
+  } else if(adx!=null&&adx<18&&bbW!=null&&bbW<0.4){
     mode='ranging';
     signalTF='5min';
-    filterBars=1;            // 1×5min confirmation only
-    // Use actual observed range to set TP/SL
-    tpPts=Math.round(Math.min(rangeNow*0.35,20));
-    slPts=Math.round(Math.min(rangeNow*0.18,10));
-    tpPts=Math.max(tpPts,8);  // minimum 8 pts
-    slPts=Math.max(slPts,5);   // minimum 5 pts
-    desc='BOCZNY (tight) · ADX '+adx.toFixed(0)+' · Sygnały 5M · TP ~'+tpPts+' pkt';
-  } else if(adx!==null&&adx<25){
-    // RANGING NORMAL - moderate oscillation (today's situation)
+    filterBars=1;
+    tpPts=Math.max(8,Math.round(Math.min(rangeNow*0.35,20)));
+    slPts=Math.max(5,Math.round(Math.min(rangeNow*0.18,10)));
+    desc='BOCZNY WĄSKI · ADX '+adx.toFixed(0)+' · BB '+bbW.toFixed(2)+'% · Sygnały 5M · TP ~'+tpPts+' pkt';
+  } else if(adx!=null&&adx<22){
     mode='ranging';
     signalTF='5min';
-    filterBars=1;            // 1 bar confirmation on 5min
-    tpPts=Math.round(Math.min(rangeNow*0.4,25));
-    slPts=Math.round(Math.min(rangeNow*0.2,12));
-    tpPts=Math.max(tpPts,10);
-    slPts=Math.max(slPts,6);
+    filterBars=1;
+    tpPts=Math.max(10,Math.round(Math.min(rangeNow*0.4,25)));
+    slPts=Math.max(6,Math.round(Math.min(rangeNow*0.2,12)));
     desc='BOCZNY · ADX '+adx.toFixed(0)+' · Sygnały 5M · TP ~'+tpPts+' pkt';
   } else {
-    // TRANSITIONAL or unknown
-    mode='ranging';
+    // Strefa 22-26 ADX — nie boczniak, nie trend. Tu mean-reversion najczęściej zawodzi,
+    // więc podnosimy progi zamiast udawać, że wiemy.
+    mode='transitional';
     signalTF='15min';
     filterBars=2;
-    tpPts=20;
-    slPts=10;
-    desc='PRZEJSCIOWY · Sygnały 15M · TP ~'+tpPts+' pkt';
+    tpPts=Math.round(a15*1.5*10)/10;
+    slPts=Math.round(a15*0.8*10)/10;
+    desc='PRZEJŚCIOWY · ADX '+(adx!=null?adx.toFixed(0):'—')+
+      ' · podwyższone progi, kontra ograniczona · TP ~'+tpPts+' pkt';
   }
 
-  marketRegime={mode,adx,bbWidth:bbW,atrRatio,signalTF,filterBars,tpPts,slPts,desc};
+  // Stygnięcie po impulsie: nie wracamy od razu do gry kontra
+  if(!imp.active&&mem.cooldown&&mode==='ranging'){
+    mode='transitional';
+    signalTF='5min';
+    filterBars=2;
+    desc='STYGNIĘCIE PO IMPULSIE '+(mem.dir==='up'?'W GÓRĘ':'W DÓŁ')+
+      (mem.minsAgo!=null?(' ('+mem.minsAgo+' min temu)'):'')+' · kontra ograniczona';
+  }
+
+  marketRegime={mode:mode,adx:adx,adxObj:adxObj,adx60:adx60,bbWidth:bbW,atrRatio:atrRatio,
+    signalTF:signalTF,filterBars:filterBars,tpPts:tpPts,slPts:slPts,
+    trendCtx:trendCtx,impulse:imp,mem:mem,vwap:vwap,phase:phase,pullback:pb,desc:desc};
   renderRegimePanel();
+  renderImpulsePanel(imp,mem,phase,vwap,cur5,pb);
   return marketRegime;
 }
 
 function renderRegimePanel(){
-  const el=document.getElementById('regimeDisplay');
+  var el=document.getElementById('regimeDisplay');
   if(!el)return;
-  const r=marketRegime;
+  var r=marketRegime;
   if(!r||!r.mode){
     el.innerHTML='<div style="font-size:9px;color:var(--text3)">Wykrywanie ADX + BB Width...</div>';
     return;
   }
-  const col=r.mode==='trending'?'var(--green)':r.mode==='ranging'?'var(--amber)':'var(--text3)';
-  const icon=r.mode==='trending'?'📈':r.mode==='ranging'?'↔':'❓';
-  const overrideTag=r.override?' <span style="font-size:7px;background:var(--amber-bg);color:var(--amber);padding:1px 4px;border-radius:2px">RĘCZNIE</span>':'';
+  var map={
+    impulse:{c:'var(--gold)',i:'🚀',t:'IMPULS'},
+    trending:{c:'var(--green)',i:'📈',t:'TREND'},
+    ranging:{c:'var(--amber)',i:'↔',t:'BOCZNY'},
+    transitional:{c:'var(--text2)',i:'⚡',t:'PRZEJŚCIOWY'}
+  };
+  var m=map[r.mode]||{c:'var(--text3)',i:'❓',t:String(r.mode).toUpperCase()};
+  var overrideTag=r.override?' <span style="font-size:7px;background:var(--amber-bg);color:var(--amber);padding:1px 4px;border-radius:2px">RĘCZNIE</span>':'';
+  var ctxTag='';
+  if(r.trendCtx){
+    ctxTag='<span style="font-size:8px;color:'+(r.trendCtx==='up'?'var(--green)':'var(--red)')+'">'+
+      'kontekst 1h: '+(r.trendCtx==='up'?'wzrostowy':'spadkowy')+'</span>';
+  }
   el.innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
-    '<span style="font-size:10px;font-weight:700;color:'+col+'">'+icon+' '+r.mode.toUpperCase()+overrideTag+'</span>'+
-    '<span style="font-size:9px;color:var(--text3)">ADX: '+(r.adx?r.adx.toFixed(0):'—')+'</span>'+
+    '<span style="font-size:10px;font-weight:700;color:'+m.c+'">'+m.i+' '+m.t+overrideTag+'</span>'+
+    '<span style="font-size:9px;color:var(--text3)">ADX 15M: '+(r.adx!=null?r.adx.toFixed(0):'—')+
+    (r.adx60!=null?(' · 1h: '+r.adx60.toFixed(0)):'')+'</span>'+
     '</div>'+
     '<div style="font-size:9px;color:var(--text3);line-height:1.5">'+r.desc+'</div>'+
-    '<div style="display:flex;gap:10px;margin-top:5px;font-size:9px">'+
-    '<span>TF: <b style="color:'+col+'">'+r.signalTF+'</b></span>'+
-    '<span>Filtr: <b style="color:'+col+'">'+r.filterBars+' świece</b></span>'+
+    (ctxTag?'<div style="margin-top:3px">'+ctxTag+'</div>':'')+
+    '<div style="display:flex;gap:10px;margin-top:5px;font-size:9px;flex-wrap:wrap">'+
+    '<span>TF: <b style="color:'+m.c+'">'+r.signalTF+'</b></span>'+
+    '<span>Filtr: <b style="color:'+m.c+'">'+r.filterBars+' św.</b></span>'+
     '<span>TP: <b style="color:var(--green)">~'+r.tpPts+' pkt</b></span>'+
     '<span>SL: <b style="color:var(--red)">~'+r.slPts+' pkt</b></span>'+
     '</div>';
@@ -1347,6 +1430,8 @@ function applyStabilityFilter(newSig, tfLabel, requiredBars){
   else if(h[tfLabel].sig.type===newSig.type){
     h[tfLabel].bars++;
     h[tfLabel].sig=newSig; // update score even if same direction
+    h[tfLabel].pending=null;      // powrót do obecnego kierunku
+    h[tfLabel].pendingBars=0;     // unieważnia oczekującą zmianę
   } else {
     // Direction change - put in pending
     if(h[tfLabel].pending&&h[tfLabel].pending.type===newSig.type){
@@ -1366,104 +1451,182 @@ function applyStabilityFilter(newSig, tfLabel, requiredBars){
   return h[tfLabel].sig;
 }
 
-function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect){
-  const n=closes.length-1;
-  const rv=rsi[n]||50,cur=closes[n];
-  const em20=e20[n],em50=e50?e50[n]:null;
-  const mh=macd.hist[n]||0;
-  const bv=bb[n];
-  const isRanging=marketRegime&&marketRegime.mode==='ranging';
+// ══ DECYZJE POZYCYJNE — z warstwą weta (anty-fade) ══════════════════════════
+// Kluczowa zmiana: przed policzeniem decyzji sprawdzamy, czy nie trwa impuls
+// przeciwny do sygnału. Jeśli tak — sygnał NIE jest realizowany, tylko
+// pokazywany jako zablokowany ze stanem STÓJ. Score sam z siebie zawsze
+// wskaże kontrę przy wybiciu (RSI>70 = -4, górne BB = -2), więc filtr musi
+// działać NAD nim, a nie w nim.
+function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
+  ctx=ctx||{};
+  var n=closes.length-1;
+  var rv=(rsi[n]!=null?rsi[n]:50);
+  var cur=(ctx.cur!=null?ctx.cur:closes[n]);
+  var em20=e20?e20[n]:null, em50=e50?e50[n]:null;
+  var bv=bb?bb[n]:null;
 
-  // Use RAW signal score (not masterScore) in ranging mode
-  // masterScore weights 4 TFs - too diluted for scalping
-  // In ranging: use sigShort score directly (5min signal)
-  // In trending: use masterScore
-  const rawScore=isRanging?
-    (sigShortDirect?sigShortDirect.score:masterScore):
-    masterScore;
+  var r=marketRegime||{};
+  var imp=r.impulse||{active:false,dir:null,votes:0,reasons:[]};
+  var mem=r.mem||{cooldown:false,dir:null,minsAgo:null};
+  var vwap=r.vwap||null;
+  var phase=r.phase||{noFade:false,name:'—',key:''};
+  var pb=r.pullback||{ready:false,desc:'brak danych'};
+  var mode=r.mode||'ranging';
+  var isRanging=(mode==='ranging');
+  var isImpulse=(mode==='impulse');
+  var isTransitional=(mode==='transitional');
 
-  // Adaptive thresholds based on regime
-  const openThresh=isRanging?2:3;  // easier to open in ranging (scalping)
-  const closeThresh=isRanging?1:2; // easier to close too
-
-  // Additional confirmation for ranging - use BB position and RSI
-  // In ranging, EMA cross is not reliable (sideways EMA)
-  // Instead use: RSI + MACD hist + BB position
-  const bbBull=bv&&cur<=bv.mid;   // below midline = potential bounce up
-  const bbBear=bv&&cur>=bv.mid;   // above midline = potential bounce down
-  const rsiBull=rv<55;             // not overbought
-  const rsiBear=rv>45;             // not oversold
-  const macdBull=mh>=0;
-  const macdBear=mh<=0;
-
-  let oL,oLr,oS,oSr,cL,cLr,cS,cSr;
-
-  if(isRanging){
-    // RANGING MODE - decisions based on 5min signal + RSI + BB
-    const oLok=rawScore>=openThresh&&rsiBull&&bbBull;
-    oL=oLok?'✅ OTWÓRZ LONG':'🔴 NIE OTWIERAJ LONG';
-    oLr=oLok?
-      'Score 5M: '+rawScore+' · RSI: '+rv.toFixed(0)+' · poniżej BB mid':
-      'Score 5M: '+rawScore+' (próg: '+openThresh+') · RSI: '+rv.toFixed(0);
-
-    const oSok=rawScore<=-openThresh&&rsiBear&&bbBear;
-    oS=oSok?'✅ OTWÓRZ SHORT':'🔴 NIE OTWIERAJ SHORT';
-    oSr=oSok?
-      'Score 5M: '+rawScore+' · RSI: '+rv.toFixed(0)+' · powyżej BB mid':
-      'Score 5M: '+rawScore+' (próg: -'+openThresh+') · RSI: '+rv.toFixed(0);
-
-    // Close: when signal reverses or RSI at extreme
-    const cLwarn=rawScore<=-closeThresh||(rv>62)||(bv&&cur>=bv.upper*0.998);
-    cL=cLwarn?'🔴 ZAMKNIJ LONG':'🟡 MONITORUJ';
-    cLr=cLwarn?
-      (rv>62?'RSI: '+rv.toFixed(0)+' — zbliża się wykupienie':
-       rawScore<=-closeThresh?'Sygnał 5M odwrócony ('+rawScore+')':
-       'Cena przy górnym BB — potencjalny szczyt'):
-      'Trzymaj — trend neutralny, pilnuj SL';
-
-    const cSwarn=rawScore>=closeThresh||(rv<38)||(bv&&cur<=bv.lower*1.002);
-    cS=cSwarn?'🔴 ZAMKNIJ SHORT':'🟡 MONITORUJ';
-    cSr=cSwarn?
-      (rv<38?'RSI: '+rv.toFixed(0)+' — zbliża się wyprzedanie':
-       rawScore>=closeThresh?'Sygnał 5M odwrócony ('+rawScore+')':
-       'Cena przy dolnym BB — potencjalne dno'):
-      'Trzymaj — trend neutralny, pilnuj SL';
-
-  } else {
-    // TRENDING MODE - use masterScore + EMA confirmation
-    const trendUp=em20&&em50&&em20>em50;
-    const trendDown=em20&&em50&&em20<em50;
-
-    const oLok=rawScore>=openThresh&&rv<62&&trendUp;
-    oL=oLok?'✅ OTWÓRZ LONG':'🔴 NIE OTWIERAJ LONG';
-    oLr=oLok?
-      'Score: '+rawScore+' · RSI: '+rv.toFixed(0)+' · EMA wzrostowa':
-      'Score: '+rawScore+' (próg: '+openThresh+') · '+(trendUp?'':'EMA bez trendu · ')+'RSI: '+rv.toFixed(0);
-
-    const oSok=rawScore<=-openThresh&&rv>38&&trendDown;
-    oS=oSok?'✅ OTWÓRZ SHORT':'🔴 NIE OTWIERAJ SHORT';
-    oSr=oSok?
-      'Score: '+rawScore+' · RSI: '+rv.toFixed(0)+' · EMA spadkowa':
-      'Score: '+rawScore+' (próg: -'+openThresh+') · '+(trendDown?'':'EMA bez trendu · ')+'RSI: '+rv.toFixed(0);
-
-    const cLwarn=rawScore<=-closeThresh||(rv>65)||(bv&&cur>=bv.upper);
-    cL=cLwarn?'🔴 ZAMKNIJ LONG':'🟡 MONITORUJ';
-    cLr=cLwarn?
-      (rv>65?'RSI wykupiony ('+rv.toFixed(0)+')':
-       rawScore<=-closeThresh?'Sygnał odwrócony ('+rawScore+')':
-       'Cena przy górnym BB'):
-      'Trend aktywny — pilnuj SL';
-
-    const cSwarn=rawScore>=closeThresh||(rv<35)||(bv&&cur<=bv.lower);
-    cS=cSwarn?'🔴 ZAMKNIJ SHORT':'🟡 MONITORUJ';
-    cSr=cSwarn?
-      (rv<35?'RSI wyprzedany ('+rv.toFixed(0)+')':
-       rawScore>=closeThresh?'Sygnał odwrócony ('+rawScore+')':
-       'Cena przy dolnym BB'):
-      'Trend aktywny — pilnuj SL';
+  // ══ WARSTWA WETA ═════════════════════════════════════════════════════════
+  // veto = strona, której NIE WOLNO otwierać. Kolejność = od najsilniejszej
+  // przesłanki do najsłabszej; pierwsza dopasowana wygrywa.
+  var veto=null, vetoWhy='', vetoSrc='';
+  if(imp.active&&imp.dir){
+    veto=(imp.dir==='up')?'short':'long';
+    vetoSrc='impuls';
+    vetoWhy='Trwa impuls '+(imp.dir==='up'?'wzrostowy':'spadkowy')+' ('+imp.votes+'/6 testów)'+
+      (imp.reasons.length?(': '+imp.reasons[0].toLowerCase()):'')+'.';
+  } else if(mem.cooldown&&mem.dir){
+    veto=(mem.dir==='up')?'short':'long';
+    vetoSrc='stygnięcie';
+    vetoWhy='Impuls '+(mem.dir==='up'?'wzrostowy':'spadkowy')+' wygasł '+
+      (mem.minsAgo!=null?mem.minsAgo:'?')+' min temu, ale cena nie wróciła za EMA21 5M — '+
+      'struktura ruchu nienaruszona.';
+  } else if(phase.noFade&&vwap&&cur!=null&&cur>vwap.upper){
+    veto='short';vetoSrc='sesja';
+    vetoWhy=phase.name+': cena powyżej VWAP+σ ('+vwap.upper.toFixed(2)+'). '+
+      'W tym oknie granie przeciw ruchowi statystycznie się nie opłaca.';
+  } else if(phase.noFade&&vwap&&cur!=null&&cur<vwap.lower){
+    veto='long';vetoSrc='sesja';
+    vetoWhy=phase.name+': cena poniżej VWAP−σ ('+vwap.lower.toFixed(2)+'). '+
+      'W tym oknie granie przeciw ruchowi statystycznie się nie opłaca.';
+  } else if(isTransitional&&r.trendCtx){
+    veto=(r.trendCtx==='up')?'short':'long';
+    vetoSrc='kontekst 1h';
+    vetoWhy='Rynek przejściowy (ADX '+(r.adx!=null?r.adx.toFixed(0):'—')+'), a kontekst 1h jest '+
+      (r.trendCtx==='up'?'wzrostowy':'spadkowy')+' — kontra do wyższego TF wyłączona.';
   }
 
-  return{oL,oLr,oS,oSr,cL,cLr,cS,cSr,score:rawScore,isRanging};
+  var blockedLong=(veto==='long'), blockedShort=(veto==='short');
+
+  // ── Score i progi ────────────────────────────────────────────────────────
+  var rawScore=(isRanging||isImpulse)
+    ?(sigShortDirect?sigShortDirect.score:masterScore)
+    :masterScore;
+  var openThresh=isRanging?2:(isImpulse?2:(isTransitional?4:3));
+  var closeThresh=isRanging?1:2;
+
+  // ── Kandydaci na otwarcie ────────────────────────────────────────────────
+  var longOk,shortOk,longWhy,shortWhy,longNo,shortNo;
+  if(isImpulse){
+    // W impulsie kierunku NIE ustala score (oscylatory są wtedy odwrócone),
+    // tylko sam impuls. Wejście dozwolone wyłącznie na cofnięciu — wejście
+    // w środku wypchnięcia daje fatalny R:R.
+    longOk =(imp.dir==='up')&&pb.ready&&rv<82;
+    shortOk=(imp.dir==='down')&&pb.ready&&rv>18;
+    longWhy='Z impulsem wzrostowym · '+pb.desc;
+    shortWhy='Z impulsem spadkowym · '+pb.desc;
+    longNo =(imp.dir==='up')?('Impuls trwa, ale '+pb.desc):'Impuls jest spadkowy — long przeciw niemu';
+    shortNo=(imp.dir==='down')?('Impuls trwa, ale '+pb.desc):'Impuls jest wzrostowy — short przeciw niemu';
+  } else if(isRanging){
+    longOk =rawScore>=openThresh&&rv<55&&!!bv&&cur<=bv.mid;
+    shortOk=rawScore<=-openThresh&&rv>45&&!!bv&&cur>=bv.mid;
+    longWhy='Score 5M: '+rawScore+' · RSI '+rv.toFixed(0)+' · poniżej BB mid';
+    shortWhy='Score 5M: '+rawScore+' · RSI '+rv.toFixed(0)+' · powyżej BB mid';
+    longNo ='Score 5M: '+rawScore+' (próg: +'+openThresh+') · RSI '+rv.toFixed(0);
+    shortNo='Score 5M: '+rawScore+' (próg: −'+openThresh+') · RSI '+rv.toFixed(0);
+  } else {
+    var trendUp=(em20!=null&&em50!=null&&em20>em50);
+    var trendDown=(em20!=null&&em50!=null&&em20<em50);
+    longOk =rawScore>=openThresh&&rv<62&&trendUp;
+    shortOk=rawScore<=-openThresh&&rv>38&&trendDown;
+    longWhy='Score: '+rawScore+' · RSI '+rv.toFixed(0)+' · EMA wzrostowa';
+    shortWhy='Score: '+rawScore+' · RSI '+rv.toFixed(0)+' · EMA spadkowa';
+    longNo ='Score: '+rawScore+' (próg: +'+openThresh+') · '+(trendUp?'':'EMA bez trendu · ')+'RSI '+rv.toFixed(0);
+    shortNo='Score: '+rawScore+' (próg: −'+openThresh+') · '+(trendDown?'':'EMA bez trendu · ')+'RSI '+rv.toFixed(0);
+  }
+  if(blockedLong)longOk=false;
+  if(blockedShort)shortOk=false;
+
+  // ── Ścieżka „z trendem, na cofnięciu" ────────────────────────────────────
+  // Dostępna także po wygaśnięciu impulsu, dopóki struktura ruchu jest cała.
+  // Bez niej dashboard w trendzie tylko blokuje i nigdy nie daje wejścia.
+  var withDir=imp.active?imp.dir:(mem.cooldown?mem.dir:null);
+  if(withDir==='up'&&!blockedLong&&pb.ready&&rv<82){
+    longOk=true;longWhy='Z trendem wzrostowym · '+pb.desc;
+  }
+  if(withDir==='down'&&!blockedShort&&pb.ready&&rv>18){
+    shortOk=true;shortWhy='Z trendem spadkowym · '+pb.desc;
+  }
+
+  // ── OTWARCIE LONG ────────────────────────────────────────────────────────
+  var oL,oLr;
+  if(blockedLong){oL='⛔ STÓJ — NIE GRAJ LONG';oLr=vetoWhy;}
+  else if(longOk){oL='✅ OTWÓRZ LONG';oLr=longWhy;}
+  else if(withDir==='up'&&!pb.broken){
+    oL='🟡 CZEKAJ NA COFNIĘCIE';
+    oLr=(pb.ready&&rv>=82)
+      ?('Cena w strefie wejścia, ale RSI 5M = '+rv.toFixed(0)+' — ruch wciąż zbyt rozciągnięty.')
+      :pb.desc;
+  }
+  else{oL='🔴 NIE OTWIERAJ LONG';oLr=longNo;}
+
+  // ── OTWARCIE SHORT ───────────────────────────────────────────────────────
+  var oS,oSr;
+  if(blockedShort){oS='⛔ STÓJ — NIE GRAJ SHORT';oSr=vetoWhy;}
+  else if(shortOk){oS='✅ OTWÓRZ SHORT';oSr=shortWhy;}
+  else if(withDir==='down'&&!pb.broken){
+    oS='🟡 CZEKAJ NA COFNIĘCIE';
+    oSr=(pb.ready&&rv<=18)
+      ?('Cena w strefie wejścia, ale RSI 5M = '+rv.toFixed(0)+' — ruch wciąż zbyt rozciągnięty.')
+      :pb.desc;
+  }
+  else{oS='🔴 NIE OTWIERAJ SHORT';oSr=shortNo;}
+
+  // ── ZAMYKANIE ────────────────────────────────────────────────────────────
+  var rsiHiClose=isRanging?62:65, rsiLoClose=isRanging?38:35;
+  var cL,cLr,cS,cSr;
+
+  if(blockedLong){
+    // impuls spadkowy — long jest po złej stronie ruchu
+    cL='🔴 ZAMKNIJ LONG';
+    cLr='Pozycja przeciwna do ruchu. '+vetoWhy;
+  } else if(isImpulse&&imp.dir==='up'){
+    cL='🟢 TRZYMAJ · PODCIĄGAJ SL';
+    cLr='Impuls wzrostowy trwa ('+imp.votes+'/6). Nie zamykaj na RSI — przesuwaj SL pod EMA21 5M.';
+  } else {
+    var cLwarn=(rawScore<=-closeThresh)||(rv>rsiHiClose)||(!!bv&&cur>=bv.upper*(isRanging?0.998:1));
+    cL=cLwarn?'🔴 ZAMKNIJ LONG':'⬜ MONITORUJ';
+    cLr=cLwarn
+      ?(rv>rsiHiClose?('RSI '+rv.toFixed(0)+' — strefa wykupienia')
+        :rawScore<=-closeThresh?('Sygnał odwrócony ('+rawScore+')')
+        :'Cena przy górnym BB — potencjalny szczyt')
+      :'Trzymaj — pilnuj SL';
+  }
+
+  if(blockedShort){
+    cS='🔴 ZAMKNIJ SHORT';
+    cSr='Pozycja przeciwna do ruchu. '+vetoWhy;
+  } else if(isImpulse&&imp.dir==='down'){
+    cS='🟢 TRZYMAJ · PODCIĄGAJ SL';
+    cSr='Impuls spadkowy trwa ('+imp.votes+'/6). Nie zamykaj na RSI — przesuwaj SL nad EMA21 5M.';
+  } else {
+    var cSwarn=(rawScore>=closeThresh)||(rv<rsiLoClose)||(!!bv&&cur<=bv.lower*(isRanging?1.002:1));
+    cS=cSwarn?'🔴 ZAMKNIJ SHORT':'⬜ MONITORUJ';
+    cSr=cSwarn
+      ?(rv<rsiLoClose?('RSI '+rv.toFixed(0)+' — strefa wyprzedania')
+        :rawScore>=closeThresh?('Sygnał odwrócony ('+rawScore+')')
+        :'Cena przy dolnym BB — potencjalne dno')
+      :'Trzymaj — pilnuj SL';
+  }
+
+  // ── Czy weto nadpisało własny sygnał dashboardu? ─────────────────────────
+  var sigDir=sigShortDirect?sigShortDirect.type:'wait';
+  var overridden=(sigDir==='sell'&&blockedShort)||(sigDir==='buy'&&blockedLong);
+
+  return{oL:oL,oLr:oLr,oS:oS,oSr:oSr,cL:cL,cLr:cLr,cS:cS,cSr:cSr,
+    score:rawScore,isRanging:isRanging,mode:mode,
+    veto:veto,vetoWhy:vetoWhy,vetoSrc:vetoSrc,overridden:overridden,
+    allowLong:longOk,allowShort:shortOk};
 }
 
 // ══ DATA FETCHING ═════════════════════════════════════════════════════════════
@@ -1486,135 +1649,465 @@ async function fetchTD(interval, outputsize){
 }
 
 
-// ══ MARKET REGIME DETECTION ══════════════════════════════════════════════════
-// Detects trending vs ranging market automatically
-// Returns: {regime:'trend'|'range', adx, atrRatio, bbWidth, confidence}
+// ══ ENGINE v2 — SZYBKA DETEKCJA IMPULSU · VWAP · FAZY SESJI · REJESTR ════════
+// Kontekst zmiany (2026-08):
+//  1) W pliku istniały DWIE definicje calcADX. Druga (zwracająca liczbę) nadpisywała
+//     pierwszą (zwracającą obiekt), a detectMarketRegime czytał z niej ".adx" → undefined.
+//     Skutek: wszystkie progi ADX były false, kod zawsze lądował w gałęzi else,
+//     czyli dashboard był NA STAŁE w trybie mean-reversion i shortował każde wybicie.
+//  2) Sam scoring jest kontrtrendowy z konstrukcji (RSI>70 = -4, górne BB = -2),
+//     więc przy impulsie zawsze wyjdzie SHORT. Naprawa ADX tego nie rozwiązuje.
+//  3) ADX(14) na 15M potrzebuje ~8 świec (2h), żeby zareagować na wybicie — za wolno.
+// Poniższa warstwa wykrywa impuls w 1-3 świecach 5M i BLOKUJE pozycje przeciwne.
 
-var REGIME = {regime:'range', adx:0, atrRatio:1.0, bbWidth:0, confidence:0};
+// ── Pomocnicze ──────────────────────────────────────────────────────────────
+function med(arr){
+  var a=arr.filter(function(v){return v!=null&&isFinite(v);}).sort(function(x,y){return x-y;});
+  if(!a.length)return null;
+  var n=a.length;
+  return n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2;
+}
 
-function calcADX(highs, lows, closes, p=14){
-  if(closes.length < p*2) return 0;
-  const n=closes.length;
-  let plusDM=[], minusDM=[], tr=[];
-  for(let i=1;i<n;i++){
-    const upMove=highs[i]-highs[i-1];
-    const downMove=lows[i-1]-lows[i];
-    plusDM.push(upMove>downMove&&upMove>0?upMove:0);
-    minusDM.push(downMove>upMove&&downMove>0?downMove:0);
-    tr.push(Math.max(highs[i]-lows[i],
-      Math.abs(highs[i]-closes[i-1]),
-      Math.abs(lows[i]-closes[i-1])));
-  }
-  // Smooth with Wilder's method
-  function wilderSmooth(arr, p){
-    let sum=arr.slice(0,p).reduce((a,b)=>a+b,0);
-    const res=[sum];
-    for(let i=p;i<arr.length;i++){
-      sum=sum-sum/p+arr[i];
-      res.push(sum);
-    }
-    return res;
-  }
-  const sTR=wilderSmooth(tr,p);
-  const sPDM=wilderSmooth(plusDM,p);
-  const sMDM=wilderSmooth(minusDM,p);
-  const dx=sTR.map((t,i)=>{
-    if(t===0)return 0;
-    const pdi=sPDM[i]/t*100;
-    const mdi=sMDM[i]/t*100;
-    const sum=pdi+mdi;
-    return sum===0?0:Math.abs(pdi-mdi)/sum*100;
+// calcATR zwraca tylko ostatnią wartość — do wykrywania ekspansji potrzebna seria
+function calcATRSeries(closes,highs,lows,p){
+  p=p||14;
+  if(!highs||!lows||!closes||closes.length<2)return [];
+  var trs=closes.map(function(_,i){
+    if(i===0)return highs[i]-lows[i];
+    return Math.max(highs[i]-lows[i],Math.abs(highs[i]-closes[i-1]),Math.abs(lows[i]-closes[i-1]));
   });
-  // Average of last p dx values
-  const recentDX=dx.slice(-p);
-  return recentDX.reduce((a,b)=>a+b,0)/recentDX.length;
+  return calcEMA(trs,p);
 }
 
-function calcBBWidth(closes, p=20, m=2){
-  if(closes.length<p) return 0;
-  const slice=closes.slice(-p);
-  const mid=slice.reduce((a,b)=>a+b,0)/p;
-  const std=Math.sqrt(slice.reduce((a,b)=>a+(b-mid)**2,0)/p);
-  return (m*std*2)/mid*100; // BB width as % of price
-}
-
-
-
-function renderRegimeDisplay(){
-  const el=document.getElementById('regimeDisplay');
-  if(!el)return;
-  const r=REGIME;
-  const isTrend=r.regime==='trend';
-  const col=isTrend?'var(--green)':'var(--amber)';
-  el.innerHTML=
-    '<div class="regime-badge" style="color:'+col+';font-weight:700">'+
-    (isTrend?'📈 TREND':'↔ BOCZNY')+
-    ' <span style="font-size:8px;opacity:.7">'+r.confidence+'% pewność</span></div>'+
-    '<div class="regime-stats">'+
-    '<span>ADX: '+r.adx+'</span>'+
-    '<span>ATR ratio: '+r.atrRatio+'</span>'+
-    '<span>BB width: '+r.bbWidth+'%</span>'+
-    '</div>'+
-    '<div style="font-size:8px;color:var(--text3);margin-top:3px">'+
-    (isTrend?
-      'Sygnały: 15min+1h · Filtr: 2 świece 15min':
-      'Sygnały: 5min · Filtr: 2 świece 5min · TP wąskie')+
-    '</div>';
-}
-
-// Adaptive signal filter based on regime
-function applyStabilityFilter(newSig, candles, regime){
-  // In range: require 2 confirming 5min candles (fast)
-  // In trend: require 2 confirming 15min candles (stable)
-  const key=regime;
-  const barsRequired=2; // always 2 bars, but bar size differs
-  if(!applyStabilityFilter.h)applyStabilityFilter.h={};
-  const h=applyStabilityFilter.h;
-  if(!h[key]){h[key]={sig:newSig,bars:1};return newSig;}
-  if(h[key].sig.type===newSig.type){
-    h[key].bars=Math.min(h[key].bars+1,10);
-    h[key].sig=newSig;
-    return newSig;
+// ── VWAP kotwiczony ─────────────────────────────────────────────────────────
+// XAU spot (CFD) nie ma wolumenu, więc to VWAP z równą wagą typical price (h+l+c)/3.
+// Dla intraday nadal jest to najlepszy pojedynczy filtr "po której stronie jestem".
+function calcVWAP(candles,anchorMs){
+  if(!candles||!candles.length)return null;
+  var sum=0,sumSq=0,n=0;
+  for(var i=0;i<candles.length;i++){
+    var c=candles[i];
+    if(anchorMs&&c.t<anchorMs)continue;
+    var tp=((c.h||c.c)+(c.l||c.c)+c.c)/3;
+    sum+=tp;sumSq+=tp*tp;n++;
   }
-  // Direction changed - require confirmation
-  if(!h[key].pending){h[key].pending=newSig;h[key].pendingBars=1;}
-  else if(h[key].pending.type===newSig.type){
-    h[key].pendingBars++;
-    if(h[key].pendingBars>=barsRequired){
-      h[key].sig=h[key].pending;
-      h[key].pending=null;h[key].pendingBars=0;
-      h[key].bars=barsRequired;
+  if(n<3)return null;
+  var mean=sum/n;
+  var sd=Math.sqrt(Math.max(0,sumSq/n-mean*mean));
+  return{vwap:mean,sd:sd,bars:n,upper:mean+sd,lower:mean-sd};
+}
+
+function todayAnchorMs(){var d=new Date();d.setHours(0,0,0,0);return d.getTime();}
+
+// ── Faza sesji (czas lokalny = CET/CEST) ────────────────────────────────────
+// Sesje były liczone, ale nigdy nie wpływały na decyzje. To zmienia się tutaj:
+// w oknach "noFade" wyłączamy grę przeciwko ruchowi.
+function getSessionPhase(){
+  var now=new Date();
+  var m=now.getHours()*60+now.getMinutes();
+  var dow=now.getDay();
+  function w(a,b){return m>=a&&m<b;}
+  if(dow===0||(dow===6&&m>0))return{key:'weekend',name:'Weekend',hot:false,risk:'low',noFade:false,
+    note:'Rynek zamknięty — dane mogą być nieaktualne'};
+  if(w(14*60+25,14*60+45))return{key:'usdata',name:'Dane makro USA (14:30)',hot:true,risk:'high',noFade:true,
+    note:'Publikacje makro USA — gwałtowne wybicia, gra kontra wyłączona'};
+  if(w(15*60+20,16*60+15))return{key:'usopen',name:'Otwarcie USA (15:30)',hot:true,risk:'high',noFade:true,
+    note:'Otwarcie sesji kasowej USA — najczęstsze źródło impulsów kierunkowych'};
+  if(w(16*60+15,17*60))return{key:'postopen',name:'Po otwarciu USA',hot:true,risk:'med',noFade:false,
+    note:'Kontynuacja albo pierwsze cofnięcie po impulsie otwarcia'};
+  if(w(8*60+55,9*60+20))return{key:'lonopen',name:'Otwarcie Londynu',hot:true,risk:'med',noFade:true,
+    note:'Otwarcie Londynu — możliwa zmiana kierunku dnia'};
+  if(w(14*60,15*60+20))return{key:'preus',name:'Pre-USA',hot:false,risk:'med',noFade:false,
+    note:'Przed otwarciem USA — ostrożnie z kontrą, ruch może wystartować w każdej chwili'};
+  if(w(9*60+20,14*60))return{key:'london',name:'Sesja londyńska',hot:false,risk:'low',noFade:false,
+    note:'Zwykle najbardziej przewidywalna faza dnia'};
+  if(w(17*60,23*60))return{key:'us',name:'Sesja USA',hot:false,risk:'med',noFade:false,
+    note:'Sesja USA — kierunek dnia zwykle już ustalony'};
+  return{key:'asia',name:'Azja / noc',hot:false,risk:'low',noFade:false,
+    note:'Niska płynność, szerokie spready — sygnały mniej wiarygodne'};
+}
+
+// ── SZYBKI DETEKTOR IMPULSU (5min) ──────────────────────────────────────────
+// 6 niezależnych testów. ≥3 zgodne = impuls potwierdzony, 2 = ostrzeżenie.
+// Reaguje w 1-3 świecach 5M — ADX(14) na 15M potrzebuje ~8 świec.
+var IMPULSE={active:false,dir:null,votes:0,strength:0,reasons:[],warn:false,detail:{}};
+var IMPULSE_MEM={dir:null,since:null,lastSeen:null,extreme:null};
+
+function detectImpulse(c5){
+  var out={active:false,dir:null,votes:0,strength:0,reasons:[],warn:false,detail:{}};
+  if(!c5||c5.length<60)return out;
+  var cl=c5.map(function(c){return c.c;});
+  var hi=c5.map(function(c){return c.h||c.c;});
+  var lo=c5.map(function(c){return c.l||c.c;});
+  var n=cl.length-1;
+  var cur=cl[n];
+
+  var atrS=calcATRSeries(cl,hi,lo,14);
+  var atrNow=atrS[n];
+  var atrMed=med(atrS.slice(-50,-1));
+  if(!atrNow||!atrMed||atrNow<=0)return out;
+  out.detail.atr5=atrNow;
+
+  var up=0,dn=0,reasons=[];
+  var atrRatio=atrNow/atrMed;
+  out.detail.atrRatio=atrRatio;
+
+  // Zakres ostatnich 40 świec — próg absolutny chroniący przed fałszywką
+  // w martwym boczniaku, gdzie ATR jest tak mały, że zwykłe drgnięcie ma 2 ATR.
+  var recentRange=Math.max.apply(null,hi.slice(-40))-Math.min.apply(null,lo.slice(-40));
+  var moveAbs=Math.abs(cur-cl[n-6]);
+
+  // 1. WYPCHNIĘCIE — ruch z ostatnich 6 świec (30 min) mierzony w ATR.
+  //    Liczy się tylko przy jednoczesnej ekspansji zmienności i ruchu istotnym
+  //    względem zakresu z ostatnich 40 świec.
+  var disp=(cur-cl[n-6])/atrNow;
+  out.detail.disp=disp;
+  var dispValid=(atrRatio>=1.15)&&(moveAbs>=recentRange*0.30);
+  out.detail.dispValid=dispValid;
+  if(dispValid&&disp>=1.5){up++;reasons.push('Wypchnięcie +'+disp.toFixed(1)+' ATR w 30 min');}
+  else if(dispValid&&disp<=-1.5){dn++;reasons.push('Wypchnięcie '+disp.toFixed(1)+' ATR w 30 min');}
+
+  // 2. EKSPANSJA ZMIENNOŚCI — ATR teraz vs mediana ATR z 50 świec
+  if(atrRatio>=1.5&&Math.abs(disp)>0.5){
+    if(disp>0){up++;reasons.push('Ekspansja zmienności ×'+atrRatio.toFixed(2));}
+    else{dn++;reasons.push('Ekspansja zmienności ×'+atrRatio.toFixed(2));}
+  }
+
+  // 3. CHÓD PO WSTĘDZE — ≥2 z 3 zamknięć poza BB przy rozszerzających się wstęgach
+  var bb=calcBB(cl,20,2);
+  var wNow=bb[n]?(bb[n].upper-bb[n].lower):null;
+  var wPrev=bb[n-10]?(bb[n-10].upper-bb[n-10].lower):null;
+  var expanding=!!(wNow&&wPrev&&wNow>wPrev*1.15);
+  var above=0,below=0;
+  for(var i=n-2;i<=n;i++){
+    if(!bb[i])continue;
+    if(cl[i]>=bb[i].upper)above++;
+    if(cl[i]<=bb[i].lower)below++;
+  }
+  out.detail.bbExpanding=expanding;
+  out.detail.bandWalk=above>=2?'up':below>=2?'down':null;
+  if(above>=2&&expanding){up++;reasons.push('Chód po górnej wstędze ('+above+'/3) przy rozszerzaniu BB');}
+  if(below>=2&&expanding){dn++;reasons.push('Chód po dolnej wstędze ('+below+'/3) przy rozszerzaniu BB');}
+
+  // 4. DOMINACJA KORPUSÓW — ≥2 z 3 świec z korpusem >60% zakresu
+  var bu=0,bd=0;
+  for(var j=n-2;j<=n;j++){
+    var c=c5[j];
+    if(!c)continue;
+    var rng=(c.h||c.c)-(c.l||c.c);
+    if(rng<=0)continue;
+    var o=(c.o!=null?c.o:cl[j-1]);
+    if(o==null)continue;
+    var body=c.c-o;
+    if(Math.abs(body)/rng>0.6){ if(body>0)bu++; else bd++; }
+  }
+  out.detail.bodies=bu+'↑/'+bd+'↓';
+  if(bu>=2){up++;reasons.push('Zdecydowane korpusy wzrostowe ('+bu+'/3)');}
+  if(bd>=2){dn++;reasons.push('Zdecydowane korpusy spadkowe ('+bd+'/3)');}
+
+  // 5. WYBICIE ZAKRESU 1h (12 świec 5M) z buforem 0.25 ATR
+  var prevHi=Math.max.apply(null,hi.slice(n-12,n));
+  var prevLo=Math.min.apply(null,lo.slice(n-12,n));
+  out.detail.rangeHi=prevHi;out.detail.rangeLo=prevLo;
+  if(cur>prevHi+atrNow*0.25){up++;reasons.push('Wybicie zakresu 1h w górę ('+prevHi.toFixed(2)+')');}
+  else if(cur<prevLo-atrNow*0.25){dn++;reasons.push('Wybicie zakresu 1h w dół ('+prevLo.toFixed(2)+')');}
+
+  // 6. UKŁAD EMA 5M — 9>21>50 (lub odwrotnie) z rosnącą/opadającą EMA9
+  var e9=calcEMA(cl,9),e21=calcEMA(cl,21),e50=calcEMA(cl,50);
+  var a9=e9[n],a21=e21[n],a50=e50[n],p9=e9[n-3];
+  out.detail.emaStack=null;
+  if(a9!=null&&a21!=null&&a50!=null&&p9!=null){
+    if(a9>a21&&a21>a50&&a9>p9){up++;reasons.push('Układ EMA 9>21>50, rosnący');out.detail.emaStack='up';}
+    else if(a9<a21&&a21<a50&&a9<p9){dn++;reasons.push('Układ EMA 9<21<50, opadający');out.detail.emaStack='down';}
+  }
+
+  var dir=up>dn?'up':dn>up?'down':null;
+  var votes=Math.max(up,dn);
+  out.dir=dir;out.votes=votes;out.reasons=reasons;
+  out.detail.up=up;out.detail.dn=dn;
+  out.strength=Math.round(votes/6*100);
+  out.active=(votes>=3&&dir!==null);
+  out.warn=(!out.active&&votes===2&&dir!==null);
+  return out;
+}
+
+// Pamięć impulsu — po wygaśnięciu impulsu gra kontra jest nadal ryzykowna.
+// Cooldown 45 min, chyba że cena wróci po drugiej stronie EMA21 5M (wyczerpanie).
+function updateImpulseMemory(imp,cur,e21_5){
+  var now=Date.now();
+  if(imp.active&&imp.dir){
+    if(IMPULSE_MEM.dir!==imp.dir){IMPULSE_MEM.dir=imp.dir;IMPULSE_MEM.since=now;IMPULSE_MEM.extreme=cur;}
+    IMPULSE_MEM.lastSeen=now;
+    IMPULSE_MEM.extreme=imp.dir==='up'
+      ?Math.max(IMPULSE_MEM.extreme==null?cur:IMPULSE_MEM.extreme,cur)
+      :Math.min(IMPULSE_MEM.extreme==null?cur:IMPULSE_MEM.extreme,cur);
+  }
+  var ageMs=IMPULSE_MEM.lastSeen?(now-IMPULSE_MEM.lastSeen):null;
+  var cooling=ageMs!=null&&ageMs<45*60000&&!imp.active;
+  // wyczerpanie: cena zamknęła się po przeciwnej stronie EMA21 5M
+  var exhausted=false;
+  if(cooling&&e21_5!=null&&IMPULSE_MEM.dir){
+    exhausted=IMPULSE_MEM.dir==='up'?(cur<e21_5):(cur>e21_5);
+  }
+  if(exhausted){IMPULSE_MEM.lastSeen=null;cooling=false;}
+  return{
+    cooldown:cooling,
+    dir:IMPULSE_MEM.dir,
+    extreme:IMPULSE_MEM.extreme,
+    minsAgo:ageMs!=null?Math.round(ageMs/60000):null,
+    exhausted:exhausted
+  };
+}
+
+// ── Strefa cofnięcia — kiedy wolno wejść Z TRENDEM po impulsie ──────────────
+// Wersja pierwsza wymagała, żeby cena była w promieniu 0.6×ATR(5M) od EMA21.
+// Po wybiciu o 100 pkt EMA21 zostaje kilkadziesiąt punktów niżej, a ATR 5M to
+// 1-2 pkt — warunek był praktycznie nieosiągalny, więc "CZEKAJ NA COFNIĘCIE"
+// byłoby obietnicą bez pokrycia. Teraz strefą wejścia jest pas EMA9–EMA21
+// (klasyczne cofnięcie do średnich), z VWAP jako alternatywną kotwicą.
+function pullbackStatus(c5,dir,vwap){
+  var none={ready:false,dist:null,target:null,name:'—',desc:'brak danych'};
+  if(!c5||c5.length<30||!dir)return none;
+  var cl=c5.map(function(c){return c.c;});
+  var hi=c5.map(function(c){return c.h||c.c;});
+  var lo=c5.map(function(c){return c.l||c.c;});
+  var n=cl.length-1,cur=cl[n];
+  var e9=calcEMA(cl,9)[n], e21=calcEMA(cl,21)[n];
+  var atr=calcATRSeries(cl,hi,lo,14)[n]||1;
+  if(e9==null||e21==null)return none;
+
+  var zoneNear,zoneFar,name;
+  if(dir==='up'){
+    zoneNear=Math.max(e9,e21)+atr*0.25;   // górna krawędź strefy (od niej cofamy)
+    zoneFar =Math.min(e9,e21)-atr*0.75;   // pod nią struktura ruchu pęka
+  } else {
+    zoneNear=Math.min(e9,e21)-atr*0.25;
+    zoneFar =Math.max(e9,e21)+atr*0.75;
+  }
+  name='strefa EMA9/EMA21 5M';
+
+  // VWAP bierzemy pod uwagę, jeśli leży bliżej ceny niż pas EMA
+  if(vwap&&vwap.vwap!=null){
+    var dEma=Math.abs(cur-zoneNear), dV=Math.abs(cur-vwap.vwap);
+    if(dV<dEma){
+      if(dir==='up'){zoneNear=vwap.vwap+atr*0.5;zoneFar=vwap.vwap-atr*1.5;}
+      else{zoneNear=vwap.vwap-atr*0.5;zoneFar=vwap.vwap+atr*1.5;}
+      name='VWAP';
     }
-  } else {
-    h[key].pending=newSig;h[key].pendingBars=1;
   }
-  return h[key].sig;
+
+  var ready=dir==='up'?(cur<=zoneNear&&cur>=zoneFar):(cur>=zoneNear&&cur<=zoneFar);
+  var dist=Math.abs(cur-zoneNear);
+  var broken=dir==='up'?(cur<zoneFar):(cur>zoneFar);
+  return{
+    ready:ready,dist:dist,target:zoneNear,name:name,atr:atr,broken:broken,
+    desc:ready?('cena w strefie wejścia ('+name+', '+zoneNear.toFixed(2)+')')
+        :broken?('cofnięcie za głębokie — struktura ruchu naruszona')
+        :('do strefy wejścia ('+name+', '+zoneNear.toFixed(2)+') brakuje '+dist.toFixed(1)+' pkt')
+  };
 }
 
-// Adaptive TP/SL based on regime and recent ATR
-function getAdaptiveTPSL(cur, regime, atr5, atr15){
-  if(regime==='range'){
-    // Range: tight TP/SL - target 15-25 pts, SL 8-12 pts
-    const tp=Math.max(15,Math.min(25,atr5*2.5));
-    const sl=Math.max(8,Math.min(12,atr5*1.2));
-    return{tp:Math.round(tp*10)/10, sl:Math.round(sl*10)/10, mode:'range'};
-  } else {
-    // Trend: wider TP/SL - target 30-60 pts, SL 15-25 pts
-    const tp=Math.max(30,Math.min(60,atr15*2.0));
-    const sl=Math.max(15,Math.min(25,atr15*0.8));
-    return{tp:Math.round(tp*10)/10, sl:Math.round(sl*10)/10, mode:'trend'};
+// ── REJESTR SYGNAŁÓW + AUTOOCENA MFE/MAE ────────────────────────────────────
+// Bez pomiaru każde strojenie progów jest zgadywaniem. Rejestr zapisuje co
+// dashboard powiedział, a po 12 i 24 świecach 5M liczy, ile ruch dał i ile zabrał.
+var JOURNAL_KEY='xau_journal_v1';
+
+function journalLoad(){
+  try{var v=JSON.parse(localStorage.getItem(JOURNAL_KEY)||'[]');return Array.isArray(v)?v:[];}
+  catch(e){return [];}
+}
+function journalSave(j){
+  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(j.slice(-400)));}catch(e){}
+}
+
+function journalRecord(entry){
+  var j=journalLoad();
+  var last=j[j.length-1];
+  // nowy wpis tylko przy zmianie kierunku albo po co najmniej 15 min
+  if(last&&last.dir===entry.dir&&last.regime===entry.regime&&(entry.t-last.t)<15*60000)return j;
+  j.push(entry);
+  journalSave(j);
+  return j;
+}
+
+// Przejście świeca po świecy — sprawdza CO ZOSTAŁO DOTKNIĘTE PIERWSZE (TP czy SL),
+// a nie tylko maksima. Przypadki, gdzie oba padły w tej samej świecy, są oznaczane
+// jako nierozstrzygnięte zamiast liczone jako sukces.
+function journalPath(after,e,k){
+  var mfe=0,mae=0,outcome=null;
+  var lim=Math.min(k,after.length);
+  for(var i=0;i<lim;i++){
+    var c=after[i];
+    var h=c.h||c.c,l=c.l||c.c;
+    var fav=e.dir==='buy'?(h-e.price):(e.price-l);
+    var adv=e.dir==='buy'?(e.price-l):(h-e.price);
+    if(fav>mfe)mfe=fav;
+    if(adv>mae)mae=adv;
+    if(outcome===null){
+      var tpHit=fav>=e.tpPts, slHit=adv>=e.slPts;
+      if(tpHit&&slHit)outcome='ambig';
+      else if(tpHit)outcome='tp';
+      else if(slHit)outcome='sl';
+    }
   }
+  return{mfe:Math.round(mfe*10)/10,mae:Math.round(mae*10)/10,outcome:outcome||'open',bars:lim};
+}
+
+function journalEvaluate(c5){
+  if(!c5||!c5.length)return journalLoad();
+  var j=journalLoad(),changed=false;
+  for(var i=0;i<j.length;i++){
+    var e=j[i];
+    if(e.done)continue;
+    if(e.dir!=='buy'&&e.dir!=='sell'){e.done=true;changed=true;continue;}
+    var after=c5.filter(function(c){return c.t>e.t;});
+    if(after.length<12)continue;
+    var r12=journalPath(after,e,12);
+    e.mfe12=r12.mfe;e.mae12=r12.mae;e.out12=r12.outcome;
+    if(after.length>=24){
+      var r24=journalPath(after,e,24);
+      e.mfe24=r24.mfe;e.mae24=r24.mae;e.out24=r24.outcome;
+      e.done=true;
+    }
+    changed=true;
+  }
+  if(changed)journalSave(j);
+  return j;
+}
+
+function journalStats(j,keyFn){
+  var g={};
+  j.forEach(function(e){
+    if(!e.out12||e.out12==='open')return;
+    var k=keyFn(e)||'—';
+    if(!g[k])g[k]={n:0,tp:0,sl:0,amb:0,mfe:0,mae:0};
+    g[k].n++;
+    if(e.out12==='tp')g[k].tp++;
+    else if(e.out12==='sl')g[k].sl++;
+    else g[k].amb++;
+    g[k].mfe+=e.mfe12||0;
+    g[k].mae+=e.mae12||0;
+  });
+  return Object.keys(g).map(function(k){
+    var s=g[k];
+    var decided=s.tp+s.sl;
+    return{key:k,n:s.n,tp:s.tp,sl:s.sl,amb:s.amb,
+      rate:decided?Math.round(s.tp/decided*100):null,
+      mfe:(s.mfe/s.n).toFixed(1),mae:(s.mae/s.n).toFixed(1)};
+  }).sort(function(a,b){return b.n-a.n;});
+}
+
+function renderJournal(){
+  var el=document.getElementById('journalDisplay');
+  if(!el)return;
+  var j=journalLoad();
+  var scored=j.filter(function(e){return e.out12&&e.out12!=='open';});
+  if(scored.length<3){
+    el.innerHTML='<div style="font-size:9px;color:var(--text3);line-height:1.6">'+
+      'Zebrano '+j.length+' sygnałów, ocenionych: '+scored.length+'.<br>'+
+      'Statystyka pojawi się po min. 3 ocenionych sygnałach (ocena po 1h od sygnału).</div>';
+    return;
+  }
+  function table(title,rows){
+    if(!rows.length)return '';
+    return '<div style="font-size:8px;color:var(--text3);margin:6px 0 3px;text-transform:uppercase;letter-spacing:.5px">'+title+'</div>'+
+      rows.map(function(r){
+        var col=r.rate==null?'var(--text3)':r.rate>=55?'var(--green)':r.rate<=40?'var(--red)':'var(--amber)';
+        return '<div style="display:flex;justify-content:space-between;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border)">'+
+          '<span style="color:var(--text2)">'+r.key+'</span>'+
+          '<span><b style="color:'+col+'">'+(r.rate==null?'—':r.rate+'%')+'</b>'+
+          ' <span style="color:var(--text3)">n='+r.n+' · +'+r.mfe+'/-'+r.mae+' pkt</span></span>'+
+        '</div>';
+      }).join('');
+  }
+  var all=journalStats(scored,function(){return 'WSZYSTKIE';});
+  var byRegime=journalStats(scored,function(e){return e.regime;});
+  var byPhase=journalStats(scored,function(e){return e.phase;});
+  var byDir=journalStats(scored,function(e){return e.dir==='buy'?'LONG':'SHORT';});
+  el.innerHTML=
+    table('Łącznie',all)+
+    table('Wg trybu rynku',byRegime)+
+    table('Wg fazy sesji',byPhase)+
+    table('Wg kierunku',byDir)+
+    '<div style="font-size:8px;color:var(--text3);margin-top:6px;line-height:1.5">'+
+    'Trafność = TP dotknięte przed SL w ciągu 12 świec 5M. +/− = średnie MFE/MAE w pkt. '+
+    'Świece, w których padły oba poziomy, liczone jako nierozstrzygnięte.</div>'+
+    '<button onclick="journalReset()" style="margin-top:6px;width:100%;font-size:8px;padding:3px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-family:var(--mono)">Wyczyść rejestr</button>';
+}
+
+function journalReset(){
+  if(!confirm('Usunąć całą historię sygnałów?'))return;
+  try{localStorage.removeItem(JOURNAL_KEY);}catch(e){}
+  renderJournal();
+}
+
+// ── Panel filtra impulsu ────────────────────────────────────────────────────
+function renderImpulsePanel(imp,mem,phase,vwap,cur,pb){
+  var el=document.getElementById('impulseDisplay');
+  if(!el)return;
+  var col,icon,head;
+  if(imp.active){
+    col=imp.dir==='up'?'var(--green)':'var(--red)';
+    icon=imp.dir==='up'?'🚀':'🔻';
+    head=(imp.dir==='up'?'IMPULS WZROSTOWY':'IMPULS SPADKOWY')+' · '+imp.votes+'/6';
+  } else if(mem.cooldown){
+    col='var(--amber)';icon='⏳';
+    head='STYGNIĘCIE PO IMPULSIE '+(mem.dir==='up'?'W GÓRĘ':'W DÓŁ')+
+      (mem.minsAgo!=null?(' · '+mem.minsAgo+' min temu'):'');
+  } else if(imp.warn){
+    col='var(--amber)';icon='⚠';
+    head='WCZESNE OZNAKI IMPULSU '+(imp.dir==='up'?'W GÓRĘ':'W DÓŁ')+' · '+imp.votes+'/6';
+  } else {
+    col='var(--text3)';icon='○';
+    head='BRAK IMPULSU · '+imp.votes+'/6 testów';
+  }
+  var vwapTxt='—';
+  if(vwap&&cur!=null){
+    var d=cur-vwap.vwap;
+    vwapTxt='<b style="color:'+(d>=0?'var(--green)':'var(--red)')+'">'+
+      (d>=0?'+':'')+d.toFixed(1)+' pkt</b> ('+vwap.vwap.toFixed(2)+')';
+  }
+  var phaseCol=phase.risk==='high'?'var(--red)':phase.risk==='med'?'var(--amber)':'var(--text3)';
+  el.innerHTML=
+    '<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px">'+icon+' '+head+'</div>'+
+    (imp.reasons.length
+      ?'<div style="font-size:8px;color:var(--text3);line-height:1.6;margin-bottom:5px">· '+imp.reasons.join('<br>· ')+'</div>'
+      :'<div style="font-size:8px;color:var(--text3);margin-bottom:5px">Rynek bez wyraźnego wypchnięcia kierunkowego</div>')+
+    ((imp.active||mem.cooldown)&&pb
+      ?'<div style="font-size:8px;padding:3px 5px;background:var(--bg3);border-radius:3px;color:'+(pb.ready?'var(--green)':'var(--amber)')+';margin-bottom:5px">'+
+        (pb.ready?'✓ ':'⏳ ')+pb.desc+'</div>'
+      :'')+
+    '<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px">'+
+      '<span style="color:var(--text3)">Cena vs VWAP</span><span>'+vwapTxt+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;font-size:9px">'+
+      '<span style="color:var(--text3)">Faza sesji</span>'+
+      '<span style="color:'+phaseCol+';font-weight:600">'+phase.name+(phase.noFade?' ⛔':'')+'</span></div>'+
+    '<div style="font-size:8px;color:var(--text3);line-height:1.5;margin-top:3px">'+phase.note+'</div>';
+}
+
+
+// Cache dla wolnozmiennych TF — dane dzienne i 4h nie zmieniają się co 90 sekund,
+// a 5000 świec dziennych to niepotrzebny transfer i zużycie limitu Twelve Data.
+var TF_CACHE={day:{data:null,ts:0,ttl:30*60000},h4:{data:null,ts:0,ttl:10*60000},h1:{data:null,ts:0,ttl:5*60000}};
+
+async function fetchCached(key,interval,size){
+  var c=TF_CACHE[key];
+  var now=Date.now();
+  if(c&&c.data&&(now-c.ts)<c.ttl)return c.data;
+  var d=await fetchTD(interval,size);
+  if(d&&d.length){c.data=d;c.ts=now;}
+  return d||(c?c.data:null);
 }
 
 async function loadAllCandles(){
   setStatus('warn','Pobieranie danych...');
-  // Fetch all timeframes in parallel including 5min for regime detection
+  // 5min i 15min zawsze świeże; 1h/4h/1day z cache (patrz TF_CACHE)
   const [c5,c15,c60,c240,cDay]=await Promise.all([
-    fetchTD('5min',200),    // 200×5min = ~17h (regime + ranging signals)
-    fetchTD('15min',500),   // 500×15min = ~5 dni
-    fetchTD('1h',200),      // 200×1h = ~8 dni
-    fetchTD('4h',200),      // 200×4h = ~33 dni
-    fetchTD('1day',5000),   // 5000 dni = ~14 lat historii
+    fetchTD('5min',300),              // 300×5min = ~25h (impuls, VWAP, rejestr)
+    fetchTD('15min',500),             // 500×15min = ~5 dni
+    fetchCached('h1','1h',200),       // 200×1h = ~8 dni
+    fetchCached('h4','4h',200),       // 200×4h = ~33 dni
+    fetchCached('day','1day',5000),   // ~14 lat historii
   ]);
   if(c5)candles5=c5;
   if(c15)candles15=c15;
@@ -1633,38 +2126,42 @@ async function loadDataEnhanced(){
   const ok=await loadAllCandles();
   if(!ok)return;
 
-  // Primary: 15min for signals
+  // ── Serie ────────────────────────────────────────────────────────────────
   const c15=candles15.map(c=>c.c);
   const h15=candles15.map(c=>c.h),l15=candles15.map(c=>c.l);
   const n15=c15.length-1;
 
-  // 1h for mid signal
+  const c5=candles5.map(c=>c.c);
+  const h5=candles5.map(c=>c.h),l5=candles5.map(c=>c.l);
+
   const c60=candles60.map(c=>c.c);
   const h60=candles60.map(c=>c.h),l60=candles60.map(c=>c.l);
-
-  // 4h for trend filter
   const c240=candles240.map(c=>c.c);
-
-  // Daily for weekly signal + historical
   const cDay=candlesDay.map(c=>c.c);
   const hDay=candlesDay.map(c=>c.h),lDay=candlesDay.map(c=>c.l);
 
-  const cur=c15[n15];
+  // Cena bieżąca: preferuj 5min (świeższa niż zamknięcie świecy 15M)
+  const cur=c5.length?c5[c5.length-1]:c15[n15];
   const prev=c15[n15-1]||cur;
 
-  // Indicators on each timeframe
+  // ── Wskaźniki ────────────────────────────────────────────────────────────
   const rsi15=calcRSI(c15),macd15=calcMACD(c15),bb15=calcBB(c15);
   const e20_15=calcEMA(c15,20),e50_15=calcEMA(c15,50),e100_15=calcEMA(c15,100);
   const atr15=calcATR(c15,h15,l15,14);
+
+  let rsi5=rsi15,macd5=macd15,bb5=bb15,e20_5=e20_15,e50_5=e50_15,atr5=atr15;
+  if(c5.length>60){
+    rsi5=calcRSI(c5);macd5=calcMACD(c5);bb5=calcBB(c5);
+    e20_5=calcEMA(c5,20);e50_5=calcEMA(c5,50);
+    atr5=calcATR(c5,h5,l5,14);
+  }
 
   const rsi60=c60.length?calcRSI(c60):rsi15;
   const macd60=c60.length?calcMACD(c60):macd15;
   const bb60=c60.length?calcBB(c60):bb15;
   const e20_60=c60.length?calcEMA(c60,20):e20_15;
   const e50_60=c60.length?calcEMA(c60,50):e50_15;
-  const atr60=c60.length?calcATR(c60,h60,l60,14):atr15;
 
-  const rsi240=c240.length?calcRSI(c240):rsi15;
   const e20_240=c240.length?calcEMA(c240,20):e20_15;
   const e50_240=c240.length?calcEMA(c240,50):e50_15;
 
@@ -1676,28 +2173,17 @@ async function loadDataEnhanced(){
   const e100Day=cDay.length?calcEMA(cDay,100):e100_15;
   const atrDay=cDay.length?calcATR(cDay,hDay,lDay,14):atr15;
 
-  // Detect market regime first
-  const regime=detectMarketRegime(candles15,candles5,atr15,atrDay);
+  // ── Tryb rynku: szybki impuls (5M) + ADX 15M + kontekst ADX 1h ───────────
+  const regime=detectMarketRegime(candles15,candles5,atr15,atrDay,candles60);
+  const imp=regime.impulse||{active:false,dir:null};
+  const isFast=(regime.signalTF==='5min');
 
-  // Adaptive signals based on regime
-  let rawShort, rawMid;
-  if(regime.mode==='ranging'){
-    // RANGE MODE: use 5min for short signal (faster, catches small moves)
-    const c5m=candles5.map(c=>c.c);
-    const h5m=candles5.map(c=>c.h),l5m=candles5.map(c=>c.l);
-    if(c5m.length>30){
-      const rsi5m=calcRSI(c5m);
-      const macd5m=calcMACD(c5m);
-      const bb5m=calcBB(c5m);
-      const e20_5m=calcEMA(c5m,20),e50_5m=calcEMA(c5m,50);
-      rawShort=calcSignal(c5m,rsi5m,macd5m,bb5m,e20_5m,e50_5m,'5min');
-    } else {
-      rawShort=calcSignal(c15,rsi15,macd15,bb15,e20_15,e50_15,'15min');
-    }
-    // Mid signal: still 15min in range mode
+  // ── Sygnały ──────────────────────────────────────────────────────────────
+  let rawShort,rawMid;
+  if(isFast&&c5.length>60){
+    rawShort=calcSignal(c5,rsi5,macd5,bb5,e20_5,e50_5,'5min');
     rawMid=calcSignal(c15,rsi15,macd15,bb15,e20_15,e50_15,'15min');
   } else {
-    // TREND MODE: use 15min for short, 1h for mid
     rawShort=calcSignal(c15,rsi15,macd15,bb15,e20_15,e50_15,'15min');
     rawMid=calcSignal(c60.length?c60:c15,rsi60,macd60,bb60,e20_60,e50_60,'1h');
   }
@@ -1707,38 +2193,67 @@ async function loadDataEnhanced(){
   }:{type:'wait',score:0};
   const rawWeekly=calcSignalWeekly(cDay.length?cDay:c15,rsiDay,macdDay,bbDay,e20Day,e50Day,e100Day);
 
-  // Apply adaptive stability filter (regime-aware)
   const sigShort=applyStabilityFilter(rawShort,regime.signalTF,regime.filterBars);
   const sigMid=applyStabilityFilter(rawMid,'1h',2);
   const sigWeek=rawWeekly;
 
-  // MASTER SCORE — weighted average of all timeframes
-  // 4h trend = direction filter (doubles weight if agrees)
   const trendBonus=(rawTrend.type===sigShort.type)?2:0;
   masterScore=Math.round(
-    sigShort.score*0.35 +
-    sigMid.score*0.35 +
-    rawWeekly.score*0.20 +
-    rawTrend.score*0.10 +
-    trendBonus
+    sigShort.score*0.35+sigMid.score*0.35+rawWeekly.score*0.20+rawTrend.score*0.10+trendBonus
   );
   masterScore=Math.max(-12,Math.min(12,masterScore));
 
-  // Confluence check
   const allAgree=sigShort.type===sigMid.type&&sigMid.type===sigWeek.type&&sigShort.type!=='wait';
   const conflict=sigShort.type!=='wait'&&sigMid.type!=='wait'&&sigShort.type!==sigMid.type;
-
-  // Enrich short signal with confluence info
   const confNote=allAgree?' ✓✓✓ WSZYSTKIE TF ZGODNE':conflict?' ⚠ SPRZECZNE TF':'';
   const sigShortFinal={...sigShort,
     reason:sigShort.reason+confNote,
     label:allAgree?sigShort.label.replace('▲','▲▲▲').replace('▼','▼▼▼'):sigShort.label
   };
 
-  // Decisions using master score
-  const dec=calcDecisions(c15,rsi15,macd15,bb15,e20_15,e50_15,atr15,sigShortFinal||sigShort);
+  // ── P2: marketSnapshot wypełniany PRZED SL/TP i decyzjami ────────────────
+  // Wcześniej był ustawiany na końcu, więc SL/TP i prompt AI korzystały
+  // ze zdjęcia rynku z poprzedniej iteracji (sprzed 90 sekund).
+  const rv15=rsi15[n15],mh15=macd15.hist[n15],bv15=bb15[n15];
+  const em20=e20_15[n15],em50=e50_15[n15];
+  const rv5=rsi5[rsi5.length-1];
+  marketSnapshot={
+    price:fmt(cur),
+    rsi5:rv5!=null?rv5.toFixed(1):null,
+    rsi15:rv15!=null?rv15.toFixed(1):null,
+    rsi60:rsi60[rsi60.length-1]!=null?rsi60[rsi60.length-1].toFixed(1):null,
+    macd15:mh15!=null?mh15.toFixed(2):null,
+    // prompt AI odwoływał się do ms.macd5, którego snapshot nigdy nie zawierał
+    macd5:(macd5.hist[macd5.hist.length-1]!=null?macd5.hist[macd5.hist.length-1].toFixed(3):null),
+    bb:bv15?{upper:bv15.upper.toFixed(2),mid:bv15.mid.toFixed(2),lower:bv15.lower.toFixed(2)}:null,
+    ema20:em20!=null?em20.toFixed(2):null,
+    ema50:em50!=null?em50.toFixed(2):null,
+    atr15:atr15!=null?atr15.toFixed(2):null,
+    atr5:atr5!=null?atr5.toFixed(2):null,
+    masterScore,sigShort:sigShortFinal,sigMid,sigWeek,dec:null,
+    regime:regime.mode,
+    adx15:regime.adx!=null?regime.adx.toFixed(1):null,
+    adx60:regime.adx60!=null?regime.adx60.toFixed(1):null,
+    impulse:imp.active?{dir:imp.dir,votes:imp.votes,reasons:imp.reasons}:null,
+    vwap:regime.vwap?regime.vwap.vwap.toFixed(2):null,
+    vwapDist:regime.vwap?(cur-regime.vwap.vwap).toFixed(1):null,
+    sessionPhase:regime.phase?regime.phase.name:null,
+    session:getCurrentSessionName(),
+    time:new Date().toLocaleString('pl-PL'),
+    warMode:WAR_MODE,
+  };
 
-  // Update price display
+  // ── Decyzje (z warstwą weta) ─────────────────────────────────────────────
+  const decBase=isFast&&c5.length>60
+    ?{closes:c5,rsi:rsi5,macd:macd5,bb:bb5,e20:e20_5,e50:e50_5,atr:atr5}
+    :{closes:c15,rsi:rsi15,macd:macd15,bb:bb15,e20:e20_15,e50:e50_15,atr:atr15};
+  const dec=calcDecisions(decBase.closes,decBase.rsi,decBase.macd,decBase.bb,
+    decBase.e20,decBase.e50,decBase.atr,sigShortFinal,{cur:cur});
+  marketSnapshot.dec=dec;
+  marketSnapshot.veto=dec.veto;
+  marketSnapshot.vetoWhy=dec.vetoWhy;
+
+  // ── Cena ─────────────────────────────────────────────────────────────────
   const chg=cur-prev,pct=chg/prev*100;
   const pEl=document.getElementById('priceVal');
   if(pEl){pEl.textContent=fmt(cur);pEl.className='price-big '+(chg>=0?'up':'dn');}
@@ -1747,58 +2262,57 @@ async function loadDataEnhanced(){
   const ca=document.getElementById('chgAbs');
   if(ca)ca.textContent=(chg>=0?'+':'')+chg.toFixed(2)+' USD (vs poprz. 15M)';
 
-  // High/Low from 15min data today
   const today=new Date();today.setHours(0,0,0,0);
   const todayC=candles15.filter(c=>c.t>=today.getTime());
   const oH=document.getElementById('oH'),oL=document.getElementById('oL');
   if(oH&&todayC.length)oH.textContent=fmt(Math.max(...todayC.map(c=>c.h)))+' (dziś)';
   if(oL&&todayC.length)oL.textContent=fmt(Math.min(...todayC.map(c=>c.l)))+' (dziś)';
 
-  // Prev close and volume from daily
   const oPrev=document.getElementById('oPrev'),oVol=document.getElementById('oVol');
-  if(oPrev&&candlesDay.length){
+  if(candlesDay.length){
     const lastDay=candlesDay[candlesDay.length-1];
     const prevDay=candlesDay[candlesDay.length-2];
-    if(oPrev)oPrev.textContent=fmt(prevDay?.c||lastDay.c);
-    if(oVol){
-      const dayRange=(lastDay.h-lastDay.l).toFixed(1);
-      oVol.textContent=dayRange+' pkt';
-    }
+    if(oPrev)oPrev.textContent=fmt((prevDay&&prevDay.c)||lastDay.c);
+    if(oVol)oVol.textContent=(lastDay.h-lastDay.l).toFixed(1)+' pkt';
   }
 
-  // Render signals
+  // ── Render sygnałów i decyzji ────────────────────────────────────────────
   renderSig('Short',sigShortFinal);
   renderSig('Mid',sigMid);
   renderSigWeek(sigWeek);
   if(dec)renderDecisions(dec);
 
-  // Indicators display
-  const rv15=rsi15[n15],mh15=macd15.hist[n15],bv15=bb15[n15];
-  const em20=e20_15[n15],em50=e50_15[n15];
-  setInd('Rsi',(rv15?.toFixed(1)||'—')+' (15M)',rv15<40?'WYPRZ.':rv15>60?'WYKUP.':'NEUTRAL',rv15<40?'buy':rv15>60?'sell':'neutral');
-  setInd('Macd',(mh15?.toFixed(2)||'—')+' (15M)',mh15>=0?'BYCZO':'NIEDŹ.',mh15>=0?'buy':'sell');
+  setInd('Rsi',((rv15!=null?rv15.toFixed(1):'—'))+' (15M)',rv15<40?'WYPRZ.':rv15>60?'WYKUP.':'NEUTRAL',rv15<40?'buy':rv15>60?'sell':'neutral');
+  setInd('Macd',((mh15!=null?mh15.toFixed(2):'—'))+' (15M)',mh15>=0?'BYCZO':'NIEDŹ.',mh15>=0?'buy':'sell');
   if(bv15)setInd('Bb',cur<=bv15.lower?'DOLNE BB':cur>=bv15.upper?'GÓRNE BB':'WEWNĄTRZ','',cur<=bv15.lower?'buy':cur>=bv15.upper?'sell':'neutral');
   setInd('Ema',em20>em50?'↑ WZROST':'↓ SPADEK','',em20>em50?'buy':'sell');
 
-  // Mini charts on 15min
   const lbl15=candles15.map(c=>new Date(c.t).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}));
   buildMinis(lbl15,rsi15,macd15);
 
-  // Predictions using 15min + daily context
-  buildPredCharts(c15,e20_15,atr15,dec,candles15,rsi15,macd15,bb15,e50_15);
+  // ── P1: każdy wykres predykcji dostaje swoje własne dane ─────────────────
+  // Wcześniej wszystkie trzy dostawały closes z 15min, mimo że P1 miał oś
+  // opisaną w minutach 5-minutowych, a P3 w dniach.
+  buildPredCharts({
+    s5:{closes:c5.length>30?c5:c15, e20:c5.length>30?e20_5:e20_15, atr:atr5||atr15},
+    s15:{closes:c15, e20:e20_15, atr:atr15},
+    sDay:{closes:cDay.length?cDay:c15, e20:e20Day, atr:atrDay||atr15}
+  },dec);
 
-  // Price levels
-  const levels=calcPriceLevels(candles15,candlesDay);
+  // ── Poziomy cenowe (5min + dzienne) ──────────────────────────────────────
+  const levels=calcPriceLevels(candles5.length?candles5:candles15,candlesDay);
   if(levels){
-    // Analytical SL/TP based on swing structure
-    // Use sigShortFinal directly (marketSnapshot not yet populated at this point)
     const sigType=(sigShortFinal||sigShort||{type:'wait'}).type;
-    if(sigType!=='wait'){
-      const isLong=sigType==='buy';
-      // Use 5min candles for ranging (more granular swings), 15min for trending
+    // W impulsie SL/TP liczymy dla kierunku IMPULSU, nie dla sygnału
+    // oscylatorowego — inaczej pokazywałyby poziomy dla pozycji zablokowanej.
+    let sltpDir=null;
+    if(imp.active&&imp.dir)sltpDir=(imp.dir==='up');
+    else if(sigType!=='wait'&&!dec.veto)sltpDir=(sigType==='buy');
+    else if(sigType!=='wait'&&dec.veto)sltpDir=(dec.veto==='short');
+    if(sltpDir!==null){
       const sltp=calcAnalyticalSLTP(
-        marketRegime.mode==='ranging'&&candles5.length>30?candles5:candles15,
-        cur,isLong,atr15
+        (regime.mode==='ranging'||regime.mode==='impulse')&&candles5.length>30?candles5:candles15,
+        cur,sltpDir,regime.mode==='impulse'?(atr5||atr15):atr15
       );
       if(sltp){
         const tpEl=document.getElementById('sltpTP');
@@ -1807,16 +2321,15 @@ async function loadDataEnhanced(){
         const calcS=document.getElementById('calcSmall');
         const calcL=document.getElementById('calcLarge');
         const rrEl=document.getElementById('sltpRR');
-        if(tpEl){tpEl.textContent=fmt(sltp.tp);tpEl.style.color=isLong?'var(--green)':'var(--red)';}
-        if(slEl){slEl.textContent=fmt(sltp.sl);slEl.style.color=isLong?'var(--red)':'var(--green)';}
+        if(tpEl){tpEl.textContent=fmt(sltp.tp);tpEl.style.color=sltpDir?'var(--green)':'var(--red)';}
+        if(slEl){slEl.textContent=fmt(sltp.sl);slEl.style.color=sltpDir?'var(--red)':'var(--green)';}
         if(rangeEl)rangeEl.textContent=sltp.tpPts.toFixed(1)+' pkt (R:R = '+sltp.rr+':1)';
         if(calcS)calcS.textContent='$'+(sltp.tpPts*0.5).toFixed(2);
         if(calcL)calcL.textContent='$'+(sltp.tpPts*1.0).toFixed(2);
         if(rrEl){
-          rrEl.textContent='R:R '+sltp.rr+':1 · TP: '+sltp.tpDesc+' · SL: '+sltp.slDesc;
+          rrEl.textContent=(sltpDir?'LONG · ':'SHORT · ')+'R:R '+sltp.rr+':1 · TP: '+sltp.tpDesc+' · SL: '+sltp.slDesc;
           rrEl.style.color=parseFloat(sltp.rr)>=1.5?'var(--green)':'var(--amber)';
         }
-        // Store for AI context
         marketSnapshot.analyticalTP=sltp.tp;
         marketSnapshot.analyticalSL=sltp.sl;
         marketSnapshot.rr=sltp.rr;
@@ -1825,46 +2338,49 @@ async function loadDataEnhanced(){
     renderPriceLevels(levels,cur,atr15);
   }
 
-  // Momentum divergence
   checkMomentumDivergence(c15,rsi15,macd15,sigShort.type==='buy');
 
-  // Signal history
+  // ── Historia sygnałów + rejestr z autooceną ──────────────────────────────
   if(!signalHistory.length||signalHistory[0].type!==sigShortFinal.type){
     if(signalHistory.length>0)playSignalBeep(sigShortFinal.type);
     signalHistory.unshift({type:sigShortFinal.type,price:cur,
-      time:new Date().toLocaleTimeString('pl-PL'),tf:'15M',score:masterScore});
+      time:new Date().toLocaleTimeString('pl-PL'),tf:regime.signalTF==='5min'?'5M':'15M',score:masterScore});
     if(signalHistory.length>8)signalHistory.pop();
     renderHistory();
   }
 
-  // Market snapshot for AI
-  marketSnapshot={
-    price:fmt(cur),rsi15:rv15?.toFixed(1),
-    rsi60:rsi60[rsi60.length-1]?.toFixed(1),
-    macd15:mh15?.toFixed(2),
-    bb:bv15?{upper:bv15.upper.toFixed(2),mid:bv15.mid.toFixed(2),lower:bv15.lower.toFixed(2)}:null,
-    ema20:em20?.toFixed(2),ema50:em50?.toFixed(2),
-    atr15:atr15?.toFixed(2),
-    masterScore,sigShort:sigShortFinal,sigMid,sigWeek,dec,
-    session:getCurrentSessionName(),
-    time:new Date().toLocaleString('pl-PL'),
-    warMode:WAR_MODE,
-  };
+  // Do rejestru trafia to, co dashboard FAKTYCZNIE dopuścił — pozycje
+  // zablokowane wetem nie są zapisywane jako sygnał, bo nie były rekomendacją.
+  if(dec.allowLong||dec.allowShort){
+    journalRecord({
+      t:Date.now(),
+      price:cur,
+      dir:dec.allowLong?'buy':'sell',
+      regime:regime.mode,
+      phase:regime.phase?regime.phase.key:'—',
+      score:dec.score,
+      adx:regime.adx!=null?Math.round(regime.adx):null,
+      tpPts:regime.tpPts||12,
+      slPts:regime.slPts||8
+    });
+  }
+  journalEvaluate(candles5);
+  renderJournal();
 
   macroData.au={closes:cDay.length?cDay:c15,price:cur,prev,pct};
 
-  // Historical analysis
   if(candlesDay.length>250)renderSeasonality(candlesDay,cur);
   if(candlesDay.length>365)renderSameWeekLastYear(candlesDay,cur);
 
-  setStatus('live','15M+1H+4H+1D · LIVE');
-  // Update master score display
+  setStatus('live','5M+15M+1H+4H+1D · LIVE');
   const msd=document.getElementById('masterScoreDisplay');
-  if(msd)msd.textContent=(masterScore>0?'+':'')+masterScore+
-    ' · '+(regime.mode==='ranging'?'BOCZNY':'TREND')+
-    ' (ADX:'+regime.adx+')';
+  if(msd)msd.textContent=(masterScore>0?'+':'')+masterScore+' · '+
+    (regime.mode||'—').toUpperCase()+
+    ' (ADX '+(regime.adx!=null?regime.adx.toFixed(0):'—')+')'+
+    (dec.veto?(' · BLOKADA '+dec.veto.toUpperCase()):'');
   const fR=document.getElementById('footR');
-  if(fR)fR.textContent=(regime.mode==='ranging'?'5M+15M [BOCZNY]':'15M+1H+4H [TREND]')+
+  if(fR)fR.textContent=(regime.signalTF==='5min'?'5M':'15M')+' ['+(regime.mode||'—').toUpperCase()+']'+
+    (imp.active?(' · IMPULS '+(imp.dir==='up'?'↑':'↓')):'')+
     ' · Score:'+masterScore+' · '+new Date().toLocaleTimeString('pl-PL');
 }
 
@@ -2193,13 +2709,43 @@ function renderDecisions(d){
     var el=document.getElementById(id),ll=document.getElementById(id+'l'),rr=document.getElementById(id+'r');
     if(!el||!ll||!rr)return;
     ll.textContent=lbl;rr.textContent=reason;
-    if(lbl.startsWith('✅')){el.style.borderColor='var(--green-b)';el.style.background='var(--green-bg)';ll.style.color='var(--green)';}
-    else if(lbl.startsWith('🔴')){el.style.borderColor='var(--red-b)';el.style.background='var(--red-bg)';ll.style.color='var(--red)';}
-    else if(lbl.startsWith('🟡')){el.style.borderColor='var(--amber-b)';el.style.background='var(--amber-bg)';ll.style.color='var(--amber)';}
+    if(lbl.indexOf('⛔')===0){
+      // STÓJ — czwarty stan decyzyjny: sygnał istnieje, ale jest zablokowany
+      el.style.borderColor='var(--gold-b)';el.style.background='var(--gold-bg)';
+      ll.style.color='var(--gold2)';
+    }
+    else if(lbl.indexOf('✅')===0){el.style.borderColor='var(--green-b)';el.style.background='var(--green-bg)';ll.style.color='var(--green)';}
+    else if(lbl.indexOf('🟢')===0){el.style.borderColor='var(--green-b)';el.style.background='var(--green-bg)';ll.style.color='var(--green)';}
+    else if(lbl.indexOf('🔴')===0){el.style.borderColor='var(--red-b)';el.style.background='var(--red-bg)';ll.style.color='var(--red)';}
+    else if(lbl.indexOf('🟡')===0){el.style.borderColor='var(--amber-b)';el.style.background='var(--amber-bg)';ll.style.color='var(--amber)';}
     else{el.style.borderColor='var(--border)';el.style.background='var(--bg2)';ll.style.color='var(--text2)';}
   }
   styleBox('decOL',d.oL,d.oLr);styleBox('decOS',d.oS,d.oSr);
   styleBox('decCL',d.cL,d.cLr);styleBox('decCS',d.cS,d.cSr);
+
+  // Baner nadrzędny — pokazywany, gdy weto blokuje własny sygnał dashboardu
+  var b=document.getElementById('vetoBanner');
+  if(!b)return;
+  if(d.veto){
+    var side=d.veto==='short'?'SHORT':'LONG';
+    b.style.display='block';
+    b.innerHTML=
+      '<div style="font-size:10px;font-weight:700;color:var(--gold2);margin-bottom:3px">'+
+      '⛔ BLOKADA POZYCJI '+side+
+      (d.overridden?' <span style="font-size:8px;background:var(--red-bg);color:var(--red);padding:1px 4px;border-radius:2px">SYGNAŁ NADPISANY</span>':'')+
+      '</div>'+
+      '<div style="font-size:9px;color:var(--text2);line-height:1.55">'+d.vetoWhy+'</div>'+
+      (d.overridden
+        ?'<div style="font-size:8px;color:var(--text3);margin-top:4px;line-height:1.5">'+
+         'Silnik techniczny wskazuje '+side.toLowerCase()+' (oscylatory przy wybiciu zawsze tak robią), '+
+         'ale filtr impulsu tę pozycję blokuje. To jest dokładnie sytuacja, w której '+
+         'dashboard wcześniej podpowiadał kontrę pod wybicie.</div>'
+        :'')+
+      '<div style="font-size:8px;color:var(--text3);margin-top:3px">Źródło blokady: '+d.vetoSrc+'</div>';
+  } else {
+    b.style.display='none';
+    b.innerHTML='';
+  }
 }
 
 function renderHistory(){
@@ -2242,15 +2788,25 @@ function buildMinis(labels,rsi,macd){
   ]},options:opts(null,null,3)});
 }
 
-function buildPredCharts(closes,e20,atr,dec,candles){
+// P1 dostaje teraz świece 5min (wcześniej wszystkie trzy wykresy dostawały 15min,
+// mimo że oś P1 była opisana w minutach 5-minutowych, a P3 w dniach).
+// Etykiety osi przeliczone na faktyczny horyzont: P1 = 1h, P2 = 2h, P3 = 5 dni.
+function buildPredCharts(series,dec){
+  var s=series||{};
   [
-    {id:'P1',canvasId:'cP1',bdId:'bdP1',atrId:'atrP1',noteId:'noteP1',lvlId:'lvlP1',
-     hist:20,futLen:12,atrMult:0.08,futLabel:function(i){return(i+1)%3===0?'+'+(i+1)+'x5m':'';}},
-    {id:'P2',canvasId:'cP2',bdId:'bdP2',atrId:'atrP2',noteId:'noteP2',lvlId:'lvlP2',
-     hist:30,futLen:8,atrMult:0.35,futLabel:function(i){return(i+1)%2===0?'+'+(i+1)+'h':'';}},
-    {id:'P3',canvasId:'cP3',bdId:'bdP3',atrId:'atrP3',noteId:'noteP3',lvlId:'lvlP3',
+    {id:'P1',canvasId:'cP1',bdId:'bdP1',atrId:'atrP1',noteId:'noteP1',lvlId:'lvlP1',src:'s5',
+     hist:24,futLen:12,atrMult:1.0,
+     futLabel:function(i){return(i+1)%3===0?('+'+((i+1)*5)+'m'):'';}},
+    {id:'P2',canvasId:'cP2',bdId:'bdP2',atrId:'atrP2',noteId:'noteP2',lvlId:'lvlP2',src:'s15',
+     hist:30,futLen:8,atrMult:0.60,
+     futLabel:function(i){var m=(i+1)*15;return(i+1)%2===0?('+'+(m>=60?(m/60)+'h':m+'m')):'';}},
+    {id:'P3',canvasId:'cP3',bdId:'bdP3',atrId:'atrP3',noteId:'noteP3',lvlId:'lvlP3',src:'sDay',
      hist:60,futLen:5,atrMult:1.0,futLabel:function(i){return'+'+(i+1)+'d';}},
-  ].forEach(function(cfg){buildOnePred(cfg,closes,e20,atr,dec);});
+  ].forEach(function(cfg){
+    var d=s[cfg.src];
+    if(!d||!d.closes||d.closes.length<cfg.hist+2)return;
+    buildOnePred(cfg,d.closes,d.e20,d.atr,dec);
+  });
 }
 
 function buildOnePred(cfg,closes,e20,atr,dec){
@@ -2261,6 +2817,16 @@ function buildOnePred(cfg,closes,e20,atr,dec){
   var cur=priceSlice[priceSlice.length-1];
   var score=dec?dec.score:0;
   var probUp=Math.max(20,Math.min(80,50+score*3));
+  // Gdy trwa impuls, kierunek prognozy nadaje impuls, a nie oscylatory —
+  // inaczej wykres rysowałby czerwoną strefę spadkową w środku wybicia w górę.
+  var _imp=(typeof marketRegime!=='undefined'&&marketRegime)?marketRegime.impulse:null;
+  if(_imp&&_imp.active&&_imp.dir){
+    probUp=_imp.dir==='up'?Math.max(probUp,55+_imp.votes*4):Math.min(probUp,45-_imp.votes*4);
+    probUp=Math.max(15,Math.min(85,probUp));
+  } else if(dec&&dec.veto){
+    // weto bez pełnego impulsu — prognoza ściągana do neutralnej
+    probUp=dec.veto==='short'?Math.max(probUp,48):Math.min(probUp,52);
+  }
   var isUp=probUp>50;
   var gc=isUp?'rgba(29,184,122,':'rgba(224,69,69,';
   var histMin=Math.min.apply(null,priceSlice);
@@ -2367,7 +2933,10 @@ function buildOnePred(cfg,closes,e20,atr,dec){
   });
 }
 
-function calcPriceLevels(candles5m){
+// Funkcja była wołana z dwoma argumentami, a przyjmowała jeden — świece dzienne
+// leciały do kosza, a "High/Low tygodnia" liczone było z 5 dziennych ZAMKNIĘĆ
+// (nie z high/low), przy czym w pierwszym cyklu macroData.au było jeszcze puste.
+function calcPriceLevels(candles5m,candlesDaily){
   if(!candles5m||candles5m.length<2)return null;
   var now=new Date();
   var todayOpen=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
@@ -2385,13 +2954,18 @@ function calcPriceLevels(candles5m){
     };
   }
 
-  // Weekly High/Low from Yahoo Finance daily data (macroData.au)
-  // Much more accurate than 5min which only covers ~17h
+  // High/Low tygodnia z prawdziwych high/low 5 ostatnich świec dziennych
   var weekH=null,weekL=null;
-  if(macroData.au&&macroData.au.closes&&macroData.au.closes.length>=5){
-    var last5=macroData.au.closes.slice(-5);
-    weekH=Math.max.apply(null,last5);
-    weekL=Math.min.apply(null,last5);
+  var dsrc=(candlesDaily&&candlesDaily.length>=5)?candlesDaily
+          :(typeof candlesDay!=='undefined'&&candlesDay.length>=5?candlesDay:null);
+  if(dsrc){
+    var last5=dsrc.slice(-5);
+    weekH=Math.max.apply(null,last5.map(function(c){return c.h!=null?c.h:c.c;}));
+    weekL=Math.min.apply(null,last5.map(function(c){return c.l!=null?c.l:c.c;}));
+  } else if(macroData.au&&macroData.au.closes&&macroData.au.closes.length>=5){
+    var lc=macroData.au.closes.slice(-5);
+    weekH=Math.max.apply(null,lc);
+    weekL=Math.min.apply(null,lc);
   }
 
   var dayHL=hilo5m(todayCandles);
@@ -2690,9 +3264,15 @@ function buildContext(){
     'ATR 5min: '+(s.atr5||'?')+' USD',
     'Sygnal krotki: '+(s.sigShort?s.sigShort.label+' score:'+s.sigShort.score:'brak'),
     'Sygnal sredni: '+(s.sigMid?s.sigMid.label+' score:'+s.sigMid.score:'brak'),
+    'Tryb rynku: '+(s.regime||'brak')+' ADX15M: '+(s.adx15||'?')+' ADX1h: '+(s.adx60||'?'),
+    'VWAP: '+(s.vwap||'?')+' cena vs VWAP: '+(s.vwapDist!=null?s.vwapDist+' pkt':'?'),
+    'Impuls: '+(s.impulse?((s.impulse.dir==='up'?'WZROSTOWY':'SPADKOWY')+' '+s.impulse.votes+'/6'):'brak'),
+    'Blokada pozycji: '+(s.veto?(s.veto.toUpperCase()+' - '+s.vetoWhy):'brak'),
     'Decyzja LONG: '+(s.dec?s.dec.oL+' '+s.dec.oLr:'brak'),
     'Decyzja SHORT: '+(s.dec?s.dec.oS+' '+s.dec.oSr:'brak'),
     '=== KONIEC ===',
+    'Jesli powyzej jest aktywny impuls lub blokada, nie proponuj kierunku przeciwnego -',
+    'RSI i Bollinger przy wybiciu zawsze wskazuja kontre i jest to artefakt, nie sygnal.',
     'Jestes doradca XAU/USD. Odpowiadaj po polsku. To NIE jest porada inwestycyjna.',
   ].join(String.fromCharCode(10));
 }
@@ -3015,7 +3595,19 @@ EMA20: ${ms.ema20||'brak'} | EMA50: ${ms.ema50||'brak'}
 ATR (5min): ${ms.atr5||'brak'} USD
 Sygnał krótki: ${ms.sigShort?ms.sigShort.label+' (score:'+ms.sigShort.score+')':'brak'}
 Sygnał średni: ${ms.sigMid?ms.sigMid.label+' (score:'+ms.sigMid.score+')':'brak'}
-Sesja: ${ms.session||'brak'}
+Sesja: ${ms.session||'brak'} | Faza: ${ms.sessionPhase||'brak'}
+
+=== STAN STRUKTURY RUCHU (najważniejsze) ===
+Tryb rynku: ${ms.regime||'brak'} | ADX 15M: ${ms.adx15||'brak'} | ADX 1h: ${ms.adx60||'brak'}
+VWAP dnia: ${ms.vwap||'brak'} | Cena vs VWAP: ${ms.vwapDist!=null?(ms.vwapDist>0?'+':'')+ms.vwapDist+' pkt':'brak'}
+Impuls kierunkowy: ${ms.impulse?((ms.impulse.dir==='up'?'WZROSTOWY':'SPADKOWY')+' ('+ms.impulse.votes+'/6 testów): '+ms.impulse.reasons.join('; ')):'brak — rynek bez wypchnięcia'}
+Blokada pozycji: ${ms.veto?(ms.veto.toUpperCase()+' — '+ms.vetoWhy):'brak'}
+
+UWAGA METODOLOGICZNA: jeśli powyżej zaraportowano aktywny impuls albo blokadę pozycji,
+NIE proponuj kierunku przeciwnego do impulsu. Wskaźniki oscylacyjne (RSI, Bollinger)
+przy silnym wybiciu z definicji pokazują wykupienie/wyprzedanie i wskazują kontrę —
+to jest artefakt, nie sygnał. W takiej sytuacji albo zaproponuj kierunek zgodny
+z impulsem z wejściem na cofnięciu, albo odpowiedz "boczny" z niską pewnością.
 
 === KONTEKST MAKRO ===
 VIX (strach): ${vix?vix.price?.toFixed(2)+' ('+( vix.pct>=0?'+':'')+vix.pct?.toFixed(2)+'%)'  :'brak'}
@@ -3239,9 +3831,11 @@ function setRegimeOverride(mode){
     const atr15=calcATR(c15,h15,l15,14);
     const cDay=candlesDay.map(c=>c.c),hDay=candlesDay.map(c=>c.h),lDay=candlesDay.map(c=>c.l);
     const atrDay=cDay.length?calcATR(cDay,hDay,lDay,14):atr15;
-    detectMarketRegime(candles15,candles5,atr15,atrDay);
+    detectMarketRegime(candles15,candles5,atr15,atrDay,candles60);
   }
-  showToast(mode?'Tryb '+mode.toUpperCase()+' (ręcznie)':'Tryb AUTO-wykrywanie');
+  showToast(mode
+    ?'Tryb '+mode.toUpperCase()+' (ręcznie) — filtr impulsu działa nadal'
+    :'Tryb AUTO-wykrywanie');
 }
 
 function updateRegimeBtn(){
@@ -3261,6 +3855,7 @@ function updateRegimeBtn(){
 
 function initDashboard(){
   // Load all data
+  renderJournal();          // pokaż zebraną statystykę zanim przyjdą dane
   loadDataEnhanced();
   loadMacroData();
   loadAllExtended();
