@@ -599,6 +599,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 </div>
 
 <div class="sec">
+  <div id="apiBanner" style="display:none;background:var(--red-bg);border:1px solid var(--red-b);border-radius:var(--r2);padding:7px 9px;margin-bottom:8px"></div>
   <div class="sec-title">Tryb rynkowy (auto-detekcja)</div>
   <div style="display:flex;gap:4px;margin-bottom:6px">
     <button id="regimeBtnAuto" onclick="setRegimeOverride(null)"
@@ -902,8 +903,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 </div>
 
 <footer id="ftr">
-  <span class="foot-l">XAU/USD · Twelve Data 15M+1H+4H+1D · Yahoo Finance — 14 lat historii</span>
-  <span class="foot-r" id="footR">—</span>
+  <span class="foot-l" id="footL">XAU/USD · Twelve Data · <span class="api-usage">—</span></span>
+  <span class="foot-r foot-r-val" id="footR">—</span>
 </footer>
 
 <!-- API SETTINGS PANEL -->
@@ -937,9 +938,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
       <div class="api-desc">Opcjonalny — bez niego VIX i DXY używają ETF jako zastępników</div>
     </div>
 
+    <div class="api-field-group">
+      <div class="api-label">Spread XAU/USD u brokera <span style="color:var(--text3)">(USD)</span></div>
+      <div class="api-sublabel">Sprawdź w xStation przy instrumencie GOLD — typowo 0.25–0.45 w godzinach płynnych</div>
+      <input class="api-input" type="number" step="0.01" min="0" max="5" id="spreadInput" placeholder="0.30">
+      <div class="api-desc">Odejmowany od zysku i doliczany do straty przy ocenie skuteczności sygnałów</div>
+    </div>
+
     <div class="api-btn-row">
       <button class="api-save-btn" id="apiSaveBtn">✓ Zapisz klucze i uruchom</button>
-      <button class="api-skip-btn" id="apiSkipBtn">Pomiń (tylko Yahoo Finance)</button>
+      <button class="api-skip-btn" id="apiSkipBtn">Pomiń — bez klucza dane nie będą pobierane</button>
     </div>
   </div>
 </div>
@@ -974,8 +982,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
   <!-- FOOTER -->
   <div id="ftr">
-    <span>XAU/USD · Twelve Data (5M+15M+1H+4H+1D) · Odświeżanie co 90 s</span>
-    <span id="footR">—</span>
+    <span class="foot-l-alt">XAU/USD · Twelve Data · <span class="api-usage">—</span></span>
+    <span class="foot-r-val">—</span>
   </div>
 
 </div><!-- /shell -->
@@ -990,8 +998,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <div id="row-ftr">
     <div id="cell-ftr">
       <div class="foot-inner">
-        <span class="foot-l">XAU/USD · Twelve Data (5M+15M+1H+4H+1D) · Odświeżanie co 90 s</span>
-        <span class="foot-r" id="footR">—</span>
+        <span class="foot-l">XAU/USD · Twelve Data · <span class="api-usage">—</span></span>
+        <span class="foot-r foot-r-val">—</span>
       </div>
     </div>
   </div>
@@ -1666,6 +1674,182 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     allowLong:longOk,allowShort:shortOk};
 }
 
+// ══ ZDROWIE API — WIDOCZNOŚĆ AWARII ═════════════════════════════════════════
+// Do tej pory nieudane pobranie danych kończyło się `console.warn` i zwróceniem
+// null, a `loadAllCandles` zostawiało poprzednie świece. Status w nagłówku dalej
+// pokazywał „LIVE", wskaźniki dalej się liczyły — tyle że z zamrożonych danych.
+// Przy narzędziu decyzyjnym cicha awaria jest groźniejsza niż awaria widoczna.
+var API_HEALTH={
+  lastOk:null,          // znacznik ostatniego udanego pobrania świec
+  lastTry:null,
+  fails:0,              // seria nieudanych prób
+  lastError:null,       // {kind, status, message, at}
+  backoffUntil:0,       // wstrzymanie zapytań po serii błędów
+  creditsMin:[],        // znaczniki zapytań z ostatniej minuty (licznik zużycia)
+  totalToday:0,
+  dayStamp:null
+};
+
+function apiErrorKind(status,msg){
+  if(status===429)return{kind:'quota',label:'LIMIT API',
+    hint:'Przekroczony limit kredytów na minutę. Dane wstrzymane do następnej minuty.'};
+  if(status===401||status===403)return{kind:'auth',label:'KLUCZ API',
+    hint:'Klucz Twelve Data odrzucony. Sprawdź go w ⚙ API.'};
+  if(status>=500)return{kind:'server',label:'AWARIA API',
+    hint:'Błąd po stronie Twelve Data. Dane mogą być nieaktualne.'};
+  if(status===0)return{kind:'network',label:'BRAK SIECI',
+    hint:'Nie udało się połączyć z api.twelvedata.com. Sprawdź połączenie.'};
+  return{kind:'other',label:'BŁĄD API',hint:msg||'Nieznany błąd zapytania.'};
+}
+
+function noteApiCall(){
+  var now=Date.now();
+  API_HEALTH.creditsMin=API_HEALTH.creditsMin.filter(function(t){return now-t<60000;});
+  API_HEALTH.creditsMin.push(now);
+  var day=new Date().toDateString();
+  if(API_HEALTH.dayStamp!==day){API_HEALTH.dayStamp=day;API_HEALTH.totalToday=0;}
+  API_HEALTH.totalToday++;
+}
+
+function noteApiOk(){
+  API_HEALTH.lastOk=Date.now();
+  API_HEALTH.fails=0;
+  API_HEALTH.lastError=null;
+  API_HEALTH.backoffUntil=0;
+}
+
+function noteApiFail(status,msg){
+  API_HEALTH.fails++;
+  var k=apiErrorKind(status,msg);
+  API_HEALTH.lastError={kind:k.kind,label:k.label,hint:k.hint,status:status,
+    message:msg||'',at:Date.now()};
+  // Wykładnicze wycofanie — nie dobijamy API, które właśnie odmawia współpracy.
+  // Przy limicie kredytów wystarczy przeczekać do następnej minuty.
+  var wait=(k.kind==='quota')?60000:Math.min(300000,15000*Math.pow(2,Math.min(4,API_HEALTH.fails-1)));
+  API_HEALTH.backoffUntil=Date.now()+wait;
+  return k;
+}
+
+function dataAgeMin(){
+  if(!API_HEALTH.lastOk)return null;
+  return Math.floor((Date.now()-API_HEALTH.lastOk)/60000);
+}
+
+function renderApiHealth(){
+  var age=dataAgeMin();
+  var err=API_HEALTH.lastError;
+  var used=API_HEALTH.creditsMin.length;
+
+  // Nagłówek — status nigdy nie kłamie o świeżości danych
+  if(err&&API_HEALTH.fails>0){
+    setStatus('err',err.label+(API_HEALTH.fails>1?(' ×'+API_HEALTH.fails):''));
+  } else if(age!==null&&age>=6){
+    setStatus('warn','DANE SPRZED '+age+' MIN');
+  } else if(API_HEALTH.lastOk){
+    setStatus('live','5M+15M+1H+4H+1D · LIVE');
+  }
+
+  // Baner nad decyzjami — pojawia się dopiero, gdy dane realnie się zestarzały
+  var b=document.getElementById('apiBanner');
+  if(b){
+    if(err&&(age===null||age>=5)){
+      b.style.display='block';
+      b.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:3px">'+
+        '⚠ '+err.label+' — DANE NIEAKTUALNE</div>'+
+        '<div style="font-size:9px;color:var(--text2);line-height:1.55">'+err.hint+'</div>'+
+        '<div style="font-size:8px;color:var(--text3);margin-top:3px">'+
+        'Ostatnie udane pobranie: '+(API_HEALTH.lastOk
+          ? new Date(API_HEALTH.lastOk).toLocaleTimeString('pl-PL')+' ('+age+' min temu)'
+          : 'brak w tej sesji')+
+        ' · nieudanych prób: '+API_HEALTH.fails+
+        ' · ponowna próba za '+Math.max(0,Math.ceil((API_HEALTH.backoffUntil-Date.now())/1000))+' s'+
+        '</div><div style="font-size:8px;color:var(--amber);margin-top:3px">'+
+        'Sygnały poniżej liczone są ze starych świec — nie podejmuj na nich decyzji.</div>';
+    } else {
+      b.style.display='none';
+    }
+  }
+
+  // Stopka — licznik zużycia kredytów
+  var txt='Kredyty API: '+used+'/min · dziś '+API_HEALTH.totalToday+
+    (age!==null?(' · dane sprzed '+age+' min'):'');
+  var els=document.querySelectorAll('.api-usage');
+  for(var i=0;i<els.length;i++)els[i].textContent=txt;
+}
+
+// ══ HARMONOGRAM ZSYNCHRONIZOWANY ZE ŚWIECAMI ═══════════════════════════════
+// Stały setInterval co 90 s dryfował względem świec: raz pobierał dane tuż po
+// zamknięciu świecy 5M, raz w jej połowie, przez co ostatnia świeca bywała
+// niedomknięta i wskaźniki liczyły się z niepełnych danych. Teraz odświeżenie
+// jest przywiązane do zegara — tuż po zamknięciu świecy oraz w jej połowie.
+var SCHED={timer:null,nextAt:null,running:false};
+var CANDLE_MS=5*60000;
+var SETTLE_MS=7000;   // ile czekamy, aż API opublikuje zamkniętą świecę
+
+function nextTickAt(now){
+  now=now||Date.now();
+  var base=Math.floor(now/CANDLE_MS)*CANDLE_MS;
+  // dwa punkty w cyklu: zamknięcie świecy (+SETTLE) i jej połowa
+  var slots=[base+SETTLE_MS, base+CANDLE_MS/2, base+CANDLE_MS+SETTLE_MS];
+  for(var i=0;i<slots.length;i++)if(slots[i]>now+500)return slots[i];
+  return base+CANDLE_MS+SETTLE_MS;
+}
+
+function scheduleNextRefresh(){
+  if(SCHED.timer)clearTimeout(SCHED.timer);
+  var now=Date.now();
+  var at=nextTickAt(now);
+  // Rozrzut 0–4 s: dwa komputery z tym samym kluczem nie strzelają w tej samej
+  // sekundzie, co spłaszcza szczyt zużycia kredytów.
+  var jitter=Math.floor(Math.random()*4000);
+  var delay=Math.max(1000,at-now)+jitter;
+  SCHED.nextAt=now+delay;
+  SCHED.timer=setTimeout(function(){
+    tickRefresh();
+  },delay);
+  return delay;
+}
+
+async function tickRefresh(){
+  if(SCHED.running){scheduleNextRefresh();return;}
+  if(Date.now()<API_HEALTH.backoffUntil){
+    // trwa wycofanie po błędzie — pomijamy ten strzał, ale odświeżamy komunikat
+    renderApiHealth();
+    scheduleNextRefresh();
+    return;
+  }
+  SCHED.running=true;
+  try{ await loadDataEnhanced(); }
+  catch(e){ console.warn('cykl odświeżenia:',e&&e.message); }
+  finally{
+    SCHED.running=false;
+    renderApiHealth();
+    scheduleNextRefresh();
+  }
+}
+
+// ══ SPREAD XTB ═════════════════════════════════════════════════════════════
+// Rejestr liczył trafność na cenach środkowych, czyli w warunkach, w których
+// nikt nie handluje. Wejście następuje po cenie ask, wyjście po bid, więc pełny
+// spread jest kosztem każdej transakcji — TP jest o tyle trudniejszy do
+// osiągnięcia, a SL o tyle łatwiejszy. Bez tego statystyka zawyżała skuteczność.
+var SPREAD_KEY='xau_spread';
+var SPREAD_DEFAULT=0.30;      // typowy spread XAU/USD u XTB w godzinach płynnych
+
+function getSpread(){
+  try{
+    var v=parseFloat(localStorage.getItem(SPREAD_KEY));
+    if(isFinite(v)&&v>=0&&v<=5)return v;
+  }catch(e){}
+  return SPREAD_DEFAULT;
+}
+function setSpread(v){
+  var n=parseFloat(v);
+  if(!isFinite(n)||n<0||n>5)return false;
+  try{localStorage.setItem(SPREAD_KEY,String(n));}catch(e){}
+  return true;
+}
+
 // ══ DATA FETCHING ═════════════════════════════════════════════════════════════
 // BŁĄD, KTÓRY BYŁ TU WCZEŚNIEJ: Twelve Data zwraca datetime w formacie
 // "2026-08-20 13:25:00", bez oznaczenia strefy. `new Date("2026-08-20 13:25:00")`
@@ -1687,20 +1871,52 @@ function parseTDTime(s){
 
 async function fetchTD(interval, outputsize){
   if(!API_KEYS.td)return null;
+  API_HEALTH.lastTry=Date.now();
+  noteApiCall();
+  let res;
   try{
     const url=`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${interval}&outputsize=${outputsize}&timezone=UTC&apikey=${API_KEYS.td}`;
-    const res=await fetch(url);
-    if(!res.ok)throw new Error('HTTP '+res.status);
+    res=await fetch(url);
+  }catch(e){
+    // Brak sieci, DNS, zerwane połączenie — status 0 odróżnia to od odpowiedzi API
+    noteApiFail(0,e&&e.message);
+    console.warn('TD '+interval+' (sieć):',e&&e.message);
+    return null;
+  }
+  try{
+    if(!res.ok){
+      let body=null;
+      try{body=await res.json();}catch(e){}
+      const msg=(body&&(body.message||(body.error&&body.error.message)))||('HTTP '+res.status);
+      noteApiFail(res.status,msg);
+      console.warn('TD '+interval+':',msg);
+      return null;
+    }
     const d=await res.json();
-    if(d.status==='error')throw new Error(d.message);
-    if(!d.values||!d.values.length)throw new Error('No data');
-    return d.values.reverse().map(v=>({
+    // Twelve Data potrafi zwrócić HTTP 200 z ciałem opisującym błąd
+    if(d.status==='error'){
+      noteApiFail(d.code||200,d.message);
+      console.warn('TD '+interval+':',d.message);
+      return null;
+    }
+    if(!d.values||!d.values.length){
+      noteApiFail(200,'Pusta odpowiedź dla '+interval);
+      return null;
+    }
+    const out=d.values.reverse().map(v=>({
       t:parseTDTime(v.datetime),
       o:parseFloat(v.open),h:parseFloat(v.high),
       l:parseFloat(v.low),c:parseFloat(v.close),
       v:parseFloat(v.volume||0)
-    }));
-  }catch(e){console.warn(`TD ${interval}:`,e.message);return null;}
+    })).filter(c=>isFinite(c.t)&&isFinite(c.c));
+    if(!out.length){noteApiFail(200,'Odpowiedź bez poprawnych świec');return null;}
+    noteApiOk();
+    return out;
+  }catch(e){
+    noteApiFail((res&&res.status)||200,e&&e.message);
+    console.warn('TD '+interval+':',e&&e.message);
+    return null;
+  }
 }
 
 
@@ -2035,14 +2251,20 @@ function journalRecord(entry){
 // Przejście świeca po świecy — sprawdza CO ZOSTAŁO DOTKNIĘTE PIERWSZE (TP czy SL),
 // a nie tylko maksima. Przypadki, gdzie oba padły w tej samej świecy, są oznaczane
 // jako nierozstrzygnięte zamiast liczone jako sukces.
-function journalPath(after,e,k){
+//
+// SPREAD: świece z API są cenami środkowymi. W rzeczywistości long otwiera się
+// po ask, a zamyka po bid, więc pełny spread jest kosztem transakcji — zabiera
+// z zysku i dokłada do straty. Bez tego rejestr chwalił sygnały, które w realnym
+// wykonaniu wychodziły na zero albo pod kreską.
+function journalPath(after,e,k,spread){
+  var sp=(spread!=null?spread:getSpread());
   var mfe=0,mae=0,outcome=null;
   var lim=Math.min(k,after.length);
   for(var i=0;i<lim;i++){
     var c=after[i];
     var h=c.h||c.c,l=c.l||c.c;
-    var fav=e.dir==='buy'?(h-e.price):(e.price-l);
-    var adv=e.dir==='buy'?(e.price-l):(h-e.price);
+    var fav=(e.dir==='buy'?(h-e.price):(e.price-l))-sp;   // zysk pomniejszony o spread
+    var adv=(e.dir==='buy'?(e.price-l):(h-e.price))+sp;   // strata powiększona o spread
     if(fav>mfe)mfe=fav;
     if(adv>mae)mae=adv;
     if(outcome===null){
@@ -2052,35 +2274,55 @@ function journalPath(after,e,k){
       else if(slHit)outcome='sl';
     }
   }
-  return{mfe:Math.round(mfe*10)/10,mae:Math.round(mae*10)/10,outcome:outcome||'open',bars:lim};
+  return{mfe:Math.round(mfe*10)/10,mae:Math.round(mae*10)/10,
+    outcome:outcome||'open',bars:lim,spread:sp};
 }
 
 function journalEvaluate(c5){
   if(!c5||!c5.length)return journalLoad();
   var j=journalLoad(),changed=false;
   var newest=c5[c5.length-1].t;
+  var oldest=c5[0].t;
+  var spread=getSpread();
+  var MAX_AGE=7*24*3600000;   // rejestr trzyma tydzień, nie rośnie w nieskończoność
+  var kept=[];
+
   for(var i=0;i<j.length;i++){
     var e=j[i];
+
+    // Porządki: wpisy starsze niż tydzień wypadają z rejestru. Limit 400 pozycji
+    // nie wystarczał — trzymał w pamięci wpisy sprzed miesięcy, których i tak
+    // nie da się już ocenić, bo bufor świec sięga ~25 godzin wstecz.
+    if(isFinite(e.t)&&(newest-e.t)>MAX_AGE)  {changed=true;continue;}
+    kept.push(e);
+
     if(e.done)continue;
     if(e.dir!=='buy'&&e.dir!=='sell'){e.done=true;changed=true;continue;}
-    // Awaryjne przesunięcie: wpisy zapisane przed poprawką stref mają znacznik
-    // z zegara przeglądarki i nigdy nie doczekałyby się świec „po". Jeśli wpis
-    // jest nowszy niż najświeższa świeca o więcej niż dobę, jest nieoceniany.
+
+    // Wpis z przyszłości względem świec (zegar przeglądarki sprzed poprawki stref)
     if(e.t>newest+24*3600000){e.done=true;e.out12='skip';changed=true;continue;}
-    var after=c5.filter(function(c){return c.t>e.t;});
+
+    // RZETELNOŚĆ OCENY: jeśli wpis jest starszy niż najstarsza świeca w buforze,
+    // „świece po sygnale" nie są tymi, które faktycznie po nim nastąpiły — to są
+    // świece z początku bufora. Ocena na ich podstawie byłaby zmyślona. Zdarza się
+    // po dłuższej przerwie w pracy dashboardu.
+    if(e.t<oldest){e.done=true;e.out12='skip';e.skipReason='poza buforem świec';changed=true;continue;}
+
+    var after=[];
+    for(var q=0;q<c5.length;q++)if(c5[q].t>e.t)after.push(c5[q]);
     e.pendingBars=after.length;
     if(after.length<12){changed=true;continue;}
-    var r12=journalPath(after,e,12);
-    e.mfe12=r12.mfe;e.mae12=r12.mae;e.out12=r12.outcome;
+    var r12=journalPath(after,e,12,spread);
+    e.mfe12=r12.mfe;e.mae12=r12.mae;e.out12=r12.outcome;e.spread=spread;
     if(after.length>=24){
-      var r24=journalPath(after,e,24);
+      var r24=journalPath(after,e,24,spread);
       e.mfe24=r24.mfe;e.mae24=r24.mae;e.out24=r24.outcome;
       e.done=true;
     }
     changed=true;
   }
-  if(changed)journalSave(j);
-  return j;
+  if(changed)journalSave(kept);
+  return kept;
 }
 
 function journalStats(j,keyFn){
@@ -2173,7 +2415,10 @@ function renderJournal(){
   out+='<div style="font-size:8px;color:var(--text3);margin-top:7px;line-height:1.5">'+
     'Trafność = TP dotknięte przed SL w ciągu 12 świec 5M. +/− = średnie maksymalne '+
     'wybicie w zysk / w stratę. Świece, w których padły oba poziomy, liczone jako '+
-    'nierozstrzygnięte i pomijane w procencie.</div>';
+    'nierozstrzygnięte i pomijane w procencie.<br>'+
+    '<b style="color:var(--amber)">Uwzględniony spread '+getSpread().toFixed(2)+' USD</b> — '+
+    'odjęty od zysku i doliczony do straty, bo wejście idzie po ask, a wyjście po bid. '+
+    'Statystyka pokazuje więc wynik możliwy do osiągnięcia, nie teoretyczny.</div>';
   el.innerHTML=out+btn;
 }
 
@@ -2543,16 +2788,23 @@ async function loadDataEnhanced(){
   if(candlesDay.length>250)renderSeasonality(candlesDay,cur);
   if(candlesDay.length>365)renderSameWeekLastYear(candlesDay,cur);
 
-  setStatus('live','5M+15M+1H+4H+1D · LIVE');
+  // Status w nagłówku ustawia teraz renderApiHealth — tylko ono wie, czy dane
+  // są świeże. Wcześniej ten wiersz zawsze pisał „LIVE", nawet gdy świece były
+  // sprzed godziny, bo pobieranie po cichu zwróciło null.
+  renderApiHealth();
+
   const msd=document.getElementById('masterScoreDisplay');
   if(msd)msd.textContent=(masterScore>0?'+':'')+masterScore+' · '+
     (regime.mode||'—').toUpperCase()+
     ' (ADX '+(regime.adx!=null?regime.adx.toFixed(0):'—')+')'+
     (dec.veto?(' · BLOKADA '+dec.veto.toUpperCase()):'');
-  const fR=document.getElementById('footR');
-  if(fR)fR.textContent=(regime.signalTF==='5min'?'5M':'15M')+' ['+(regime.mode||'—').toUpperCase()+']'+
+
+  const foot=(regime.signalTF==='5min'?'5M':'15M')+' ['+(regime.mode||'—').toUpperCase()+']'+
     (imp.active?(' · IMPULS '+(imp.dir==='up'?'↑':'↓')):'')+
-    ' · Score:'+masterScore+' · '+new Date().toLocaleTimeString('pl-PL');
+    ' · Score:'+masterScore+' · '+new Date().toLocaleTimeString('pl-PL')+
+    (SCHED.nextAt?(' · nast. '+new Date(SCHED.nextAt).toLocaleTimeString('pl-PL')):'');
+  const fRs=document.querySelectorAll('.foot-r-val');
+  for(let i=0;i<fRs.length;i++)fRs[i].textContent=foot;
 }
 
 // Fallback without API key
@@ -3479,37 +3731,21 @@ async function sendChat(){
   const btn=document.getElementById('chatSendBtn');if(btn)btn.disabled=true;
   const thinking=appendChatMsg('ai','Analizuje kontekst...',true);
   try{
-    // Use corsproxy to bypass CORS restriction on Anthropic API
-    const payload=JSON.stringify({
-      model:'claude-sonnet-4-6',
+    const reply=await callAnthropic({
       max_tokens:800,
       system:buildContext(),
       messages:chatHistory.slice(-8)
     });
-    const proxyUrl='https://corsproxy.io/?'+encodeURIComponent('https://api.anthropic.com/v1/messages');
-    const res=await fetch(proxyUrl,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':API_KEYS.ant,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:payload
-    });
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'API error');}
-    const data=await res.json();
-    const reply=data.content?.[0]?.text||'Brak odpowiedzi';
     if(thinking)thinking.remove();
     appendChatMsg('ai',reply);
     chatHistory.push({role:'assistant',content:reply});
+    // Do zapytania i tak leci tylko 8 ostatnich wiadomości, a tablica rosła
+    // bez ograniczeń przez całą sesję, trzymając w pamięci pełne odpowiedzi.
+    if(chatHistory.length>20)chatHistory=chatHistory.slice(-20);
   }catch(e){
     if(thinking)thinking.remove();
-    let errMsg='Blad: '+e.message;
-    if(e.message.includes('fetch')||e.message.includes('Failed')){
-      errMsg='Blad polaczenia z Claude API. Sprawdz czy klucz Anthropic jest poprawny i sprobuj ponownie.';
-    }
-    appendChatMsg('ai',errMsg);
+    // Komunikat z callAnthropic jest już konkretny — nie zastępujemy go ogólnikiem
+    appendChatMsg('ai','⚠ '+e.message);
     chatHistory.pop();
   }finally{if(btn)btn.disabled=false;}
 }
@@ -3546,11 +3782,16 @@ function loadApiKeys(){
   if(API_KEYS.td&&tdI){tdI.value=API_KEYS.td;setApiStatus('td','ok','✓ Ustawiony');}
   if(API_KEYS.ant&&antI){antI.value=API_KEYS.ant;setApiStatus('ant','ok','✓ Ustawiony');}
   if(API_KEYS.fh&&fhI){fhI.value=API_KEYS.fh;setApiStatus('fh','ok','✓ Ustawiony');}
-  if(API_KEYS.td&&API_KEYS.ant){
+  var spI=document.getElementById('spreadInput');
+  if(spI)spI.value=getSpread().toFixed(2);
+  // Do działania wystarczy klucz Twelve Data. Wcześniej warunek wymagał także
+  // klucza Anthropic, więc bez opcjonalnego doradcy AI dashboard w ogóle nie
+  // startował — użytkownik widział tylko panel ustawień i pusty ekran.
+  if(API_KEYS.td){
     var p=document.getElementById('apiPanel');
     if(p)p.classList.add('hidden');
     var f=document.getElementById('chatFab');
-    if(f)f.style.display='flex';
+    if(f)f.style.display=API_KEYS.ant?'flex':'none';
     return true;
   }
   return false;
@@ -3566,6 +3807,10 @@ function saveApiKeys(){
   if(td){localStorage.setItem('xau_td_key',td);API_KEYS.td=td;setApiStatus('td','ok','✓ Zapisany');}
   if(ant){localStorage.setItem('xau_ant_key',ant);API_KEYS.ant=ant;setApiStatus('ant','ok','✓ Zapisany');}
   if(fh){localStorage.setItem('xau_fh_key',fh);API_KEYS.fh=fh;setApiStatus('fh','ok','✓ Zapisany');}
+  var spEl=document.getElementById('spreadInput');
+  if(spEl&&spEl.value!==''){
+    if(!setSpread(spEl.value))showToast('Spread poza zakresem 0–5 USD — zostawiam poprzedni');
+  }
   var p=document.getElementById('apiPanel');
   if(p)p.classList.add('hidden');
   var f=document.getElementById('chatFab');
@@ -3596,6 +3841,61 @@ function setInd(id,val,tag,cls){var v=document.getElementById('v'+id);var t=docu
 function showToast(msg){var t=document.getElementById('toast');if(t){t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},5000);}}
 
 function updateClock(){var el=document.getElementById('hdrClock');if(el)el.textContent=new Date().toLocaleTimeString('pl-PL');}
+
+// ══ WYWOŁANIA API ANTHROPIC — JEDNA WSPÓLNA ŚCIEŻKA ═════════════════════════
+// Wcześniej prognoza i czat miały własne, skopiowane wywołania. Rozjechały się:
+// obie używały nieistniejącego już modelu, obie szły przez proxy w formacie,
+// którego corsproxy.io nie obsługuje (`?https://...` zamiast `?url=...`),
+// podczas gdy wywołanie Fear & Greed w tym samym pliku miało format poprawny.
+// Teraz jest jedna funkcja — jak coś się zmieni, zmienia się w jednym miejscu.
+//
+// PROXY ZOSTAŁO USUNIĘTE CAŁKOWICIE. Nagłówek
+// `anthropic-dangerous-direct-browser-access: true` (już wcześniej obecny
+// w kodzie) pozwala wołać API wprost z przeglądarki — możliwość dodana
+// w sierpniu 2024, więc komentarz „Anthropic blokuje direct CORS" był
+// nieaktualny. Przy okazji znika poważny problem: klucz API przestaje
+// wędrować w nagłówku przez cudzy serwer przy KAŻDYM zapytaniu.
+var AI_MODEL='claude-sonnet-5';
+
+function aiErrorHint(status,type,msg){
+  if(status===401)return 'Klucz Anthropic odrzucony (401) — sprawdź go w ⚙ API.';
+  if(status===403)return 'Brak uprawnień (403): '+msg;
+  if(status===404)return 'Model "'+AI_MODEL+'" niedostępny na tym koncie (404). '+
+    'Zmień wartość AI_MODEL w kodzie na aktualny identyfikator z docs.claude.com.';
+  if(status===400&&/credit|balance|quota/i.test(msg||''))return 'Brak środków na koncie Anthropic: '+msg;
+  if(status===429)return 'Przekroczony limit zapytań (429) — spróbuj za chwilę.';
+  if(status>=500)return 'Błąd po stronie Anthropic ('+status+') — spróbuj później.';
+  return (msg||'Nieznany błąd')+(type?(' ['+type+']'):'');
+}
+
+async function callAnthropic(body){
+  if(!API_KEYS.ant)throw new Error('Brak klucza Anthropic — ustaw go w ⚙ API w nagłówku.');
+  var res;
+  try{
+    res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':API_KEYS.ant,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify(Object.assign({model:AI_MODEL},body))
+    });
+  }catch(e){
+    throw new Error('Nie udało się połączyć z api.anthropic.com — sprawdź sieć '+
+      'lub blokady rozszerzeń przeglądarki. ('+e.message+')');
+  }
+  var data=null;
+  try{data=await res.json();}catch(e){}
+  if(!res.ok){
+    var err=(data&&data.error)||{};
+    throw new Error(aiErrorHint(res.status,err.type,err.message));
+  }
+  var txt=(data&&data.content&&data.content[0]&&data.content[0].text)||'';
+  if(!txt)throw new Error('Pusta odpowiedź modelu');
+  return txt;
+}
 
 async function loadFearGreed(){
   const TARGET='https://api.alternative.me/fng/?limit=1';
@@ -3759,11 +4059,19 @@ function renderNews(){
 }
 
 async function runAIForecast(){
-  if(forecastRunning||!API_KEYS.ant)return;
-  forecastRunning=true;
   const btn=document.getElementById('forecastBtn');
   const out=document.getElementById('forecastOut');
   const ts=document.getElementById('forecastTs');
+  if(forecastRunning)return;
+  // Wcześniej brak klucza powodował ciche wyjście: panel w nieskończoność
+  // pokazywał tekst startowy, a przycisk „Analizuj teraz" nie robił nic
+  // i nie dawał żadnej informacji zwrotnej. Teraz mówi wprost, czego brakuje.
+  if(!API_KEYS.ant){
+    if(out)out.innerHTML='<div class="forecast-error">Brak klucza Anthropic — '+
+      'ustaw go w ⚙ API w nagłówku. Prognoza AI jest wtedy nieaktywna.</div>';
+    return;
+  }
+  forecastRunning=true;
   if(btn)btn.disabled=true;
   if(out)out.innerHTML='<div class="forecast-loading">⟳ Analizuję dane...</div>';
 
@@ -3832,23 +4140,10 @@ Odpowiedz TYLKO poprawnym JSON bez żadnego tekstu przed ani po:
   "ostrzezenie": "jedno zdanie o głównym ryzyku lub null"
 }`;
 
-    const proxyUrl='https://corsproxy.io/?'+encodeURIComponent('https://api.anthropic.com/v1/messages');
-    const res=await fetch(proxyUrl,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':API_KEYS.ant,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,messages:[{role:'user',content:prompt}]})
-    });
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'API error');}
-    const data=await res.json();
-    const text=data.content?.[0]?.text||'';
-    // Parse JSON from response
+    const text=await callAnthropic({max_tokens:600,messages:[{role:'user',content:prompt}]});
+    // Wyłuskanie JSON-a z odpowiedzi (model bywa opakuje go w tekst)
     const jsonMatch=text.match(/\{[\s\S]+\}/);
-    if(!jsonMatch)throw new Error('Brak JSON w odpowiedzi');
+    if(!jsonMatch)throw new Error('Model nie zwrócił poprawnego JSON-a');
     const forecast=JSON.parse(jsonMatch[0]);
     lastForecast=forecast;
     renderForecast(forecast);
@@ -4047,17 +4342,27 @@ function updateRegimeBtn(){
   });
 }
 
+var DASH_TIMERS=[];
 function initDashboard(){
-  // Load all data
+  // Zabezpieczenie przed podwójną inicjalizacją — każde powtórne wywołanie
+  // (np. po zapisaniu kluczy w ustawieniach) dokładałoby kolejny komplet
+  // timerów, a stare pracowałyby dalej. To akurat byłby prawdziwy wyciek.
+  DASH_TIMERS.forEach(function(t){clearInterval(t);});
+  DASH_TIMERS=[];
+  if(SCHED.timer){clearTimeout(SCHED.timer);SCHED.timer=null;}
+
   renderJournal();          // pokaż zebraną statystykę zanim przyjdą dane
+  renderApiHealth();
   loadDataEnhanced();
   loadMacroData();
   loadAllExtended();
 
-  // Refresh intervals
-  setInterval(loadDataEnhanced, 90000);       // 15min data every 90s
-  setInterval(loadMacroData, 120000);          // macro every 2min
-  setInterval(loadAllExtended, 300000);        // fear&greed etc every 5min
+  // Świece 5M zamykają się o równych wielokrotnościach pięciu minut, więc
+  // odświeżamy zegarowo (zamknięcie świecy + jej połowa), a nie co stałe 90 s.
+  scheduleNextRefresh();
+  DASH_TIMERS.push(setInterval(loadMacroData, 300000));     // makro co 5 min
+  DASH_TIMERS.push(setInterval(loadAllExtended, 300000));   // F&G, CNY, Brent
+  DASH_TIMERS.push(setInterval(renderApiHealth, 15000));    // świeżość danych
 
   // AI forecast auto every 15min (only if key available)
   if(API_KEYS.ant){
