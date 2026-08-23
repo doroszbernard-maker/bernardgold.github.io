@@ -2229,8 +2229,54 @@ function journalLoad(){
   try{var v=JSON.parse(localStorage.getItem(JOURNAL_KEY)||'[]');return Array.isArray(v)?v:[];}
   catch(e){return [];}
 }
+// Podwójne ograniczenie: liczbą wpisów ORAZ rozmiarem w bajtach. Sama liczba nie
+// wystarcza, bo wpis puchnie w miarę oceniania (dochodzą MFE/MAE dla 12 i 24 świec).
+var JOURNAL_MAX_ENTRIES=400;
+var JOURNAL_MAX_BYTES=192*1024;     // ~0,2 MB przy typowym limicie 5 MB na domenę
+var JOURNAL_STORAGE_ERR=null;       // ostatni problem z zapisem, pokazywany w panelu
+
 function journalSave(j){
-  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(j.slice(-400)));}catch(e){}
+  var arr=j.slice(-JOURNAL_MAX_ENTRIES);
+  var lastErr=null;
+  // Do dziesięciu prób połowienia — z 400 wpisów schodzi to poniżej jednego,
+  // więc pętla zawsze się kończy rozstrzygnięciem, a nie z braku prób.
+  for(var attempt=0;attempt<10;attempt++){
+    var payload=JSON.stringify(arr);
+    // Przycinamy zawczasu — taniej niż czekać na wyjątek
+    if(payload.length>JOURNAL_MAX_BYTES&&arr.length>1){
+      arr=arr.slice(Math.ceil(arr.length/2));
+      continue;
+    }
+    try{
+      localStorage.setItem(JOURNAL_KEY,payload);
+      JOURNAL_STORAGE_ERR=null;
+      return true;
+    }catch(e){
+      // QuotaExceededError: miejsce mogły zająć inne strony z tej samej domeny
+      // albo działa tryb prywatny. Najpierw próbujemy zmieścić się o połowę
+      // mniejszym rejestrem, dopiero potem oddajemy sprawę użytkownikowi.
+      lastErr=(e&&e.name)||'BłądZapisu';
+      if(arr.length>1){arr=arr.slice(Math.ceil(arr.length/2));continue;}
+      JOURNAL_STORAGE_ERR=lastErr;
+      return false;
+    }
+  }
+  JOURNAL_STORAGE_ERR=lastErr||'BłądZapisu';
+  return false;
+}
+
+// Ile miejsca zajmuje dashboard w pamięci trwałej przeglądarki
+function journalStorageInfo(){
+  var bytes=0,jb=0;
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      var v=localStorage.getItem(k)||'';
+      bytes+=k.length+v.length;
+      if(k===JOURNAL_KEY)jb=v.length;
+    }
+  }catch(e){return null;}
+  return{total:bytes,journal:jb,err:JOURNAL_STORAGE_ERR};
 }
 
 function journalRecord(entry){
@@ -2359,6 +2405,26 @@ function renderJournal(){
   var pending=real.filter(function(e){return !isScored(e)&&e.out12!=='skip';});
 
   var btn='<button onclick="journalReset()" style="margin-top:6px;width:100%;font-size:8px;padding:3px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-family:var(--mono)">Wyczyść rejestr</button>';
+
+  // Zajętość pamięci trwałej — i ostrzeżenie, gdyby zapis przestał działać.
+  // Bez tego rejestr mógłby po cichu przestać notować, tak jak wcześniej po cichu
+  // zamierało pobieranie danych przy błędzie API.
+  var si=journalStorageInfo();
+  var store='';
+  if(si){
+    var kb=(si.journal/1024).toFixed(0), tot=(si.total/1024).toFixed(0);
+    store='<div style="font-size:8px;color:var(--text3);margin-top:5px">'+
+      'Rejestr zajmuje '+kb+' kB (dashboard łącznie '+tot+' kB). '+
+      'Limit '+Math.round(JOURNAL_MAX_BYTES/1024)+' kB i '+JOURNAL_MAX_ENTRIES+
+      ' wpisów, najstarsze kasowane po 7 dniach.</div>';
+    if(si.err){
+      store='<div style="font-size:9px;color:var(--red);margin-top:5px;line-height:1.5">'+
+        '⚠ Nie udało się zapisać rejestru ('+si.err+'). Nowe sygnały nie są notowane. '+
+        'Najczęstsza przyczyna to wyczerpany limit pamięci przeglądarki albo tryb prywatny — '+
+        'pomaga wyczyszczenie rejestru przyciskiem poniżej.</div>';
+    }
+  }
+  btn=store+btn;
 
   // Stan zbierania danych pokazujemy ZAWSZE — panel nie może wyglądać na martwy
   var nextIn='';
