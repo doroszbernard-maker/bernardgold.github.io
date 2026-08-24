@@ -641,6 +641,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="sltp-row"><div class="sltp-label">Zasięg TP / R:R</div><div class="sltp-val usd" id="sltpRange">—</div></div>
     <div style="font-size:8px;padding:3px 6px;background:var(--bg3);border-radius:3px;color:var(--text3);margin-bottom:4px" id="sltpRR">Analiza swing struktury...</div>
     <div style="font-size:9px;padding:4px 6px;background:var(--gold-bg);border:1px solid var(--gold-b);border-radius:3px;color:var(--text2);margin-bottom:4px;line-height:1.5" id="sltpTime"></div>
+    <div style="font-size:9px;padding:3px 6px;color:var(--text3);margin-bottom:2px;line-height:1.5" id="sltpAge"></div>
     <div style="font-size:9px;padding:3px 6px;color:var(--text3);margin-bottom:4px;line-height:1.5" id="sltpMove"></div>
     <div class="sltp-divider"></div>
     <div class="sltp-calc">
@@ -2364,13 +2365,39 @@ function targetTimeText(distPts,atr){
 // Sygnał powstaje na zamknięciu świecy, a Ty patrzysz na wykres kilkadziesiąt
 // sekund później. Jeśli cena zdążyła przejść połowę drogi do celu, wejście ma
 // już inny sens niż w chwili sygnału. To pole liczy tę różnicę.
-var SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null};
+var SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null,since:null};
 
+// BŁĄD, KTÓRY BYŁ TU WCZEŚNIEJ: warunek resetował kotwicę przy KAŻDEJ nowej
+// świecy, więc „ile ruchu wykonane" mierzyło tylko bieżące pięć minut zamiast
+// całej drogi od pojawienia się sygnału. Kotwica ma trwać tak długo, jak długo
+// utrzymuje się kierunek — dopiero jego zmiana zaczyna liczenie od nowa.
 function updateSignalAnchor(barTime,price,dir,tp){
-  if(dir==null){SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null};return;}
-  if(SIGNAL_ANCHOR.bar!==barTime||SIGNAL_ANCHOR.dir!==dir){
-    SIGNAL_ANCHOR={price:price,bar:barTime,dir:dir,tp:tp};
+  if(dir==null){SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null,since:null};return;}
+  if(SIGNAL_ANCHOR.dir!==dir||SIGNAL_ANCHOR.price==null){
+    SIGNAL_ANCHOR={price:price,bar:barTime,dir:dir,tp:tp,since:Date.now()};
+  } else {
+    SIGNAL_ANCHOR.tp=tp;          // cel może się przesuwać, punkt startu nie
+    SIGNAL_ANCHOR.bar=barTime;
   }
+}
+
+// ── WIEK SYGNAŁU vs OCZEKIWANY CZAS DO CELU ────────────────────────────────
+// Bez tego trzeba w głowie porównywać „ile już siedzę" z „ile to zwykle trwa".
+// Przy bujaniu rynku to właśnie ta różnica decyduje, czy jesteś wcześnie
+// (więc szarpanina jest normalna), czy poza typowym zakresem (więc coś nie gra).
+function signalAge(atr){
+  var a=SIGNAL_ANCHOR;
+  if(a.since==null||a.tp==null||a.price==null)return null;
+  var mins=Math.floor((Date.now()-a.since)/60000);
+  var bars=mins/5;
+  var est=estimateTimeToTarget(Math.abs(a.tp-a.price),atr);
+  if(!est)return{mins:mins,bars:bars,est:null,level:'brak'};
+  var level;
+  if(bars<=est.q25)level='wczesnie';
+  else if(bars<=est.med)level='wnormie';
+  else if(bars<=est.q75)level='dlugo';
+  else level='pozazakresem';
+  return{mins:mins,bars:bars,est:est,level:level};
 }
 
 function moveConsumed(curPrice){
@@ -3018,6 +3045,20 @@ async function loadDataEnhanced(){
 
     // Ile ruchu już się wykonało od chwili sygnału
     updateSignalAnchor(isFast?bar5:bar15,c5.length?c5[c5.length-1]:cur,bias.dir,sltpMain.tp);
+    const age=signalAge(atrRef);
+    const aEl=document.getElementById('sltpAge');
+    if(aEl){
+      if(age&&age.est){
+        const col={wczesnie:'var(--green)',wnormie:'var(--text2)',
+          dlugo:'var(--amber)',pozazakresem:'var(--red)'}[age.level]||'var(--text3)';
+        const note={wczesnie:'wcześnie — szarpanina na tym etapie jest normalna',
+          wnormie:'w typowym zakresie',
+          dlugo:'dłużej niż zwykle — warto sprawdzić, czy przesłanki dalej stoją',
+          pozazakresem:'poza typowym zakresem — ruch raczej nie dojdzie sam z siebie'}[age.level]||'';
+        aEl.innerHTML='Sygnał żyje <b style="color:'+col+'">'+fmtBars(age.bars)+
+          '</b> z oczekiwanych ~'+fmtBars(age.est.med)+' — '+note;
+      } else aEl.textContent='';
+    }
     const mv=moveConsumed(cur);
     const mEl=document.getElementById('sltpMove');
     if(mEl){
@@ -3047,6 +3088,7 @@ async function loadDataEnhanced(){
       sltpEls.rr.style.color='var(--text3)';}
     const tEl0=document.getElementById('sltpTime');if(tEl0)tEl0.textContent='';
     const mEl0=document.getElementById('sltpMove');if(mEl0)mEl0.textContent='';
+    const aEl0=document.getElementById('sltpAge');if(aEl0)aEl0.textContent='';
     updateSignalAnchor(null,null,null,null);
   }
 
