@@ -640,6 +640,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="sltp-row"><div class="sltp-label">Stop Loss (lok. Low 8h)</div><div class="sltp-val sl" id="sltpSL">—</div></div>
     <div class="sltp-row"><div class="sltp-label">Zasięg TP / R:R</div><div class="sltp-val usd" id="sltpRange">—</div></div>
     <div style="font-size:8px;padding:3px 6px;background:var(--bg3);border-radius:3px;color:var(--text3);margin-bottom:4px" id="sltpRR">Analiza swing struktury...</div>
+    <div style="font-size:9px;padding:4px 6px;background:var(--gold-bg);border:1px solid var(--gold-b);border-radius:3px;color:var(--text2);margin-bottom:4px;line-height:1.5" id="sltpTime"></div>
+    <div style="font-size:9px;padding:3px 6px;color:var(--text3);margin-bottom:4px;line-height:1.5" id="sltpMove"></div>
     <div class="sltp-divider"></div>
     <div class="sltp-calc">
       <div class="sltp-calc-cell"><div class="sltp-calc-l">0.005 lota</div><div class="sltp-calc-v" id="calcSmall">—</div></div>
@@ -1307,15 +1309,18 @@ function detectMarketRegime(candles15, candles5, atr15, atrDay, candles60, liveP
     mode='ranging';
     signalTF='5min';
     filterBars=1;
-    tpPts=Math.max(8,Math.round(Math.min(rangeNow*0.35,20)));
-    slPts=Math.max(5,Math.round(Math.min(rangeNow*0.18,10)));
+    // Progi skalowane ATR zamiast sztywnych punktów. Zmienność złota wzrosła
+    // dwukrotnie w ciągu dwóch lat (zakres świecy 5M z 1,7 na ~3,2 pkt), więc
+    // liczby wpisane na sztywno przy cenie 2400 są dziś o połowę za ciasne.
+    tpPts=Math.round(Math.max(a15*1.2,Math.min(rangeNow*0.35,a15*3)));
+    slPts=Math.round(Math.max(a15*0.6,Math.min(rangeNow*0.18,a15*1.5)));
     desc='BOCZNY WĄSKI · ADX '+adx.toFixed(0)+' · BB '+bbW.toFixed(2)+'% · Sygnały 5M · TP ~'+tpPts+' pkt';
   } else if(adx!=null&&adx<22){
     mode='ranging';
     signalTF='5min';
     filterBars=1;
-    tpPts=Math.max(10,Math.round(Math.min(rangeNow*0.4,25)));
-    slPts=Math.max(6,Math.round(Math.min(rangeNow*0.2,12)));
+    tpPts=Math.round(Math.max(a15*1.5,Math.min(rangeNow*0.4,a15*3.5)));
+    slPts=Math.round(Math.max(a15*0.7,Math.min(rangeNow*0.2,a15*1.8)));
     desc='BOCZNY · ADX '+adx.toFixed(0)+' · Sygnały 5M · TP ~'+tpPts+' pkt';
   } else {
     // Strefa 22-26 ADX — nie boczniak, nie trend. Tu mean-reversion najczęściej zawodzi,
@@ -1485,6 +1490,30 @@ function applyStabilityFilter(newSig, tfLabel, requiredBars, barTime){
   return h[tfLabel].sig;
 }
 
+// ── JAKOŚĆ KONTEKSTU — Z POMIARU NA DWÓCH LATACH ───────────────────────────
+// Przewaga brutto na transakcję, zmierzona na 8273 transakcjach. Próg
+// opłacalności to pełny spread (u XTB na złocie ok. 0.90 USD przy 0.01 lota).
+// Liczby poniżej NIE są prognozą dla pojedynczej transakcji — mówią tylko,
+// jak historycznie wypadał dany kontekst. Sygnał w kontekście ujemnym nadal
+// się pokazuje, ale bez zielonego światła.
+var EDGE_REGIME={impulse:0.475,trending:0.380,ranging:0.127,transitional:-0.570};
+var EDGE_PHASE={postopen:1.244,usopen:0.969,preus:0.453,london:0.331,usdata:0.314,
+  asia:-0.169,us:-0.182,lonopen:-0.300};
+// weekend celowo poza tabelą — blokowany bezwarunkowo, patrz calcDecisions
+var EDGE_COST=0.90;
+
+function contextQuality(regimeMode,phaseKey){
+  var r=EDGE_REGIME[regimeMode], p=EDGE_PHASE[phaseKey];
+  if(r==null&&p==null)return null;
+  var worst=Math.min(r==null?99:r, p==null?99:p);
+  var lvl = worst<0 ? 'zla' : (r>=EDGE_COST||p>=EDGE_COST) ? 'dobra' : 'slaba';
+  return{regime:r,phase:p,worst:worst,level:lvl,
+    txt:(r!=null?('tryb '+regimeMode+': '+(r>0?'+':'')+r.toFixed(2)):'')+
+        (r!=null&&p!=null?' · ':'')+
+        (p!=null?('sesja '+phaseKey+': '+(p>0?'+':'')+p.toFixed(2)):'')+
+        ' USD/tr. historycznie, próg '+EDGE_COST.toFixed(2)};
+}
+
 // ── HISTEREZA ZAMYKANIA ─────────────────────────────────────────────────────
 // Zalecenie „ZAMKNIJ" wynikało z jednego odczytu, więc pojedyncze drgnięcie RSI
 // albo chwilowe dotknięcie wstęgi kazało wyjść z pozycji, która za dwie świece
@@ -1539,6 +1568,10 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
   // veto = strona, której NIE WOLNO otwierać. Kolejność = od najsilniejszej
   // przesłanki do najsłabszej; pierwsza dopasowana wygrywa.
   var veto=null, vetoWhy='', vetoSrc='';
+  // WEEKEND: bezwarunkowa blokada obu stron. Backtest dał tu 1533 transakcje
+  // z trafnością 10% — to niedzielne otwarcie rynku, cienka płynność i luki
+  // cenowe. Żaden wskaźnik nie ma prawa działać na takich danych.
+  var isWeekend=(phase.key==='weekend');
   if(imp.active&&imp.dir){
     veto=(imp.dir==='up')?'short':'long';
     vetoSrc='impuls';
@@ -1570,7 +1603,12 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
       (r.trendCtx==='up'?'wzrostowy':'spadkowy')+' — kontra do wyższego TF wyłączona.';
   }
 
-  var blockedLong=(veto==='long'), blockedShort=(veto==='short');
+  if(isWeekend){
+    veto='both';vetoSrc='weekend';
+    vetoWhy='Rynek w fazie weekendowej — cienka płynność i luki cenowe. '+
+      'Historycznie trafność sygnałów w tym oknie to 10%. Handel wstrzymany.';
+  }
+  var blockedLong=(veto==='long'||veto==='both'), blockedShort=(veto==='short'||veto==='both');
 
   // ── Score i progi ────────────────────────────────────────────────────────
   var rawScore=(isRanging||isImpulse)
@@ -1622,10 +1660,17 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     shortOk=true;shortWhy='Z trendem spadkowym · '+pb.desc;
   }
 
+  // ── JAKOŚĆ KONTEKSTU ─────────────────────────────────────────────────────
+  var q=contextQuality(mode,phase.key);
+  var qBad=q&&q.level==='zla';
+  var qNote=q?(' · '+q.txt):'';
+
   // ── OTWARCIE LONG ────────────────────────────────────────────────────────
   var oL,oLr;
   if(blockedLong){oL='⛔ STÓJ — NIE GRAJ LONG';oLr=vetoWhy;}
-  else if(longOk){oL='✅ OTWÓRZ LONG';oLr=longWhy;}
+  else if(longOk&&qBad){oL='🟡 SŁABY KONTEKST';
+    oLr='Warunki wejścia spełnione, ale ten kontekst historycznie tracił.'+qNote;}
+  else if(longOk){oL='✅ OTWÓRZ LONG';oLr=longWhy+(q&&q.level==='dobra'?qNote:'');}
   else if(withDir==='up'&&!pb.broken){
     oL='🟡 CZEKAJ NA COFNIĘCIE';
     oLr=(pb.ready&&rv>=82)
@@ -1637,7 +1682,9 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
   // ── OTWARCIE SHORT ───────────────────────────────────────────────────────
   var oS,oSr;
   if(blockedShort){oS='⛔ STÓJ — NIE GRAJ SHORT';oSr=vetoWhy;}
-  else if(shortOk){oS='✅ OTWÓRZ SHORT';oSr=shortWhy;}
+  else if(shortOk&&qBad){oS='🟡 SŁABY KONTEKST';
+    oSr='Warunki wejścia spełnione, ale ten kontekst historycznie tracił.'+qNote;}
+  else if(shortOk){oS='✅ OTWÓRZ SHORT';oSr=shortWhy+(q&&q.level==='dobra'?qNote:'');}
   else if(withDir==='down'&&!pb.broken){
     oS='🟡 CZEKAJ NA COFNIĘCIE';
     oSr=(pb.ready&&rv<=18)
@@ -1731,7 +1778,8 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     score:rawScore,isRanging:isRanging,mode:mode,withDir:withDir,
     veto:veto,vetoWhy:vetoWhy,vetoSrc:vetoSrc,overridden:overridden,
     conflicts:conflicts,
-    allowLong:longOk,allowShort:shortOk};
+    quality:q,
+    allowLong:longOk&&!qBad,allowShort:shortOk&&!qBad};
 }
 
 // ══ ZDROWIE API — WIDOCZNOŚĆ AWARII ═════════════════════════════════════════
@@ -2261,6 +2309,78 @@ function pullbackStatus(c5,dir,vwap){
         :broken?('cofnięcie za głębokie — struktura ruchu naruszona')
         :('do strefy wejścia ('+name+', '+zoneNear.toFixed(2)+') brakuje '+dist.toFixed(1)+' pkt')
   };
+}
+
+// ══ CZAS DO CELU — TABELA Z POMIARU, NIE Z TEORII ══════════════════════════
+// Zmierzone na 175 000 świec: ile świec 5M zajmuje ruch o k×ATR, licząc tylko
+// przypadki, w których cena doszła do celu zanim odjechała tyle samo w drugą
+// stronę. Ciekawostka z pomiaru: przy większych odległościach złoto dochodzi
+// SZYBCIEJ, niż wynikałoby z błądzenia losowego (dla 12×ATR ponad dwa razy
+// szybciej), co znaczy, że ruch ma realną trwałość — nie jest czystym szumem.
+var TIME_TABLE={
+  k  :[ 1, 2, 3, 4, 5, 6, 8,10,12],
+  q25:[ 2, 5, 9,15,21,29,45,59,75],
+  med:[ 3,11,23,39,53,70,101,134,159],
+  q75:[11,60,101,126,155,186,236,266,294]
+};
+
+function estimateTimeToTarget(distPts,atr){
+  if(!atr||!isFinite(atr)||atr<=0||!isFinite(distPts)||distPts<=0)return null;
+  var k=distPts/atr;
+  var K=TIME_TABLE.k;
+  function interp(arr){
+    if(k<=K[0])return arr[0]*k/K[0];
+    if(k>=K[K.length-1])return arr[arr.length-1]*k/K[K.length-1];
+    for(var i=1;i<K.length;i++){
+      if(k<=K[i]){
+        var f=(k-K[i-1])/(K[i]-K[i-1]);
+        return arr[i-1]+(arr[i]-arr[i-1])*f;
+      }
+    }
+    return arr[arr.length-1];
+  }
+  return{k:k,q25:Math.round(interp(TIME_TABLE.q25)),
+    med:Math.round(interp(TIME_TABLE.med)),q75:Math.round(interp(TIME_TABLE.q75))};
+}
+
+function fmtBars(n){
+  if(n==null||!isFinite(n))return '—';
+  var m=Math.round(n)*5;
+  if(m<60)return m+' min';
+  var h=Math.floor(m/60),r=m%60;
+  if(h>=24)return Math.floor(h/24)+' d '+(h%24)+' h';
+  return h+' h'+(r?' '+r+' min':'');
+}
+
+// Tekst pod poziomy TP/SL: ile zwykle trwa taki ruch
+function targetTimeText(distPts,atr){
+  var e=estimateTimeToTarget(distPts,atr);
+  if(!e)return '';
+  return 'zwykle '+fmtBars(e.med)+' · co czwarty w '+fmtBars(e.q25)+
+    ' · bywa do '+fmtBars(e.q75);
+}
+
+// ══ ILE RUCHU JUŻ SIĘ WYKONAŁO ═════════════════════════════════════════════
+// Sygnał powstaje na zamknięciu świecy, a Ty patrzysz na wykres kilkadziesiąt
+// sekund później. Jeśli cena zdążyła przejść połowę drogi do celu, wejście ma
+// już inny sens niż w chwili sygnału. To pole liczy tę różnicę.
+var SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null};
+
+function updateSignalAnchor(barTime,price,dir,tp){
+  if(dir==null){SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null};return;}
+  if(SIGNAL_ANCHOR.bar!==barTime||SIGNAL_ANCHOR.dir!==dir){
+    SIGNAL_ANCHOR={price:price,bar:barTime,dir:dir,tp:tp};
+  }
+}
+
+function moveConsumed(curPrice){
+  var a=SIGNAL_ANCHOR;
+  if(a.price==null||a.tp==null||curPrice==null)return null;
+  var total=Math.abs(a.tp-a.price);
+  if(total<=0)return null;
+  var done=(a.dir==='up')?(curPrice-a.price):(a.price-curPrice);
+  return{from:a.price,total:total,done:done,pct:Math.round(done/total*100),
+    left:total-done};
 }
 
 // ── JEDNO ŹRÓDŁO KIERUNKU I PEWNOŚCI DLA CAŁEGO DASHBOARDU ──────────────────
@@ -2889,6 +3009,28 @@ async function loadDataEnhanced(){
     if(sltpEls.range)sltpEls.range.textContent=sltpMain.tpPts.toFixed(1)+' pkt (R:R = '+sltpMain.rr+':1)';
     if(sltpEls.cS)sltpEls.cS.textContent='$'+(sltpMain.tpPts*0.5).toFixed(2);
     if(sltpEls.cL)sltpEls.cL.textContent='$'+(sltpMain.tpPts*1.0).toFixed(2);
+    // Czas do celu — z tabeli zmierzonej na dwóch latach danych
+    const atrRef=(regime.mode==='ranging'||regime.mode==='impulse')?(atr5||atr15):atr15;
+    const tTxt=targetTimeText(sltpMain.tpPts,atrRef);
+    const tEl=document.getElementById('sltpTime');
+    if(tEl)tEl.innerHTML='⏱ Zasięg '+sltpMain.tpPts.toFixed(0)+' pkt ('+
+      (sltpMain.tpPts/(atrRef||1)).toFixed(1)+'×ATR) — '+tTxt;
+
+    // Ile ruchu już się wykonało od chwili sygnału
+    updateSignalAnchor(isFast?bar5:bar15,c5.length?c5[c5.length-1]:cur,bias.dir,sltpMain.tp);
+    const mv=moveConsumed(cur);
+    const mEl=document.getElementById('sltpMove');
+    if(mEl){
+      if(mv&&mv.pct!==0){
+        const col=mv.pct>=50?'var(--red)':mv.pct>=25?'var(--amber)':'var(--green)';
+        mEl.innerHTML='Od sygnału ('+mv.from.toFixed(2)+') wykonane <b style="color:'+col+'">'+
+          mv.done.toFixed(1)+' z '+mv.total.toFixed(0)+' pkt ('+mv.pct+'%)</b>'+
+          (mv.pct>=50?' — spora część ruchu już za nami':'');
+      } else {
+        mEl.textContent='Sygnał świeży — cena przy poziomie z chwili sygnału.';
+      }
+    }
+
     if(sltpEls.rr){
       sltpEls.rr.textContent=(bias.isLong?'LONG · ':'SHORT · ')+'R:R '+sltpMain.rr+':1 · TP: '+
         sltpMain.tpDesc+' · SL: '+sltpMain.slDesc+' · źródło kierunku: '+bias.source;
@@ -2903,6 +3045,9 @@ async function loadDataEnhanced(){
     if(sltpEls.range)sltpEls.range.textContent='—';
     if(sltpEls.rr){sltpEls.rr.textContent='Brak wyraźnego kierunku — poziomy nie są liczone.';
       sltpEls.rr.style.color='var(--text3)';}
+    const tEl0=document.getElementById('sltpTime');if(tEl0)tEl0.textContent='';
+    const mEl0=document.getElementById('sltpMove');if(mEl0)mEl0.textContent='';
+    updateSignalAnchor(null,null,null,null);
   }
 
   // ── Poziomy cenowe (5min + dzienne) ──────────────────────────────────────
@@ -2927,8 +3072,8 @@ async function loadDataEnhanced(){
   // żadnej świecy „po sygnale" i ocena nie ruszała. Wiązanie do świec czyni
   // rejestr odpornym na zegar i strefę czasową niezależnie od tamtej poprawki.
   const lastT=candles5.length?candles5[candles5.length-1].t:Date.now();
-  const tpP=(sltpMain&&sltpMain.tpPts)?sltpMain.tpPts:(regime.tpPts||12);
-  const slP=(sltpMain&&sltpMain.slPts)?sltpMain.slPts:(regime.slPts||8);
+  const tpP=(sltpMain&&sltpMain.tpPts)?sltpMain.tpPts:(regime.tpPts||Math.round((atr15||4)*3));
+  const slP=(sltpMain&&sltpMain.slPts)?sltpMain.slPts:(regime.slPts||Math.round((atr15||4)*1.5));
 
   if(dec.allowLong||dec.allowShort){
     journalRecord({
