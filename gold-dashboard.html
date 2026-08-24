@@ -1202,8 +1202,15 @@ var marketRegime={
   desc:'Wykrywanie...',
 };
 
-function detectMarketRegime(candles15, candles5, atr15, atrDay, candles60){
-  var cur5=(candles5&&candles5.length)?candles5[candles5.length-1].c:null;
+// candles5 muszą być ŚWIECAMI DOMKNIĘTYMI. Detektor impulsu liczony z niedomkniętej
+// świecy potrafił włączyć się i wyłączyć w ciągu tych samych pięciu minut, a razem
+// z nim skakało weto — stąd „otwórz short", chwilę później „STÓJ", a zaraz potem
+// „zamknij wszystko". Zysk z reagowania 2,5 minuty wcześniej był żaden, koszt duży.
+// Detekcja i tak wymaga 3 z 6 testów, czyli 1-3 świec, i to się nie zmienia.
+// livePrice służy wyłącznie do VWAP i do tego, co pokazuje panel.
+function detectMarketRegime(candles15, candles5, atr15, atrDay, candles60, livePrice){
+  var cur5=(livePrice!=null&&isFinite(livePrice))?livePrice
+    :((candles5&&candles5.length)?candles5[candles5.length-1].c:null);
 
   // ── 1. SZYBKA WARSTWA: impuls na 5M (reaguje w 1-3 świecach) ──────────────
   var imp=detectImpulse(candles5);
@@ -1212,7 +1219,11 @@ function detectMarketRegime(candles15, candles5, atr15, atrDay, candles60){
     var cl5=candles5.map(function(c){return c.c;});
     e21_5=calcEMA(cl5,21)[cl5.length-1];
   }
-  var mem=updateImpulseMemory(imp,cur5,e21_5);
+  // Do sprawdzenia „czy impuls się wyczerpał" bierzemy ZAMKNIĘCIE ŚWIECY, nie
+  // cenę bieżącą. Inaczej wystarczyło jedno muśnięcie EMA21 w trakcie świecy,
+  // żeby zdjąć stygnięcie po impulsie — a razem z nim weto i całą decyzję.
+  var barClose5=(candles5&&candles5.length)?candles5[candles5.length-1].c:cur5;
+  var mem=updateImpulseMemory(imp,barClose5,e21_5);
   IMPULSE=imp;
   var vwap=calcVWAP(candles5,todayAnchorMs());
   var phase=getSessionPhase();
@@ -1430,11 +1441,26 @@ function calcSignal(closes,rsi,macd,bb,e20,e50,label){
 }
 
 // Signal stability filter — prevents flip every 5 min
-function applyStabilityFilter(newSig, tfLabel, requiredBars){
+// BŁĄD, KTÓRY BYŁ TU WCZEŚNIEJ: filtr liczył WYWOŁANIA, nie ŚWIECE. Przy progu
+// „1 świeca potwierdzenia" w trybie bocznym oznaczało to, że każde odświeżenie
+// mogło odwrócić sygnał — a odświeżeń przypada kilka na jedną świecę. Stąd
+// „otwórz short", a dwie minuty później „zamknij, bo zmiana kierunku".
+// Teraz licznik posuwa się wyłącznie wtedy, gdy zamknie się NOWA świeca;
+// kolejne odświeżenia w obrębie tej samej świecy mogą jedynie odświeżyć score
+// bieżącego kierunku, ale nie mają prawa go odwrócić.
+function applyStabilityFilter(newSig, tfLabel, requiredBars, barTime){
   requiredBars=requiredBars||2;
   if(!applyStabilityFilter.history)applyStabilityFilter.history={};
   const h=applyStabilityFilter.history;
-  if(!h[tfLabel])h[tfLabel]={sig:newSig,bars:1};
+
+  if(h[tfLabel]&&barTime!=null&&h[tfLabel].lastBar===barTime){
+    // ta sama świeca co poprzednio — kierunek zamrożony
+    if(h[tfLabel].sig.type===newSig.type)h[tfLabel].sig=newSig;
+    return h[tfLabel].sig;
+  }
+  if(h[tfLabel])h[tfLabel].lastBar=barTime;
+
+  if(!h[tfLabel])h[tfLabel]={sig:newSig,bars:1,lastBar:barTime};
   else if(h[tfLabel].sig.type===newSig.type){
     h[tfLabel].bars++;
     h[tfLabel].sig=newSig; // update score even if same direction
@@ -1459,6 +1485,25 @@ function applyStabilityFilter(newSig, tfLabel, requiredBars){
   return h[tfLabel].sig;
 }
 
+// ── HISTEREZA ZAMYKANIA ─────────────────────────────────────────────────────
+// Zalecenie „ZAMKNIJ" wynikało z jednego odczytu, więc pojedyncze drgnięcie RSI
+// albo chwilowe dotknięcie wstęgi kazało wyjść z pozycji, która za dwie świece
+// szła dalej w dobrą stronę. Teraz warunek zamknięcia musi utrzymać się przez
+// dwie kolejne ZAMKNIĘTE świece. Funkcja jest odporna na wielokrotne wywołanie
+// w obrębie tej samej świecy — zwraca wtedy stan już ustalony.
+var CLOSE_HYST={long:{on:false,count:0,lastBar:null},short:{on:false,count:0,lastBar:null}};
+
+function closeHysteresis(side,cond,barTime,required){
+  required=required||2;
+  var s=CLOSE_HYST[side];
+  if(!s)return cond;
+  if(barTime!=null&&s.lastBar===barTime)return s.on;   // ta sama świeca
+  s.lastBar=barTime;
+  if(cond){s.count++;if(s.count>=required)s.on=true;}
+  else{s.count=0;s.on=false;}
+  return s.on;
+}
+
 // ══ DECYZJE POZYCYJNE — z warstwą weta (anty-fade) ══════════════════════════
 // Kluczowa zmiana: przed policzeniem decyzji sprawdzamy, czy nie trwa impuls
 // przeciwny do sygnału. Jeśli tak — sygnał NIE jest realizowany, tylko
@@ -1470,6 +1515,12 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
   var n=closes.length-1;
   var rv=(rsi[n]!=null?rsi[n]:50);
   var cur=(ctx.cur!=null?ctx.cur:closes[n]);
+  // WSZYSTKIE porównania progowe robimy na zamknięciu OSTATNIEJ DOMKNIĘTEJ świecy,
+  // nie na cenie bieżącej. Cena w trakcie świecy potrafi kilka razy przeciąć wstęgę
+  // albo pasmo VWAP, a każde przecięcie przestawiało weto i decyzje. Cena bieżąca
+  // zostaje tam, gdzie jest potrzebna: w opisach i w odległości do SL/TP.
+  var bp=closes[n];
+  if(bp==null||!isFinite(bp))bp=cur;
   var em20=e20?e20[n]:null, em50=e50?e50[n]:null;
   var bv=bb?bb[n]:null;
 
@@ -1499,13 +1550,18 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     vetoWhy='Impuls '+(mem.dir==='up'?'wzrostowy':'spadkowy')+' wygasł '+
       (mem.minsAgo!=null?mem.minsAgo:'?')+' min temu, ale cena nie wróciła za EMA21 5M — '+
       'struktura ruchu nienaruszona.';
-  } else if(phase.noFade&&vwap&&cur!=null&&cur>vwap.upper){
+  } else if(phase.noFade&&vwap&&bp!=null&&bp>vwap.upper&&(mode!=='ranging'||imp.votes>=2)){
+    // Weto sesyjne porównuje ZAMKNIĘCIE ŚWIECY, nie cenę bieżącą — w trakcie
+    // świecy cena potrafi kilka razy przeciąć pasmo, a każde przecięcie
+    // przestawiało blokadę. Dodatkowo wymaga jakichkolwiek oznak ruchu
+    // kierunkowego: w martwym boczniaku VWAP jest płaski, cena bez przerwy
+    // wychodzi poza ±1σ i sama pozycja względem pasma nie znaczy nic.
     veto='short';vetoSrc='sesja';
-    vetoWhy=phase.name+': cena powyżej VWAP+σ ('+vwap.upper.toFixed(2)+'). '+
+    vetoWhy=phase.name+': zamknięcie świecy powyżej VWAP+σ ('+vwap.upper.toFixed(2)+'). '+
       'W tym oknie granie przeciw ruchowi statystycznie się nie opłaca.';
-  } else if(phase.noFade&&vwap&&cur!=null&&cur<vwap.lower){
+  } else if(phase.noFade&&vwap&&bp!=null&&bp<vwap.lower&&(mode!=='ranging'||imp.votes>=2)){
     veto='long';vetoSrc='sesja';
-    vetoWhy=phase.name+': cena poniżej VWAP−σ ('+vwap.lower.toFixed(2)+'). '+
+    vetoWhy=phase.name+': zamknięcie świecy poniżej VWAP−σ ('+vwap.lower.toFixed(2)+'). '+
       'W tym oknie granie przeciw ruchowi statystycznie się nie opłaca.';
   } else if(isTransitional&&r.trendCtx){
     veto=(r.trendCtx==='up')?'short':'long';
@@ -1536,8 +1592,8 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     longNo =(imp.dir==='up')?('Impuls trwa, ale '+pb.desc):'Impuls jest spadkowy — long przeciw niemu';
     shortNo=(imp.dir==='down')?('Impuls trwa, ale '+pb.desc):'Impuls jest wzrostowy — short przeciw niemu';
   } else if(isRanging){
-    longOk =rawScore>=openThresh&&rv<55&&!!bv&&cur<=bv.mid;
-    shortOk=rawScore<=-openThresh&&rv>45&&!!bv&&cur>=bv.mid;
+    longOk =rawScore>=openThresh&&rv<55&&!!bv&&bp<=bv.mid;
+    shortOk=rawScore<=-openThresh&&rv>45&&!!bv&&bp>=bv.mid;
     longWhy='Score 5M: '+rawScore+' · RSI '+rv.toFixed(0)+' · poniżej BB mid';
     shortWhy='Score 5M: '+rawScore+' · RSI '+rv.toFixed(0)+' · powyżej BB mid';
     longNo ='Score 5M: '+rawScore+' (próg: +'+openThresh+') · RSI '+rv.toFixed(0);
@@ -1607,13 +1663,15 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     cLr=(imp.active?('Impuls wzrostowy trwa ('+imp.votes+'/6). '):'Trend wzrostowy nienaruszony. ')+
       'Nie zamykaj na RSI — przesuwaj SL pod EMA21 5M.';
   } else {
-    var cLwarn=(rawScore<=-closeThresh)||(rv>rsiHiClose)||(!!bv&&cur>=bv.upper*(isRanging?0.998:1));
-    cL=cLwarn?'🔴 ZAMKNIJ LONG':'⬜ MONITORUJ';
+    var cLraw=(rawScore<=-closeThresh)||(rv>rsiHiClose)||(!!bv&&bp>=bv.upper*(isRanging?0.998:1));
+    var cLwarn=closeHysteresis('long',cLraw,ctx.bar,2);
+    cL=cLwarn?'🔴 ZAMKNIJ LONG':(cLraw?'🟡 OBSERWUJ — sygnał wyjścia się formuje':'⬜ MONITORUJ');
     cLr=cLwarn
-      ?(rv>rsiHiClose?('RSI '+rv.toFixed(0)+' — strefa wykupienia')
+      ?((rv>rsiHiClose?('RSI '+rv.toFixed(0)+' — strefa wykupienia')
         :rawScore<=-closeThresh?('Sygnał odwrócony ('+rawScore+')')
-        :'Cena przy górnym BB — potencjalny szczyt')
-      :'Trzymaj — pilnuj SL';
+        :'Cena przy górnym BB — potencjalny szczyt')+' · potwierdzone 2 świecami')
+      :(cLraw?'Warunek wyjścia pojawił się na tej świecy — czekam na potwierdzenie kolejną, żeby nie wyjść na drgnięciu'
+        :'Trzymaj — pilnuj SL');
   }
 
   if(blockedShort){
@@ -1624,13 +1682,15 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     cSr=(imp.active?('Impuls spadkowy trwa ('+imp.votes+'/6). '):'Trend spadkowy nienaruszony. ')+
       'Nie zamykaj na RSI — przesuwaj SL nad EMA21 5M.';
   } else {
-    var cSwarn=(rawScore>=closeThresh)||(rv<rsiLoClose)||(!!bv&&cur<=bv.lower*(isRanging?1.002:1));
-    cS=cSwarn?'🔴 ZAMKNIJ SHORT':'⬜ MONITORUJ';
+    var cSraw=(rawScore>=closeThresh)||(rv<rsiLoClose)||(!!bv&&bp<=bv.lower*(isRanging?1.002:1));
+    var cSwarn=closeHysteresis('short',cSraw,ctx.bar,2);
+    cS=cSwarn?'🔴 ZAMKNIJ SHORT':(cSraw?'🟡 OBSERWUJ — sygnał wyjścia się formuje':'⬜ MONITORUJ');
     cSr=cSwarn
-      ?(rv<rsiLoClose?('RSI '+rv.toFixed(0)+' — strefa wyprzedania')
+      ?((rv<rsiLoClose?('RSI '+rv.toFixed(0)+' — strefa wyprzedania')
         :rawScore>=closeThresh?('Sygnał odwrócony ('+rawScore+')')
-        :'Cena przy dolnym BB — potencjalne dno')
-      :'Trzymaj — pilnuj SL';
+        :'Cena przy dolnym BB — potencjalne dno')+' · potwierdzone 2 świecami')
+      :(cSraw?'Warunek wyjścia pojawił się na tej świecy — czekam na potwierdzenie kolejną, żeby nie wyjść na drgnięciu'
+        :'Trzymaj — pilnuj SL');
   }
 
   // ── TWARDA KONTROLA SPÓJNOŚCI ────────────────────────────────────────────
@@ -1969,6 +2029,31 @@ function calcVWAP(candles,anchorMs){
 }
 
 function todayAnchorMs(){var d=new Date();d.setHours(0,0,0,0);return d.getTime();}
+
+// ── ŚWIECE ZAMKNIĘTE vs ŚWIECA W TRAKCIE ────────────────────────────────────
+// Twelve Data zwraca jako ostatnią pozycję świecę WŁAŚNIE SIĘ FORMUJĄCĄ. Jej
+// zamknięcie to bieżąca cena, a maksimum i minimum są dopiero częściowe.
+// Liczenie RSI, MACD czy wstęg z takiej świecy daje wynik, który zmienia się
+// w trakcie jej trwania — pomiar na realistycznym szeregu pokazał, że
+// w 17% przypadków KIERUNEK sygnału z niedomkniętej świecy jest inny niż
+// z tej samej świecy po zamknięciu. To źródło migotania decyzji.
+// Sygnały liczymy więc wyłącznie ze świec domkniętych; cena bieżąca zostaje
+// tam, gdzie jest potrzebna naprawdę: na wyświetlaczu, w VWAP, w odległości
+// do SL/TP i w szybkim detektorze impulsu.
+var TF_MS={'5min':300000,'15min':900000,'1h':3600000,'4h':14400000,'1day':86400000};
+
+function closedOnly(arr,tfMs){
+  if(!arr||arr.length<2)return arr||[];
+  var last=arr[arr.length-1];
+  if(!last||!isFinite(last.t))return arr;
+  // świeca jest domknięta dopiero, gdy minął cały jej okres od otwarcia
+  if(Date.now()<last.t+tfMs)return arr.slice(0,-1);
+  return arr;
+}
+
+function lastBarTime(arr){
+  return (arr&&arr.length)?arr[arr.length-1].t:null;
+}
 
 // ── Faza sesji (czas lokalny = CET/CEST) ────────────────────────────────────
 // Sesje były liczone, ale nigdy nie wpływały na decyzje. To zmienia się tutaj:
@@ -2580,22 +2665,35 @@ async function loadDataEnhanced(){
   if(!ok)return;
 
   // ── Serie ────────────────────────────────────────────────────────────────
-  const c15=candles15.map(c=>c.c);
-  const h15=candles15.map(c=>c.h),l15=candles15.map(c=>c.l);
+  // WSZYSTKIE wskaźniki liczone są ze świec DOMKNIĘTYCH. Świeca w trakcie
+  // formowania zmienia swoje zamknięcie, maksimum i minimum co kilka sekund,
+  // więc sygnał z niej policzony potrafi się odwrócić i wrócić w obrębie jednej
+  // świecy. Cena bieżąca pobierana jest osobno i używana tam, gdzie faktycznie
+  // ma sens: na wyświetlaczu, w VWAP, w odległości do SL/TP i w detektorze impulsu.
+  const live5=candles5;                              // z niedomkniętą świecą
+  const cd5=closedOnly(candles5,TF_MS['5min']);
+  const cd15=closedOnly(candles15,TF_MS['15min']);
+  const cd60=closedOnly(candles60,TF_MS['1h']);
+  const cd240=closedOnly(candles240,TF_MS['4h']);
+  const cdDay=closedOnly(candlesDay,TF_MS['1day']);
+
+  const c15=cd15.map(c=>c.c);
+  const h15=cd15.map(c=>c.h),l15=cd15.map(c=>c.l);
   const n15=c15.length-1;
 
-  const c5=candles5.map(c=>c.c);
-  const h5=candles5.map(c=>c.h),l5=candles5.map(c=>c.l);
+  const c5=cd5.map(c=>c.c);
+  const h5=cd5.map(c=>c.h),l5=cd5.map(c=>c.l);
 
-  const c60=candles60.map(c=>c.c);
-  const h60=candles60.map(c=>c.h),l60=candles60.map(c=>c.l);
-  const c240=candles240.map(c=>c.c);
-  const cDay=candlesDay.map(c=>c.c);
-  const hDay=candlesDay.map(c=>c.h),lDay=candlesDay.map(c=>c.l);
+  const c60=cd60.map(c=>c.c);
+  const h60=cd60.map(c=>c.h),l60=cd60.map(c=>c.l);
+  const c240=cd240.map(c=>c.c);
+  const cDay=cdDay.map(c=>c.c);
+  const hDay=cdDay.map(c=>c.h),lDay=cdDay.map(c=>c.l);
 
-  // Cena bieżąca: preferuj 5min (świeższa niż zamknięcie świecy 15M)
-  const cur=c5.length?c5[c5.length-1]:c15[n15];
+  // Cena bieżąca — z niedomkniętej świecy, bo to najświeższa znana cena
+  const cur=live5.length?live5[live5.length-1].c:(c15.length?c15[n15]:0);
   const prev=c15[n15-1]||cur;
+  const bar5=lastBarTime(cd5), bar15=lastBarTime(cd15), bar60=lastBarTime(cd60);
 
   // ── Wskaźniki ────────────────────────────────────────────────────────────
   const rsi15=calcRSI(c15),macd15=calcMACD(c15),bb15=calcBB(c15);
@@ -2627,7 +2725,10 @@ async function loadDataEnhanced(){
   const atrDay=cDay.length?calcATR(cDay,hDay,lDay,14):atr15;
 
   // ── Tryb rynku: szybki impuls (5M) + ADX 15M + kontekst ADX 1h ───────────
-  const regime=detectMarketRegime(candles15,candles5,atr15,atrDay,candles60);
+  // ADX i szerokość wstęg idą ze świec domkniętych, natomiast detektor impulsu
+  // dostaje świece z bieżącą włącznie — to warstwa, która MA reagować szybko,
+  // a jej trzy głosy z sześciu odsiewają szum lepiej niż pojedynczy wskaźnik.
+  const regime=detectMarketRegime(cd15,cd5,atr15,atrDay,cd60,cur);
   const imp=regime.impulse||{active:false,dir:null};
   const isFast=(regime.signalTF==='5min');
 
@@ -2646,8 +2747,11 @@ async function loadDataEnhanced(){
   }:{type:'wait',score:0};
   const rawWeekly=calcSignalWeekly(cDay.length?cDay:c15,rsiDay,macdDay,bbDay,e20Day,e50Day,e100Day);
 
-  const sigShort=applyStabilityFilter(rawShort,regime.signalTF,regime.filterBars);
-  const sigMid=applyStabilityFilter(rawMid,'1h',2);
+  // Znacznik świecy przekazywany do filtra: kolejne odświeżenia w obrębie tej
+  // samej świecy nie mogą już odwrócić kierunku sygnału.
+  const sigShort=applyStabilityFilter(rawShort,regime.signalTF,regime.filterBars,
+    isFast?bar5:bar15);
+  const sigMid=applyStabilityFilter(rawMid,'1h',2,isFast?bar15:bar60);
   const sigWeek=rawWeekly;
 
   const trendBonus=(rawTrend.type===sigShort.type)?2:0;
@@ -2705,7 +2809,7 @@ async function loadDataEnhanced(){
     :{closes:c15,rsi:rsi15,macd:macd15,bb:bb15,e20:e20_15,e50:e50_15,atr:atr15};
 
   const decPre=calcDecisions(decBase.closes,decBase.rsi,decBase.macd,decBase.bb,
-    decBase.e20,decBase.e50,decBase.atr,sigShortFinal,{cur:cur});
+    decBase.e20,decBase.e50,decBase.atr,sigShortFinal,{cur:cur,bar:isFast?bar5:bar15});
 
   // JEDEN kierunek dla całego dashboardu — lewa kolumna, wykresy i prompt AI
   const bias=computeBias(regime,decPre,sigShortFinal);
@@ -2719,7 +2823,7 @@ async function loadDataEnhanced(){
   const sltpMain=((regime.mode==='ranging'||regime.mode==='impulse')&&sltp5)?sltp5:(sltp15||sltp5);
 
   const dec=calcDecisions(decBase.closes,decBase.rsi,decBase.macd,decBase.bb,
-    decBase.e20,decBase.e50,decBase.atr,sigShortFinal,{cur:cur,sltp:sltpMain});
+    decBase.e20,decBase.e50,decBase.atr,sigShortFinal,{cur:cur,sltp:sltpMain,bar:isFast?bar5:bar15});
   marketSnapshot.dec=dec;
   marketSnapshot.veto=dec.veto;
   marketSnapshot.vetoWhy=dec.vetoWhy;
@@ -4386,7 +4490,7 @@ function setRegimeOverride(mode){
     const atr15=calcATR(c15,h15,l15,14);
     const cDay=candlesDay.map(c=>c.c),hDay=candlesDay.map(c=>c.h),lDay=candlesDay.map(c=>c.l);
     const atrDay=cDay.length?calcATR(cDay,hDay,lDay,14):atr15;
-    detectMarketRegime(candles15,candles5,atr15,atrDay,candles60);
+    detectMarketRegime(closedOnly(candles15,TF_MS['15min']),closedOnly(candles5,TF_MS['5min']),atr15,atrDay,closedOnly(candles60,TF_MS['1h']));
   }
   showToast(mode
     ?'Tryb '+mode.toUpperCase()+' (ręcznie) — filtr impulsu działa nadal'
