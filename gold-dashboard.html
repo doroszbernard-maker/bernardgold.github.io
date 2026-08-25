@@ -705,6 +705,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="dec-box" id="decCL"><div class="dec-lbl" id="decCLl">⬜ MONITORUJ</div><div class="dec-reason" id="decCLr">Pilnuj SL</div></div>
     <div class="dec-box" id="decCS"><div class="dec-lbl" id="decCSl">⬜ MONITORUJ</div><div class="dec-reason" id="decCSr">Pilnuj SL</div></div>
   </div>
+  <div id="timingDisplay" style="margin-top:6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:7px 9px"></div>
 </div>
 
 <div class="sec">
@@ -1851,6 +1852,115 @@ function warmUpEngine(){
   WARMING=false;
   ENGINE_WARM=true;
   return true;
+}
+
+// ══ SKĄD SIĘ BIERZE TA DECYZJA I KIEDY MOŻE SIĘ ZMIENIĆ ═════════════════════
+// Najczęstsze pytanie przy tym narzędziu brzmiało: „odświeżyłem i zmieniło
+// zdanie — czy coś się zlagowało?". Odpowiedź prawie zawsze brzmiała „nie,
+// właśnie zamknęła się świeca", ale nie dało się tego zobaczyć. Ten panel
+// pokazuje trzy rzeczy wprost:
+//   • na której świecy stoi obecna decyzja (i ile już się trzyma),
+//   • ile świec potwierdzenia brakuje do ZMIANY kierunku,
+//   • kiedy najwcześniej może się zmienić i kiedy jest następne pobranie.
+// Odświeżenie strony nie zmienia zdania — w obrębie świecy kierunek jest
+// zamrożony celowo, żeby nie migotał.
+function decisionTiming(){
+  var r=marketRegime||{};
+  var tf=r.signalTF||'15min';
+  var tfMs=TF_MS[tf]||900000;
+  var need=r.filterBars||2;
+  var h=(applyStabilityFilter.history||{})[tf];
+  if(!h)return null;
+
+  var now=Date.now();
+  var barClose=(h.lastBar!=null&&isFinite(h.lastBar))?(h.lastBar+tfMs):null;
+  var nextClose=barClose;
+  if(nextClose!=null)while(nextClose<=now)nextClose+=tfMs;
+
+  return{
+    tf:tf, tfMin:Math.round(tfMs/60000),
+    need:need,
+    heldBars:h.bars||0,                       // ile świec trzyma się obecny kierunek
+    type:h.sig?h.sig.type:null,
+    barTime:h.lastBar,                        // świeca, na której ustalono decyzję
+    barCloseAt:barClose,                      // kiedy ta świeca się domknęła
+    pending:h.pending?h.pending.type:null,     // kierunek czekający na potwierdzenie
+    pendingBars:h.pendingBars||0,
+    nextCloseAt:nextClose,                    // najwcześniejsza możliwa zmiana
+    nextFetchAt:SCHED.nextAt
+  };
+}
+
+function fmtLeft(ms){
+  if(ms==null||!isFinite(ms))return '—';
+  if(ms<0)ms=0;
+  var s=Math.round(ms/1000);
+  var m=Math.floor(s/60); s=s%60;
+  return m>0?(m+' min '+(s<10?'0':'')+s+' s'):(s+' s');
+}
+function hhmm(t){
+  if(t==null||!isFinite(t))return '—';
+  return new Date(t).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+}
+var SIG_PL={buy:'wzrostowy',sell:'spadkowy',wait:'bez kierunku'};
+// polska odmiana liczebnika: 1 → „kolejnej świecy", 2-4 → „kolejnych świec"
+function swiec(n,tfMin){
+  var tf=tfMin+'M';
+  return n===1?('kolejnej świecy '+tf):(n+' kolejnych świec '+tf);
+}
+
+function renderTimingPanel(){
+  if(WARMING)return;
+  var el=document.getElementById('timingDisplay');
+  if(!el)return;
+  var d=decisionTiming();
+  if(!d){el.innerHTML='<div style="font-size:9px;color:var(--text3)">Czekam na pierwsze domknięte świece...</div>';return;}
+
+  var now=Date.now();
+  var rows=[];
+
+  rows.push('<div style="display:flex;justify-content:space-between;gap:8px">'+
+    '<span style="color:var(--text3)">Decyzja ustalona na świecy</span>'+
+    '<span style="color:var(--text)"><b>'+hhmm(d.barTime)+'–'+hhmm(d.barCloseAt)+'</b> · '+d.tfMin+'M'+
+    (d.heldBars>1?(' · trzyma się '+d.heldBars+' św.'):'')+'</span></div>');
+
+  if(d.pending&&d.pendingBars>0){
+    var brak=Math.max(0,d.need-d.pendingBars);
+    rows.push('<div style="display:flex;justify-content:space-between;gap:8px;margin-top:3px">'+
+      '<span style="color:var(--text3)">Czeka na zmianę kierunku</span>'+
+      '<span style="color:var(--amber)"><b>'+(SIG_PL[d.pending]||d.pending)+'</b> · '+
+      d.pendingBars+'/'+d.need+' potwierdzeń'+
+      (brak>0?(' — brakuje '+swiec(brak,d.tfMin)+' ('+(brak*d.tfMin)+' min)'):' — zmiana na najbliższym zamknięciu')+
+      '</span></div>');
+  } else {
+    rows.push('<div style="display:flex;justify-content:space-between;gap:8px;margin-top:3px">'+
+      '<span style="color:var(--text3)">Zmiana kierunku wymaga</span>'+
+      '<span style="color:var(--text2)">'+swiec(d.need,d.tfMin)+' = '+
+      (d.need*d.tfMin)+' min</span></div>');
+  }
+
+  rows.push('<div style="display:flex;justify-content:space-between;gap:8px;margin-top:3px">'+
+    '<span style="color:var(--text3)">Najwcześniejsza możliwa zmiana</span>'+
+    '<span style="color:var(--text2)">'+hhmm(d.nextCloseAt)+' (za '+fmtLeft(d.nextCloseAt-now)+')</span></div>');
+
+  rows.push('<div style="display:flex;justify-content:space-between;gap:8px;margin-top:3px">'+
+    '<span style="color:var(--text3)">Następne pobranie danych</span>'+
+    '<span style="color:var(--text2)">'+hhmm(d.nextFetchAt)+' (za '+fmtLeft(d.nextFetchAt-now)+')</span></div>');
+
+  el.innerHTML=
+    '<div style="font-size:9px;font-weight:700;color:var(--text2);margin-bottom:5px">'+
+    '⏱ RYTM DECYZJI</div>'+
+    '<div style="font-size:9px;line-height:1.75">'+rows.join('')+'</div>'+
+    '<div style="font-size:8px;color:var(--text3);margin-top:5px;line-height:1.5">'+
+    'W obrębie jednej świecy kierunek jest zamrożony celowo. Odświeżenie strony '+
+    'nie zmienia decyzji — zmienia ją dopiero zamknięcie świecy.</div>';
+}
+
+// Odliczanie ma iść co sekundę, inaczej „za 4 min 12 s" zastyga między pobraniami.
+var TIMING_TICK=null;
+function startTimingTicker(){
+  if(TIMING_TICK)clearInterval(TIMING_TICK);
+  TIMING_TICK=setInterval(renderTimingPanel,1000);
 }
 
 // ══ WYKRESY BEZ BIBLIOTEKI ══════════════════════════════════════════════════
@@ -3266,6 +3376,7 @@ async function loadDataEnhanced(){
   // są świeże. Wcześniej ten wiersz zawsze pisał „LIVE", nawet gdy świece były
   // sprzed godziny, bo pobieranie po cichu zwróciło null.
   renderApiHealth();
+  renderTimingPanel();
 
   const msd=document.getElementById('masterScoreDisplay');
   if(msd)msd.textContent=(masterScore>0?'+':'')+masterScore+' · '+
@@ -4827,6 +4938,7 @@ function initDashboard(){
 
   renderJournal();          // pokaż zebraną statystykę zanim przyjdą dane
   renderApiHealth();
+  renderTimingPanel();
   loadDataEnhanced();
   loadMacroData();
   loadAllExtended();
@@ -4834,6 +4946,9 @@ function initDashboard(){
   // Świece 5M zamykają się o równych wielokrotnościach pięciu minut, więc
   // odświeżamy zegarowo (zamknięcie świecy + jej połowa), a nie co stałe 90 s.
   scheduleNextRefresh();
+  // Odliczanie w panelu rytmu chodzi co sekundę; TIMING_TICK jest czyszczony
+  // w startTimingTicker, więc ponowna inicjalizacja nie mnoży timerów.
+  startTimingTicker();
   DASH_TIMERS.push(setInterval(loadMacroData, 300000));     // makro co 5 min
   DASH_TIMERS.push(setInterval(loadAllExtended, 300000));   // F&G, CNY, Brent
   DASH_TIMERS.push(setInterval(renderApiHealth, 15000));    // świeżość danych
