@@ -1226,7 +1226,12 @@ function detectMarketRegime(candles15, candles5, atr15, atrDay, candles60, liveP
   // cenę bieżącą. Inaczej wystarczyło jedno muśnięcie EMA21 w trakcie świecy,
   // żeby zdjąć stygnięcie po impulsie — a razem z nim weto i całą decyzję.
   var barClose5=(candles5&&candles5.length)?candles5[candles5.length-1].c:cur5;
-  var mem=updateImpulseMemory(imp,barClose5,e21_5);
+  // Pamięć impulsu liczona CZASEM ŚWIECY, nie zegarem przeglądarki. Inaczej
+  // stygnięcie zależało od tego, kiedy kartę otwarto, a nie od tego, co zrobił
+  // rynek — dwa komputery pokazywały różne stany tej samej chwili.
+  var barT5=(candles5&&candles5.length&&isFinite(candles5[candles5.length-1].t))
+    ?candles5[candles5.length-1].t:null;
+  var mem=updateImpulseMemory(imp,barClose5,e21_5,barT5);
   IMPULSE=imp;
   var vwap=calcVWAP(candles5,todayAnchorMs());
   var phase=getSessionPhase();
@@ -1353,6 +1358,7 @@ function detectMarketRegime(candles15, candles5, atr15, atrDay, candles60, liveP
 }
 
 function renderRegimePanel(){
+  if(WARMING)return;
   var el=document.getElementById('regimeDisplay');
   if(!el)return;
   var r=marketRegime;
@@ -1781,6 +1787,97 @@ function calcDecisions(closes,rsi,macd,bb,e20,e50,atr,sigShortDirect,ctx){
     conflicts:conflicts,
     quality:q,
     allowLong:longOk&&!qBad,allowShort:shortOk&&!qBad};
+}
+
+// ══ ROZGRZEWKA SILNIKA ─ ZGODNOŚĆ MIĘDZY KOMPUTERAMI ═══════════════════════
+// Filtr stabilności i pamięć impulsu są z założenia zależne od historii: filtr
+// pamięta oczekujące zmiany kierunku, pamięć impulsu trzyma 45-minutowe
+// stygnięcie. Dzięki temu wskazania nie migoczą. Skutek uboczny: dashboard
+// otwarty przed chwilą startuje „na zimno" i przez pierwsze świece pokazuje
+// co innego niż ten, który chodzi od godzin. Pomiar na 643 momentach:
+// rozbieżność w 19,4% przypadków, głównie kierunek sygnału (14,8%)
+// i stygnięcie po impulsie (8,1%).
+//
+// Rozwiązanie: po pierwszym pobraniu danych przewijamy ostatnie kilka godzin
+// świec przez te same filtry, świeca po świecy. Świeżo otwarta strona dochodzi
+// do tego samego stanu, w jakim jest strona działająca od rana.
+var ENGINE_WARM=false;
+var WARMING=false;
+
+function warmUpEngine(){
+  if(ENGINE_WARM)return false;
+  var c5=closedOnly(candles5,TF_MS['5min']);
+  var c15=closedOnly(candles15,TF_MS['15min']);
+  var c60=closedOnly(candles60,TF_MS['1h']);
+  if(c5.length<200||c15.length<160)return false;
+
+  // 72 świece = 6 h. Sprawdzone: podwojenie okna do 12 h nie zmienia ani jednego
+  // odczytu, a kosztuje 300 ms zamiast 190 ms przy starcie strony.
+  var BARS=72;
+  var start=Math.max(160,c5.length-BARS);
+  WARMING=true;
+  try{
+    for(var k=start;k<c5.length;k++){
+      var s5=c5.slice(0,k+1);
+      var t5=s5[s5.length-1].t;
+      // wyższe ramy przycięte do tego samego momentu w czasie
+      var s15=[],i;
+      for(i=0;i<c15.length&&c15[i].t<=t5;i++)s15.push(c15[i]);
+      if(s15.length<120)continue;
+      var s60=[];
+      for(i=0;i<c60.length&&c60[i].t<=t5;i++)s60.push(c60[i]);
+
+      var cl5=s5.map(function(c){return c.c;});
+      var hi5=s5.map(function(c){return c.h;}),lo5=s5.map(function(c){return c.l;});
+      var cl15=s15.map(function(c){return c.c;});
+      var hi15=s15.map(function(c){return c.h;}),lo15=s15.map(function(c){return c.l;});
+      var atr5=calcATR(cl5,hi5,lo5,14),atr15=calcATR(cl15,hi15,lo15,14);
+
+      // detectMarketRegime aktualizuje IMPULSE_MEM — o to właśnie chodzi
+      var reg=detectMarketRegime(s15,s5,atr15,(atr15||4)*4,s60,cl5[cl5.length-1]);
+      var isFast=(reg.signalTF==='5min');
+      var base=isFast?{cl:cl5,h:hi5,l:lo5}:{cl:cl15,h:hi15,l:lo15};
+      if(base.cl.length<60)continue;
+      var rsi=calcRSI(base.cl),macd=calcMACD(base.cl),bb=calcBB(base.cl);
+      var e20=calcEMA(base.cl,20),e50=calcEMA(base.cl,50);
+      var raw=calcSignal(base.cl,rsi,macd,bb,e20,e50,isFast?'5min':'15min');
+      var barKey=isFast?t5:s15[s15.length-1].t;
+      // to wypełnia applyStabilityFilter.history sekwencją historyczną
+      applyStabilityFilter(raw,reg.signalTF,reg.filterBars,barKey);
+    }
+  }catch(e){
+    console.warn('rozgrzewka silnika:',e&&e.message);
+  }
+  WARMING=false;
+  ENGINE_WARM=true;
+  return true;
+}
+
+// ══ WYKRESY BEZ BIBLIOTEKI ══════════════════════════════════════════════════
+// Chart.js jedzie z CDN. W sieci firmowej, przy blokadzie skryptów albo przy
+// chwilowej awarii dostawcy biblioteka może się nie wczytać. Wtedy `new Chart`
+// rzuca wyjątkiem i przerywa CAŁĄ funkcję rysującą — razem z panelami decyzji,
+// które z wykresami nie mają nic wspólnego. Liczby są ważniejsze od obrazków:
+// bez biblioteki pomijamy wykres i mówimy o tym wprost, a reszta działa.
+function chartsAvailable(){return typeof Chart!=='undefined';}
+function makeChart(el,cfg){
+  if(!el)return null;
+  if(!chartsAvailable()){
+    try{
+      el.style.display='none';
+      if(el.parentNode&&!el.parentNode.querySelector('.chart-missing')){
+        var d=document.createElement('div');
+        d.className='chart-missing';
+        d.style.cssText='font-size:9px;color:var(--text3);padding:10px 4px;line-height:1.5;text-align:center';
+        d.textContent='Wykres niedostępny — nie wczytała się biblioteka rysująca (CDN). '
+          +'Liczby obok są policzone normalnie.';
+        el.parentNode.appendChild(d);
+      }
+    }catch(e){}
+    return null;
+  }
+  try{return new Chart(el,cfg);}
+  catch(e){console.warn('wykres:',e&&e.message);return null;}
 }
 
 // ══ ZDROWIE API — WIDOCZNOŚĆ AWARII ═════════════════════════════════════════
@@ -2238,8 +2335,16 @@ function detectImpulse(c5){
 
 // Pamięć impulsu — po wygaśnięciu impulsu gra kontra jest nadal ryzykowna.
 // Cooldown 45 min, chyba że cena wróci po drugiej stronie EMA21 5M (wyczerpanie).
-function updateImpulseMemory(imp,cur,e21_5){
-  var now=Date.now();
+function updateImpulseMemory(imp,cur,e21_5,barTime){
+  // barTime = znacznik ostatniej DOMKNIĘTEJ świecy 5M. Zegar przeglądarki jest
+  // tylko awaryjnym zapasem, gdy świec nie ma.
+  var now=(barTime!=null&&isFinite(barTime))?barTime:Date.now();
+  // Cofnięcie się w czasie (przeładowanie strony ze starszymi danymi, zmiana
+  // instrumentu) unieważnia pamięć — inaczej „lastSeen" z przyszłości dałoby
+  // ujemny wiek i wieczne stygnięcie.
+  if(IMPULSE_MEM.lastSeen!=null&&now<IMPULSE_MEM.lastSeen){
+    IMPULSE_MEM.dir=null;IMPULSE_MEM.since=null;IMPULSE_MEM.lastSeen=null;IMPULSE_MEM.extreme=null;
+  }
   if(imp.active&&imp.dir){
     if(IMPULSE_MEM.dir!==imp.dir){IMPULSE_MEM.dir=imp.dir;IMPULSE_MEM.since=now;IMPULSE_MEM.extreme=cur;}
     IMPULSE_MEM.lastSeen=now;
@@ -2374,7 +2479,11 @@ var SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null,since:null};
 function updateSignalAnchor(barTime,price,dir,tp){
   if(dir==null){SIGNAL_ANCHOR={price:null,bar:null,dir:null,tp:null,since:null};return;}
   if(SIGNAL_ANCHOR.dir!==dir||SIGNAL_ANCHOR.price==null){
-    SIGNAL_ANCHOR={price:price,bar:barTime,dir:dir,tp:tp,since:Date.now()};
+    // `since` to czas ŚWIECY, na której sygnał się pojawił, nie moment otwarcia
+    // karty. Inaczej świeżo otwarty dashboard twierdził, że dwugodzinny sygnał
+    // ma zero minut, a ten otwarty od rana pokazywał prawdę.
+    SIGNAL_ANCHOR={price:price,bar:barTime,dir:dir,tp:tp,
+      since:(barTime!=null&&isFinite(barTime))?barTime:Date.now()};
   } else {
     SIGNAL_ANCHOR.tp=tp;          // cel może się przesuwać, punkt startu nie
     SIGNAL_ANCHOR.bar=barTime;
@@ -2728,6 +2837,7 @@ function journalReset(){
 
 // ── Panel filtra impulsu ────────────────────────────────────────────────────
 function renderImpulsePanel(imp,mem,phase,vwap,cur,pb){
+  if(WARMING)return;
   var el=document.getElementById('impulseDisplay');
   if(!el)return;
   var col,icon,head;
@@ -2870,6 +2980,13 @@ async function loadDataEnhanced(){
   const e50Day=cDay.length?calcEMA(cDay,50):e50_15;
   const e100Day=cDay.length?calcEMA(cDay,100):e100_15;
   const atrDay=cDay.length?calcATR(cDay,hDay,lDay,14):atr15;
+
+  // Rozgrzewka filtrów przy pierwszym przebiegu — bez niej świeżo otwarta
+  // strona przez kilka świec pokazuje co innego niż ta działająca od rana.
+  if(!ENGINE_WARM){
+    const t0w=Date.now();
+    if(warmUpEngine())console.log('rozgrzewka silnika: '+(Date.now()-t0w)+' ms');
+  }
 
   // ── Tryb rynku: szybki impuls (5M) + ADX 15M + kontekst ADX 1h ───────────
   // ADX i szerokość wstęg idą ze świec domkniętych, natomiast detektor impulsu
@@ -3555,13 +3672,13 @@ function buildMinis(labels,rsi,macd){
   var bdMacd=document.getElementById('bdMacd');
   if(bdMacd){bdMacd.textContent=mh>=0?'BYCZO':'NIEDŹ.';bdMacd.className='mini-badge '+(mh>=0?'buy':'sell');}
   var cRsi=document.getElementById('cRsi');
-  if(cRsi)charts.rsi=new Chart(cRsi,{type:'line',data:{labels:sl(labels),datasets:[
+  charts.rsi=makeChart(cRsi,{type:'line',data:{labels:sl(labels),datasets:[
     {data:sl(rsi),borderColor:'#7055b8',borderWidth:1.5,pointRadius:0,tension:.3,fill:false},
     {data:new Array(last).fill(70),borderColor:'rgba(224,69,69,.35)',borderWidth:.6,pointRadius:0,borderDash:[3,2],fill:false},
     {data:new Array(last).fill(30),borderColor:'rgba(29,184,122,.35)',borderWidth:.6,pointRadius:0,borderDash:[3,2],fill:false},
   ]},options:opts(0,100,1)});
   var cMacd=document.getElementById('cMacd');
-  if(cMacd)charts.macd=new Chart(cMacd,{type:'bar',data:{labels:sl(labels),datasets:[
+  charts.macd=makeChart(cMacd,{type:'bar',data:{labels:sl(labels),datasets:[
     {data:sl(macd.hist),backgroundColor:sl(macd.hist).map(function(v){return v==null?'transparent':v>=0?'rgba(29,184,122,.5)':'rgba(224,69,69,.5)';}),borderWidth:0,order:2},
     {type:'line',data:sl(macd.line),borderColor:'#3d7fd4',borderWidth:1,pointRadius:0,tension:.3,fill:false,order:1},
     {type:'line',data:sl(macd.signal),borderColor:'#d4861e',borderWidth:1,pointRadius:0,tension:.3,fill:false,order:0},
@@ -3687,7 +3804,7 @@ function buildOnePred(cfg,closes,e20,atr,dec,bias,sltp,curLive){
   var canvas=document.getElementById(cfg.canvasId);
   if(!canvas)return;
   var plugId='predsep'+cfg.id;
-  charts[cfg.id]=new Chart(canvas,{
+  charts[cfg.id]=makeChart(canvas,{
     type:'line',data:{labels:allLbl,datasets:datasets},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
       interaction:{mode:'index',intersect:false},
