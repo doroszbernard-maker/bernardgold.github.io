@@ -979,7 +979,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
         <span>Twelve Data API Key</span>
         <span class="api-field-status empty" id="tdStatus">Nie ustawiony</span>
       </div>
-      <input class="api-input" type="password" id="tdKey" placeholder="Wklej klucz Twelve Data...">
+      <input class="api-input" type="password" id="tdKey" placeholder="Wklej klucz Twelve Data..."
+        autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
       <div class="api-desc">Dane intraday XAU/USD (świece 15min) · twelvedata.com</div>
     </div>
 
@@ -988,27 +989,39 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
         <span>Anthropic API Key (Claude AI chat)</span>
         <span class="api-field-status empty" id="antStatus">Nie ustawiony</span>
       </div>
-      <input class="api-input" type="password" id="antKey" placeholder="Wklej klucz Anthropic (sk-ant-...)">
+      <input class="api-input" type="password" id="antKey" placeholder="Wklej klucz Anthropic (sk-ant-...)"
+        autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
       <div class="api-desc">Doradca AI w dashboardzie · console.anthropic.com</div>
     </div>
 
     <div class="api-field-group">
       <div class="api-label">Klucz Finnhub <span style="color:var(--text3)">(VIX, DXY, newsy rynkowe)</span></div>
       <div class="api-sublabel">Darmowy klucz: <a href="https://finnhub.io" target="_blank" style="color:var(--gold2)">finnhub.io</a> → Get free API key</div>
-      <input class="api-input" type="password" id="fhKey" placeholder="Wklej klucz Finnhub">
+      <input class="api-input" type="password" id="fhKey" placeholder="Wklej klucz Finnhub"
+        autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
       <div class="api-desc">Opcjonalny — bez niego VIX i DXY używają ETF jako zastępników</div>
     </div>
 
     <div class="api-field-group">
       <div class="api-label">Spread XAU/USD u brokera <span style="color:var(--text3)">(USD)</span></div>
       <div class="api-sublabel">Sprawdź w xStation przy instrumencie GOLD — typowo 0.25–0.45 w godzinach płynnych</div>
-      <input class="api-input" type="number" step="0.01" min="0" max="5" id="spreadInput" placeholder="0.30">
+      <input class="api-input" type="text" inputmode="decimal" id="spreadInput" placeholder="0.30"
+        autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
       <div class="api-desc">Odejmowany od zysku i doliczany do straty przy ocenie skuteczności sygnałów</div>
     </div>
 
     <div class="api-btn-row">
       <button class="api-save-btn" id="apiSaveBtn">✓ Zapisz klucze i uruchom</button>
       <button class="api-skip-btn" id="apiSkipBtn">Pomiń — bez klucza dane nie będą pobierane</button>
+    </div>
+
+    <!-- Na telefonie nie ma konsoli przeglądarki, więc „nie działa" nie da się
+         samodzielnie zdiagnozować. Ten przycisk robi jedno prawdziwe zapytanie
+         i mówi wprost, co poszło nie tak. -->
+    <div class="api-field-group" style="margin-top:10px">
+      <button class="api-skip-btn" id="apiTestBtn" style="width:100%">🔍 Sprawdź połączenie i klucz</button>
+      <div id="apiDiag" style="margin-top:8px;font-size:9px;line-height:1.7;display:none"></div>
+      <div class="api-desc" id="buildStamp" style="margin-top:8px"></div>
     </div>
   </div>
 </div>
@@ -1889,6 +1902,146 @@ function warmUpEngine(){
   return true;
 }
 
+// ══ DIAGNOSTYKA POŁĄCZENIA ══════════════════════════════════════════════════
+// Na komputerze przy problemie otwiera się konsolę i widać przyczynę. Na iPhonie
+// konsoli nie ma, więc „nie mogę połączyć się z API" to ślepy zaułek. Ten blok
+// robi jedno tanie zapytanie i tłumaczy wynik po polsku, razem z rzeczami, które
+// na iOS psują się najczęściej: pamięcią lokalną i tym, co Safari wstawia
+// do pól hasłem.
+var BUILD_ID='2026-08-26 · rytm decyzji + układ telefonowy';
+
+// localStorage w Safari potrafi RZUCIĆ WYJĄTKIEM (tryb prywatny, blokada
+// witryn), a nie tylko zwrócić null. Nieopakowany dostęp wywracał start strony.
+function storageProbe(){
+  try{
+    if(typeof localStorage==='undefined')return{ok:false,why:'przeglądarka nie udostępnia pamięci lokalnej'};
+    var k='__xau_probe';
+    localStorage.setItem(k,'1');
+    var v=localStorage.getItem(k);
+    localStorage.removeItem(k);
+    if(v!=='1')return{ok:false,why:'zapis nie utrzymuje się w pamięci'};
+    return{ok:true};
+  }catch(e){
+    return{ok:false,why:(e&&e.name==='QuotaExceededError')
+      ? 'pamięć pełna albo tryb prywatny'
+      : 'dostęp zablokowany ('+((e&&e.name)||'błąd')+')'};
+  }
+}
+
+// polska odmiana: 1 znak · 2-4 znaki · 5+ znaków (12-14 to wyjątek)
+function znaki(n){
+  var d=n%10, s=n%100;
+  if(n===1)return '1 znak';
+  if(d>=2&&d<=4&&!(s>=12&&s<=14))return n+' znaki';
+  return n+' znaków';
+}
+
+// Pokazujemy kształt klucza, nigdy całości — wystarczy, żeby wychwycić spację,
+// ucięcie albo podmianę przez autouzupełnianie.
+function keyShape(k){
+  if(!k)return{len:0,txt:'brak'};
+  var podejrzane=[];
+  if(/\s/.test(k))podejrzane.push('zawiera spację lub znak nowej linii');
+  if(/[A-Z]/.test(k))podejrzane.push('zawiera wielkie litery (klucz Twelve Data jest małymi)');
+  if(!/^[a-zA-Z0-9]+$/.test(k))podejrzane.push('zawiera znaki spoza liter i cyfr');
+  if(k.length!==32)podejrzane.push('ma '+znaki(k.length)+' zamiast typowych 32');
+  return{
+    len:k.length,
+    txt:k.slice(0,3)+'…'+k.slice(-3),
+    podejrzane:podejrzane
+  };
+}
+
+function diagLine(ikona,tekst,kolor){
+  return '<div style="display:flex;gap:6px;align-items:flex-start">'+
+    '<span>'+ikona+'</span><span style="color:'+(kolor||'var(--text2)')+'">'+tekst+'</span></div>';
+}
+
+async function diagnoseApi(){
+  var out=document.getElementById('apiDiag');
+  var btn=document.getElementById('apiTestBtn');
+  if(!out)return;
+  out.style.display='block';
+  out.innerHTML='<div style="color:var(--text3)">Sprawdzam...</div>';
+  if(btn)btn.disabled=true;
+
+  var w=[];
+
+  // 1. pamięć lokalna
+  var st=storageProbe();
+  w.push(st.ok
+    ? diagLine('✅','Pamięć lokalna działa — klucz przetrwa zamknięcie strony.','var(--green)')
+    : diagLine('❌','Pamięć lokalna nie działa: '+st.why+'. Klucz zniknie po zamknięciu karty. '+
+        'Na iPhonie najczęściej znaczy to tryb prywatny albo blokadę danych witryn.','var(--red)'));
+
+  // 2. klucz w polu vs klucz zapisany
+  var pole=document.getElementById('tdKey');
+  var wPolu=pole?pole.value.trim():'';
+  var zapisany=API_KEYS.td||'';
+  var sh=keyShape(zapisany||wPolu);
+  if(!zapisany&&!wPolu){
+    w.push(diagLine('❌','Nie ma żadnego klucza Twelve Data — ani zapisanego, ani w polu.','var(--red)'));
+  } else {
+    if(!zapisany&&wPolu)
+      w.push(diagLine('⚠️','Klucz jest wpisany w polu, ale jeszcze NIE zapisany. '+
+        'Naciśnij „Zapisz klucze i uruchom".','var(--amber)'));
+    w.push(diagLine('🔑','Klucz: '+sh.txt+' ('+znaki(sh.len)+')'));
+    if(sh.podejrzane&&sh.podejrzane.length){
+      // Zarzuty w jednej linii, podpowiedź o Safari raz — nie przy każdym z osobna.
+      w.push(diagLine('⚠️','Klucz '+sh.podejrzane.join('; ')+'.','var(--amber)'));
+      w.push(diagLine('💡','Na iPhonie zdarza się, że Safari podstawia do pola zapisane '+
+        'hasło zamiast tego, co wklejasz. Wyczyść pole, wklej klucz jeszcze raz '+
+        'i dopiero wtedy naciśnij „Zapisz".','var(--text3)'));
+    }
+  }
+  if(zapisany&&wPolu&&zapisany!==wPolu)
+    w.push(diagLine('⚠️','Klucz w polu różni się od zapisanego — używany jest zapisany. '+
+      'Naciśnij „Zapisz", żeby podmienić.','var(--amber)'));
+
+  out.innerHTML=w.join('');
+
+  // 3. jedno prawdziwe zapytanie — jedna świeca, żeby nie palić kredytów
+  var klucz=zapisany||wPolu;
+  if(klucz){
+    var res=null,siec=null;
+    try{
+      res=await fetch('https://api.twelvedata.com/time_series?symbol=XAU/USD'+
+        '&interval=5min&outputsize=1&timezone=UTC&apikey='+encodeURIComponent(klucz));
+    }catch(e){ siec=(e&&e.message)||'nieznany błąd'; }
+
+    if(siec){
+      w.push(diagLine('❌','Zapytanie w ogóle nie doszło do api.twelvedata.com ('+siec+'). '+
+        'To nie jest sprawa klucza. Na iPhonie sprawdź po kolei: tryb Lockdown, '+
+        'blokery reklam i rozszerzenia Safari, iCloud Private Relay, VPN oraz sieć firmową.','var(--red)'));
+    } else {
+      var body=null;
+      try{ body=await res.json(); }catch(e){}
+      var kod=(body&&body.code)||res.status;
+      var msg=(body&&body.message)||('HTTP '+res.status);
+      if(res.ok&&body&&body.status!=='error'&&body.values&&body.values.length){
+        w.push(diagLine('✅','Połączenie i klucz działają. Ostatnia świeca 5M: '+
+          body.values[0].datetime+' UTC, zamknięcie '+body.values[0].close+'.','var(--green)'));
+        w.push(diagLine('💡','Skoro to działa, a dashboard nadal pokazuje błąd — '+
+          'najpewniej Safari trzyma starą wersję strony w pamięci podręcznej. '+
+          'Zamknij kartę i otwórz adres na nowo.','var(--text3)'));
+      } else if(kod===401||kod===403){
+        w.push(diagLine('❌','Twelve Data odrzuca ten klucz (kod '+kod+'): '+msg+
+          '. Klucz jest nieprawidłowy albo należy do innego konta.','var(--red)'));
+      } else if(kod===429){
+        w.push(diagLine('⚠️','Limit zapytań na minutę wyczerpany (kod 429). '+
+          'Klucz jest dobry — po prostu odczekaj minutę. '+
+          'Jeśli masz dashboard otwarty na kilku urządzeniach naraz, dzielą ten sam limit.','var(--amber)'));
+      } else {
+        w.push(diagLine('❌','Twelve Data odpowiedziało błędem (kod '+kod+'): '+msg,'var(--red)'));
+      }
+    }
+  }
+
+  w.push(diagLine('📦','Wersja pliku: '+BUILD_ID,'var(--text3)'));
+  out.innerHTML=w.join('');
+  if(btn)btn.disabled=false;
+}
+
 // ══ TRYB TELEFONU ══════════════════════════════════════════════════════════
 // Samo ukrycie wykresów CSS-em nie wystarcza: Chart.js dalej by je rysował,
 // iframe TradingView dalej by się ładował, a analiza AI dalej strzelałaby do
@@ -2259,7 +2412,8 @@ function getSpread(){
   return SPREAD_DEFAULT;
 }
 function setSpread(v){
-  var n=parseFloat(v);
+  // Polska klawiatura na telefonie wstawia przecinek, a parseFloat('0,90') to 0.
+  var n=parseFloat(String(v).replace(',','.'));
   if(!isFinite(n)||n<0||n>5)return false;
   try{localStorage.setItem(SPREAD_KEY,String(n));}catch(e){}
   return true;
@@ -4457,9 +4611,13 @@ function setApiStatus(key,cls,txt){
 }
 
 function loadApiKeys(){
-  API_KEYS.td=localStorage.getItem('xau_td_key')||'';
-  API_KEYS.ant=localStorage.getItem('xau_ant_key')||'';
-  API_KEYS.fh=localStorage.getItem('xau_fh_key')||'';
+  // W Safari (tryb prywatny, blokada danych witryn) sam DOSTĘP do localStorage
+  // potrafi rzucić wyjątkiem. Nieopakowany wywracał cały start strony, a
+  // użytkownik widział pusty ekran zamiast komunikatu.
+  function pobierz(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}
+  API_KEYS.td=pobierz('xau_td_key');
+  API_KEYS.ant=pobierz('xau_ant_key');
+  API_KEYS.fh=pobierz('xau_fh_key');
   var tdI=document.getElementById('tdKey');
   var antI=document.getElementById('antKey');
   var fhI=document.getElementById('fhKey');
@@ -4488,9 +4646,13 @@ function saveApiKeys(){
   var td=tdEl?tdEl.value.trim():'';
   var ant=antEl?antEl.value.trim():'';
   var fh=fhEl?fhEl.value.trim():'';
-  if(td){localStorage.setItem('xau_td_key',td);API_KEYS.td=td;setApiStatus('td','ok','✓ Zapisany');}
-  if(ant){localStorage.setItem('xau_ant_key',ant);API_KEYS.ant=ant;setApiStatus('ant','ok','✓ Zapisany');}
-  if(fh){localStorage.setItem('xau_fh_key',fh);API_KEYS.fh=fh;setApiStatus('fh','ok','✓ Zapisany');}
+  // Klucz trafia do pamięci NAJPIERW, żeby sesja działała nawet gdy zapis trwały
+  // się nie uda (Safari w trybie prywatnym). Wtedy tylko ostrzegamy.
+  var trwale=true;
+  function zapisz(k,v){try{localStorage.setItem(k,v);}catch(e){trwale=false;}}
+  if(td){API_KEYS.td=td;zapisz('xau_td_key',td);setApiStatus('td','ok','✓ Zapisany');}
+  if(ant){API_KEYS.ant=ant;zapisz('xau_ant_key',ant);setApiStatus('ant','ok','✓ Zapisany');}
+  if(fh){API_KEYS.fh=fh;zapisz('xau_fh_key',fh);setApiStatus('fh','ok','✓ Zapisany');}
   var spEl=document.getElementById('spreadInput');
   if(spEl&&spEl.value!==''){
     if(!setSpread(spEl.value))showToast('Spread poza zakresem 0–5 USD — zostawiam poprzedni');
@@ -4499,7 +4661,9 @@ function saveApiKeys(){
   if(p)p.classList.add('hidden');
   var f=document.getElementById('chatFab');
   if(f&&API_KEYS.ant)f.style.display='flex';
-  showToast('Klucze zapisane ✓');
+  showToast(trwale?'Klucze zapisane ✓'
+    :'Klucze działają w tej sesji, ale NIE dało się ich zapisać na stałe — '
+     +'przeglądarka blokuje pamięć lokalną (tryb prywatny?)');
   initDashboard();
 }
 
@@ -5075,6 +5239,10 @@ function initDashboard(){
 // ══ DOM READY ════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function(){
   // Wire API buttons
+  var tb=document.getElementById('apiTestBtn');
+  if(tb)tb.addEventListener('click',diagnoseApi);
+  var bs=document.getElementById('buildStamp');
+  if(bs)bs.textContent='Wersja pliku: '+BUILD_ID;
   var sb=document.getElementById('apiSaveBtn');
   var sk=document.getElementById('apiSkipBtn');
   if(sb)sb.addEventListener('click',saveApiKeys);
