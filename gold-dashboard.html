@@ -560,6 +560,59 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .regime-badge{font-size:11px;margin-bottom:4px}
 .regime-stats{display:flex;gap:10px;font-size:8px;color:var(--text3);flex-wrap:wrap}
 
+/* ══ TELEFON ═══════════════════════════════════════════════════════════════
+   Na telefonie liczy się jedno: zerknąć na decyzję pozycyjną i wrócić do XTB.
+   Zostaje wyłącznie lewa kolumna, a w niej najpierw cena, potem decyzje razem
+   z proponowanym SL/TP. Reszta jest pod spodem, do przewinięcia.
+   Wykresy, TradingView i analiza AI nie są tu tylko ukryte — one się w ogóle
+   nie uruchamiają (patrz IS_MOBILE w skrypcie), bo na komórce kosztowałyby
+   baterię i transfer, a nic by nie wnosiły. */
+@media (max-width:760px){
+  html,body{font-size:13px}
+  #panel-center,#panel-right,.resizer{display:none!important}
+  #panel-left{width:100%!important;flex:1 1 100%!important;border-right:none!important;
+    min-width:0!important}
+  #panel-left .panel-body{display:flex;flex-direction:column;padding-bottom:18px;
+    -webkit-overflow-scrolling:touch}
+
+  /* kolejność na telefonie — decyzje i SL/TP od razu pod ceną */
+  #sec-price{order:1}
+  #sec-decisions{order:2}
+  #sec-sltp{order:3}
+  #sec-regime{order:4}
+  #sec-impulse{order:5}
+  #sec-levels{order:6}
+  #sec-sigshort{order:7}
+  #sec-sigmid{order:8}
+  #sec-sigweek{order:9}
+  #sec-journal{order:10}
+  #sec-indicators{order:11}
+  #sec-history{order:12}
+
+  /* decyzje mają być czytelne z ręki, nie zerkane przez lupę */
+  #sec-decisions .dec-lbl{font-size:12px;line-height:1.35}
+  #sec-decisions .dec-reason{font-size:9.5px;line-height:1.5}
+  #sec-decisions .dec-box{padding:8px 9px}
+  #sec-price .price-big{font-size:30px}
+  .sec-title{font-size:10px}
+
+  /* nagłówek: na wąskim ekranie sesje i zegar tylko zabierają miejsce */
+  #hdr{height:36px;padding:0 9px}
+  .logo-sub,.hdr-sessions,.hdr-clock{display:none}
+  #panels{top:36px}
+  #warModeBtn{display:none}
+  #ftr{height:22px;padding:0 9px}
+  .foot-l{display:none}
+
+  /* Doradca AI i jego przycisk — na telefonie rezygnujemy z AI, a pływające
+     kółko zasłaniało kalkulator wielkości pozycji w prawym dolnym rogu. */
+  .chat-fab,.chat-panel{display:none!important}
+
+  /* High/Low/poprz. zamknięcie z bloku ceny są niżej w „Kluczowych poziomach".
+     Na górze ekranu zabierały pół widoku i spychały decyzje pod zgięcie. */
+  #sec-price .ohlc-mini{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -583,7 +636,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <div class="panel" id="panel-left">
     <div class="resizer" id="res-left"></div>
     <div class="panel-body">
-<div class="sec">
+<div class="sec" id="sec-price">
   <div class="price-sym">XAU / USD · Spot Gold · GC=F</div>
   <div class="price-big" id="priceVal">—</div>
   <div class="price-row2">
@@ -598,7 +651,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-regime">
   <div id="apiBanner" style="display:none;background:var(--red-bg);border:1px solid var(--red-b);border-radius:var(--r2);padding:7px 9px;margin-bottom:8px"></div>
   <div class="sec-title">Tryb rynkowy (auto-detekcja)</div>
   <div style="display:flex;gap:4px;margin-bottom:6px">
@@ -620,7 +673,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-impulse">
   <div class="sec-title">Filtr impulsu · anty-fade (5M)</div>
   <div id="impulseDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
     <div style="font-size:9px;color:var(--text3)">Analiza wypchnięcia kierunkowego...</div>
@@ -629,7 +682,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 
 
-<div class="sec">
+<div class="sec" id="sec-sltp">
   <div class="momentum-alert" id="momentumAlert" style="display:none">
     <div class="ma-title" id="maTitle">—</div>
     <div class="ma-desc" id="maDesc">—</div>
@@ -651,7 +704,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-levels">
   <div class="sec-title">Kluczowe poziomy cenowe</div>
   <div class="levels-grid">
     <div class="level-cell" id="lc_dh"><div class="lc-bar" id="lb_dh"></div><div class="lc-label">High dnia</div><div class="lc-price" id="lp_dh">—</div><div class="lc-dist" id="ld_dh">—</div><div class="lc-strength" id="ls_dh">—</div></div>
@@ -663,7 +716,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-sigshort">
   <div class="sec-title">Sygnał Krótki · Scalping (15min-1h)</div>
   <div class="sig-card wait" id="cardShort">
     <div class="sig-hdr"><div class="sig-tag wait" id="tagShort">CZEKAJ</div><div class="sig-badge" id="lblShort">— CZEKAJ / OBSERWUJ</div></div>
@@ -674,7 +727,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-sigmid">
   <div class="sec-title">Sygnał Średni · Swing (2-6 godz)</div>
   <div class="sig-card wait" id="cardMid">
     <div class="sig-hdr"><div class="sig-tag wait" id="tagMid">CZEKAJ</div><div class="sig-badge" id="lblMid">— CZEKAJ / OBSERWUJ</div></div>
@@ -685,7 +738,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-sigweek">
   <div class="sec-title">Sygnał Tygodniowy · Trend (2-7 dni)</div>
   <div class="sig-card wait" id="cardWeek">
     <div class="sig-hdr"><div class="sig-tag wait" id="tagWeek">BOCZNY</div><div class="sig-badge" id="lblWeek">— TREND TYGODNIOWY</div></div>
@@ -696,7 +749,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-decisions">
   <div class="sec-title">Decyzje pozycyjne</div>
   <div id="vetoBanner" style="display:none;background:var(--gold-bg);border:1px solid var(--gold-b);border-radius:var(--r2);padding:7px 9px;margin-bottom:6px"></div>
   <div class="dec-grid">
@@ -708,14 +761,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <div id="timingDisplay" style="margin-top:6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:7px 9px"></div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-journal">
   <div class="sec-title">Rejestr sygnałów · skuteczność</div>
   <div id="journalDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
     <div style="font-size:9px;color:var(--text3)">Zbieranie danych...</div>
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-indicators">
   <div class="sec-title">Wskaźniki techniczne</div>
   <div class="ind-grid">
     <div class="ind-cell"><div class="ind-lbl">RSI (14)</div><div class="ind-v" id="vRsi">—</div><div class="ind-t neutral" id="tRsi">—</div></div>
@@ -725,7 +778,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
 </div>
 
-<div class="sec">
+<div class="sec" id="sec-history">
   <div class="sec-title">Historia sygnałów</div>
   <div id="histList"><div style="font-size:9px;color:var(--text3)">Brak historii</div></div>
 </div>
@@ -735,7 +788,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   <div class="panel" id="panel-center">
     <div class="resizer" id="res-center"></div>
     <div id="tv-wrap">
-      <iframe src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw" allowfullscreen></iframe>
+      <!-- Adres siedzi w data-src, nie w src. Przeglądarka zaczyna ściągać
+           iframe już przy parsowaniu HTML — zanim jakikolwiek skrypt zdąży
+           go zdjąć. Na telefonie wykres i tak jest poza układem, więc src
+           ustawia dopiero mountTradingView() i tylko na pulpicie. -->
+      <iframe data-src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&locale=pl&backgroundColor=%2307080c&hide_top_toolbar=0&saveimage=0&timezone=Europe%2FWarsaw" allowfullscreen></iframe>
     </div>
     <div id="center-scroll">
 
@@ -982,33 +1039,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">↑</button>
     </div>
 
-  </div><!-- /panels -->
+  </div><!-- /chatPanel -->
 
-  <!-- FOOTER -->
-  <div id="ftr">
-    <span class="foot-l-alt">XAU/USD · Twelve Data · <span class="api-usage">—</span></span>
-    <span class="foot-r-val">—</span>
-  </div>
-
-</div><!-- /shell -->
-
-<!-- API SETTINGS PANEL -->
-<button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Doradca AI" style="display:none">◈</button>
-
-
-
-  </div><!-- /row-body -->
-
-  <div id="row-ftr">
-    <div id="cell-ftr">
-      <div class="foot-inner">
-        <span class="foot-l">XAU/USD · Twelve Data · <span class="api-usage">—</span></span>
-        <span class="foot-r foot-r-val">—</span>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /app -->
+<!-- Tu były trzy martwe fragmenty po wcześniejszych przebudowach układu:
+     druga stopka #ftr, drugi przycisk #chatFab i osierocony #row-ftr.
+     Dublowały stopkę na dole strony i psuły getElementById('chatFab'). -->
 
 
 
@@ -1854,6 +1889,47 @@ function warmUpEngine(){
   return true;
 }
 
+// ══ TRYB TELEFONU ══════════════════════════════════════════════════════════
+// Samo ukrycie wykresów CSS-em nie wystarcza: Chart.js dalej by je rysował,
+// iframe TradingView dalej by się ładował, a analiza AI dalej strzelałaby do
+// API co 15 minut. Na komórce to bateria i transfer wydane na coś, czego i tak
+// nie widać. Dlatego mamy jedną flagę, którą sprawdzają wszystkie trzy miejsca.
+// Próg 760 px jest ten sam co w media query — jedna liczba, dwa języki.
+var MOBILE_MAX=760;
+function isMobileView(){
+  // Wszystko w try: ta funkcja startuje bardzo wcześnie, a nieudane rozpoznanie
+  // szerokości nie może wywrócić całego skryptu. Przy wątpliwości zakładamy
+  // pulpit — pełny układ jest bezpieczniejszym domyślnym wyborem niż okrojony.
+  try{
+    if(typeof window!=='undefined'&&window.matchMedia)
+      return window.matchMedia('(max-width:'+MOBILE_MAX+'px)').matches;
+  }catch(e){}
+  try{
+    var w=(typeof window!=='undefined'&&window.innerWidth)
+      ||(typeof document!=='undefined'&&document.documentElement&&document.documentElement.clientWidth)
+      ||0;
+    if(w>0)return w<=MOBILE_MAX;
+  }catch(e){}
+  return false;
+}
+// Ustalane raz przy starcie. Obrót telefonu nie ma tu nic wskrzeszać w locie —
+// przy zmianie orientacji wystarczy odświeżyć stronę, a stan silnika zostaje
+// spójny (rozgrzewka, pamięć filtra) zamiast startować w połowie sesji.
+var IS_MOBILE=isMobileView();
+
+// TradingView: `display:none` NIE powstrzymuje przeglądarki przed pobraniem
+// iframe'u. Zdejmujemy źródło, zanim zdąży cokolwiek ściągnąć.
+function mountTradingView(){
+  if(IS_MOBILE)return;                 // na telefonie nie ładujemy go w ogóle
+  try{
+    var f=document.querySelector('#tv-wrap iframe');
+    if(f&&!f.getAttribute('src')){
+      var u=f.getAttribute('data-src');
+      if(u)f.setAttribute('src',u);
+    }
+  }catch(e){}
+}
+
 // ══ SKĄD SIĘ BIERZE TA DECYZJA I KIEDY MOŻE SIĘ ZMIENIĆ ═════════════════════
 // Najczęstsze pytanie przy tym narzędziu brzmiało: „odświeżyłem i zmieniło
 // zdanie — czy coś się zlagowało?". Odpowiedź prawie zawsze brzmiała „nie,
@@ -1947,13 +2023,33 @@ function renderTimingPanel(){
     '<span style="color:var(--text3)">Następne pobranie danych</span>'+
     '<span style="color:var(--text2)">'+hhmm(d.nextFetchAt)+' (za '+fmtLeft(d.nextFetchAt-now)+')</span></div>');
 
-  el.innerHTML=
-    '<div style="font-size:9px;font-weight:700;color:var(--text2);margin-bottom:5px">'+
-    '⏱ RYTM DECYZJI</div>'+
-    '<div style="font-size:9px;line-height:1.75">'+rows.join('')+'</div>'+
+  var tresc='<div style="font-size:9px;line-height:1.75">'+rows.join('')+'</div>'+
     '<div style="font-size:8px;color:var(--text3);margin-top:5px;line-height:1.5">'+
     'W obrębie jednej świecy kierunek jest zamrożony celowo. Odświeżenie strony '+
     'nie zmienia decyzji — zmienia ją dopiero zamknięcie świecy.</div>';
+
+  if(IS_MOBILE){
+    // Na telefonie ten panel siedziałby MIĘDZY decyzjami a SL/TP i spychał je
+    // pod zgięcie ekranu. Zwijamy go do jednej linii z tym, co naprawdę pilne:
+    // do kiedy decyzja jest pewna. Reszta po dotknięciu.
+    // `<details>` przeżywa przerysowanie tylko wtedy, gdy sami odtworzymy stan —
+    // a przerysowujemy co sekundę przez odliczanie.
+    var byl=el.querySelector('details');
+    var otwarte=byl?byl.hasAttribute('open'):false;
+    el.innerHTML=
+      '<details'+(otwarte?' open':'')+'>'+
+      '<summary style="font-size:9px;font-weight:700;color:var(--text2);cursor:pointer;'+
+      'list-style:none;display:flex;justify-content:space-between;gap:8px;align-items:baseline">'+
+      '<span>⏱ decyzja pewna do '+hhmm(d.nextCloseAt)+'</span>'+
+      '<span style="font-weight:400;color:var(--text3)">za '+fmtLeft(d.nextCloseAt-now)+' ▾</span>'+
+      '</summary>'+
+      '<div style="margin-top:6px">'+tresc+'</div></details>';
+    return;
+  }
+
+  el.innerHTML=
+    '<div style="font-size:9px;font-weight:700;color:var(--text2);margin-bottom:5px">'+
+    '⏱ RYTM DECYZJI</div>'+tresc;
 }
 
 // Odliczanie ma iść co sekundę, inaczej „za 4 min 12 s" zastyga między pobraniami.
@@ -1972,6 +2068,9 @@ function startTimingTicker(){
 function chartsAvailable(){return typeof Chart!=='undefined';}
 function makeChart(el,cfg){
   if(!el)return null;
+  // Na telefonie wykresów nie ma w układzie — nie ma po co ich liczyć.
+  // `offsetParent===null` łapie też każdy inny przypadek ukrytego płótna.
+  if(IS_MOBILE||el.offsetParent===null)return null;
   if(!chartsAvailable()){
     try{
       el.style.display='none';
@@ -4936,12 +5035,19 @@ function initDashboard(){
   DASH_TIMERS=[];
   if(SCHED.timer){clearTimeout(SCHED.timer);SCHED.timer=null;}
 
+  mountTradingView();
   renderJournal();          // pokaż zebraną statystykę zanim przyjdą dane
   renderApiHealth();
   renderTimingPanel();
   loadDataEnhanced();
-  loadMacroData();
-  loadAllExtended();
+  // Makro, F&G, korelacje i newsy zasilają WYŁĄCZNIE prawą kolumnę, której na
+  // telefonie nie ma. Pobieranie ich kosztowałoby kredyty Twelve Data i transfer
+  // za dane, których nikt nie zobaczy. „Kluczowe poziomy" w lewej kolumnie biorą
+  // macroData.au, a to ustawia samo loadDataEnhanced — więc nic nie traci.
+  if(!IS_MOBILE){
+    loadMacroData();
+    loadAllExtended();
+  }
 
   // Świece 5M zamykają się o równych wielokrotnościach pięciu minut, więc
   // odświeżamy zegarowo (zamknięcie świecy + jej połowa), a nie co stałe 90 s.
@@ -4949,12 +5055,16 @@ function initDashboard(){
   // Odliczanie w panelu rytmu chodzi co sekundę; TIMING_TICK jest czyszczony
   // w startTimingTicker, więc ponowna inicjalizacja nie mnoży timerów.
   startTimingTicker();
-  DASH_TIMERS.push(setInterval(loadMacroData, 300000));     // makro co 5 min
-  DASH_TIMERS.push(setInterval(loadAllExtended, 300000));   // F&G, CNY, Brent
+  if(!IS_MOBILE){
+    DASH_TIMERS.push(setInterval(loadMacroData, 300000));   // makro co 5 min
+    DASH_TIMERS.push(setInterval(loadAllExtended, 300000)); // F&G, CNY, Brent
+  }
   DASH_TIMERS.push(setInterval(renderApiHealth, 15000));    // świeżość danych
 
-  // AI forecast auto every 15min (only if key available)
-  if(API_KEYS.ant){
+  // AI forecast auto every 15min (only if key available).
+  // Na telefonie panel AI jest poza układem, więc automatyczne wywołania byłyby
+  // wyłącznie kosztem — u dostawcy i w transferze.
+  if(API_KEYS.ant&&!IS_MOBILE){
     setTimeout(function(){
       runAIForecast();
       setInterval(runAIForecast, 900000);
