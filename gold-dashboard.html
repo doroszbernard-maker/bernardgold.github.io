@@ -2247,6 +2247,11 @@ function makeChart(el,cfg){
 // null, a `loadAllCandles` zostawiało poprzednie świece. Status w nagłówku dalej
 // pokazywał „LIVE", wskaźniki dalej się liczyły — tyle że z zamrożonych danych.
 // Przy narzędziu decyzyjnym cicha awaria jest groźniejsza niż awaria widoczna.
+// Limit planu Twelve Data (Grow 55). Zeruje się na początku każdej minuty
+// zegarowej, a nie w oknie ruchomym — liczy się więc najgorsza pojedyncza
+// minuta, nie średnia.
+var CREDIT_LIMIT=55;
+
 var API_HEALTH={
   lastOk:null,          // znacznik ostatniego udanego pobrania świec
   lastTry:null,
@@ -2270,13 +2275,17 @@ function apiErrorKind(status,msg){
   return{kind:'other',label:'BŁĄD API',hint:msg||'Nieznany błąd zapytania.'};
 }
 
-function noteApiCall(){
+// Twelve Data liczy kredyty PER SYMBOL, nie per zapytanie — jedno zapytanie
+// o dwa symbole kosztuje dwa kredyty. Dlatego licznik przyjmuje liczbę, a nie
+// zakłada jedynki.
+function noteApiCall(n){
+  n=(n&&isFinite(n)&&n>0)?Math.round(n):1;
   var now=Date.now();
   API_HEALTH.creditsMin=API_HEALTH.creditsMin.filter(function(t){return now-t<60000;});
-  API_HEALTH.creditsMin.push(now);
+  for(var i=0;i<n;i++)API_HEALTH.creditsMin.push(now);
   var day=new Date().toDateString();
   if(API_HEALTH.dayStamp!==day){API_HEALTH.dayStamp=day;API_HEALTH.totalToday=0;}
-  API_HEALTH.totalToday++;
+  API_HEALTH.totalToday+=n;
 }
 
 function noteApiOk(){
@@ -2339,7 +2348,8 @@ function renderApiHealth(){
   }
 
   // Stopka — licznik zużycia kredytów
-  var txt='Kredyty API: '+used+'/min · dziś '+API_HEALTH.totalToday+
+  // Sama liczba nic nie mówi — dopiero na tle limitu planu widać, ile jest zapasu.
+  var txt='Kredyty API: '+used+'/'+CREDIT_LIMIT+' na min · dziś '+API_HEALTH.totalToday+
     (age!==null?(' · dane sprzed '+age+' min'):'');
   var els=document.querySelectorAll('.api-usage');
   for(var i=0;i<els.length;i++)els[i].textContent=txt;
@@ -3908,6 +3918,7 @@ async function loadMacroData(){
     Object.entries(macroSymbols).map(async ([k,v])=>{
       try{
         const url='https://api.twelvedata.com/quote?symbol='+encodeURIComponent(v.td)+'&apikey='+API_KEYS.td;
+        noteApiCall();          // makro też kosztuje kredyty — licznik to przemilczał
         const res=await fetch(url);
         if(!res.ok)throw new Error('HTTP '+res.status);
         const d=await res.json();
@@ -4807,6 +4818,7 @@ async function loadExtendedTD(){
   if(!API_KEYS.td)return;
   try{
     const symbols='USD/CNY,XBR/USD';
+    noteApiCall(2);            // jedno zapytanie, ale DWA symbole = dwa kredyty
     const res=await fetch('https://api.twelvedata.com/quote?symbol='+encodeURIComponent(symbols)+'&apikey='+API_KEYS.td);
     if(!res.ok)throw new Error('HTTP '+res.status);
     const d=await res.json();
