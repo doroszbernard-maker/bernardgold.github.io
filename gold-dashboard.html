@@ -560,6 +560,21 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 .regime-badge{font-size:11px;margin-bottom:4px}
 .regime-stats{display:flex;gap:10px;font-size:8px;color:var(--text3);flex-wrap:wrap}
 
+/* Panel pozycji — pola wpisywane ręcznie */
+.pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.pos-f{display:flex;flex-direction:column;gap:2px}
+.pos-f>span{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.3px}
+.pos-in{background:var(--bg3);border:1px solid var(--border);border-radius:3px;
+  color:var(--text);font-family:inherit;font-size:11px;padding:4px 6px;width:100%}
+.pos-in:focus{outline:none;border-color:var(--gold-b)}
+.pos-row{display:flex;justify-content:space-between;gap:8px;font-size:9px;
+  padding:2px 0;line-height:1.6}
+.pos-row b{font-weight:700}
+.pos-warn{border:1px solid var(--red-b);background:var(--red-bg);border-radius:var(--r2);
+  padding:6px 8px;margin-top:5px;font-size:9px;line-height:1.55}
+.pos-ok{border:1px solid var(--border);background:var(--bg3);border-radius:var(--r2);
+  padding:6px 8px;margin-top:5px;font-size:9px;line-height:1.55;color:var(--text2)}
+
 /* ══ TELEFON ═══════════════════════════════════════════════════════════════
    Na telefonie liczy się jedno: zerknąć na decyzję pozycyjną i wrócić do XTB.
    Zostaje wyłącznie lewa kolumna, a w niej najpierw cena, potem decyzje razem
@@ -579,15 +594,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   #sec-price{order:1}
   #sec-decisions{order:2}
   #sec-sltp{order:3}
-  #sec-regime{order:4}
-  #sec-impulse{order:5}
-  #sec-levels{order:6}
-  #sec-sigshort{order:7}
-  #sec-sigmid{order:8}
-  #sec-sigweek{order:9}
-  #sec-journal{order:10}
-  #sec-indicators{order:11}
-  #sec-history{order:12}
+  #sec-position{order:4}
+  #sec-sessions{order:5}
+  #sec-catalysts{order:6}
+  #sec-factors{order:7}
+  #sec-yields{order:8}
+  #sec-regime{order:9}
+  #sec-impulse{order:10}
+  #sec-levels{order:11}
+  #sec-sigshort{order:12}
+  #sec-sigmid{order:13}
+  #sec-sigweek{order:14}
+  #sec-journal{order:15}
+  #sec-indicators{order:16}
+  #sec-history{order:17}
 
   /* decyzje mają być czytelne z ręki, nie zerkane przez lupę */
   #sec-decisions .dec-lbl{font-size:12px;line-height:1.35}
@@ -694,18 +714,111 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="sltp-row"><div class="sltp-label">Zasięg TP / R:R</div><div class="sltp-val usd" id="sltpRange">—</div></div>
     <div style="font-size:8px;padding:3px 6px;background:var(--bg3);border-radius:3px;color:var(--text3);margin-bottom:4px" id="sltpRR">Analiza swing struktury...</div>
     <div style="font-size:9px;padding:4px 6px;background:var(--gold-bg);border:1px solid var(--gold-b);border-radius:3px;color:var(--text2);margin-bottom:4px;line-height:1.5" id="sltpTime"></div>
+    <div id="sltpNoise" style="display:none;margin-bottom:4px"></div>
     <div style="font-size:9px;padding:3px 6px;color:var(--text3);margin-bottom:2px;line-height:1.5" id="sltpAge"></div>
     <div style="font-size:9px;padding:3px 6px;color:var(--text3);margin-bottom:4px;line-height:1.5" id="sltpMove"></div>
     <div class="sltp-divider"></div>
     <div class="sltp-calc">
-      <div class="sltp-calc-cell"><div class="sltp-calc-l">0.005 lota</div><div class="sltp-calc-v" id="calcSmall">—</div></div>
       <div class="sltp-calc-cell"><div class="sltp-calc-l">0.01 lota</div><div class="sltp-calc-v" id="calcLarge">—</div></div>
+      <div class="sltp-calc-cell"><div class="sltp-calc-l">
+        <input id="calcLot" class="pos-in" type="text" inputmode="decimal" placeholder="0.019"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+          style="font-size:9px;padding:1px 4px;text-align:center;height:16px"> lota</div>
+        <div class="sltp-calc-v" id="calcSmall">—</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="sec" id="sec-position">
+  <div class="sec-title">Twoja pozycja</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
+    <div class="pos-grid">
+      <label class="pos-f"><span>Kierunek</span>
+        <select id="posDir" class="pos-in"><option value="long">LONG</option><option value="short">SHORT</option></select></label>
+      <label class="pos-f"><span>Wolumen (lot)</span>
+        <input id="posLot" class="pos-in" type="text" inputmode="decimal" placeholder="0.019"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label class="pos-f"><span>Wejście</span>
+        <input id="posEntry" class="pos-in" type="text" inputmode="decimal" placeholder="4380.50"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label class="pos-f"><span>Stop loss</span>
+        <input id="posSL" class="pos-in" type="text" inputmode="decimal" placeholder="4360.00"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label class="pos-f"><span>Take profit</span>
+        <input id="posTP" class="pos-in" type="text" inputmode="decimal" placeholder="4410.00"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label class="pos-f"><span>Saldo konta (PLN)</span>
+        <input id="posBal" class="pos-in" type="text" inputmode="decimal" placeholder="5000"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    </div>
+    <div class="pos-grid" style="margin-top:4px">
+      <label class="pos-f"><span>Dźwignia 1:</span>
+        <input id="posLev" class="pos-in" type="text" inputmode="numeric" placeholder="20"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label class="pos-f"><span>Stop-out przy %</span>
+        <input id="posSO" class="pos-in" type="text" inputmode="numeric" placeholder="50"
+          autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    </div>
+    <div style="display:flex;gap:5px;margin-top:6px">
+      <button id="posClear" class="api-skip-btn" style="flex:1;font-size:9px">Wyczyść</button>
+    </div>
+    <div id="positionDisplay" style="margin-top:7px"></div>
+    <div style="font-size:8px;color:var(--text3);margin-top:6px;line-height:1.5">
+      Dane wpisujesz ręcznie i zostają w tej przeglądarce. Dashboard nie łączy się z XTB
+      i nie zna Twojego rachunku — dźwignię i próg stop-outu sprawdź w xStation,
+      bo różnią się między instrumentami i typami konta.
+    </div>
+  </div>
+</div>
+
+<div class="sec" id="sec-sessions">
+  <div class="sec-title">Widełki sesji</div>
+  <div id="sessionsDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
+    <div style="font-size:9px;color:var(--text3)">Zbieranie historii sesji...</div>
+  </div>
+</div>
+
+<div class="sec" id="sec-catalysts">
+  <div class="sec-title">Najbliższe katalizatory</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
+    <div id="catalystsDisplay"></div>
+    <details style="margin-top:6px">
+      <summary style="font-size:9px;color:var(--text3);cursor:pointer">Edytuj listę</summary>
+      <div style="font-size:8px;color:var(--text3);margin:5px 0;line-height:1.5">
+        Jedna pozycja w wierszu: <b>RRRR-MM-DD GG:MM · nazwa</b> (czas lokalny).
+        FOMC, CPI, PPI i NFP mają konkretne daty, a nie cotygodniowe okno —
+        wpisz je raz w miesiącu z kalendarza makro.
+      </div>
+      <textarea id="catalystsEdit" class="pos-in" rows="6"
+        style="font-size:10px;line-height:1.5;resize:vertical"
+        placeholder="2026-10-14 14:30 · CPI USA&#10;2026-10-28 19:00 · Decyzja FOMC"></textarea>
+      <div style="display:flex;gap:5px;margin-top:5px">
+        <button id="catSave" class="api-save-btn" style="flex:1;font-size:9px">Zapisz</button>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="sec" id="sec-factors">
+  <div class="sec-title">Co dziś wpływa na decyzję</div>
+  <div id="factorsDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
+    <div style="font-size:9px;color:var(--text3)">Ładowanie...</div>
+  </div>
+</div>
+
+<div class="sec" id="sec-yields">
+  <div class="sec-title">Rentowności i atrybucja</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
+    <div id="yieldsDisplay"><div style="font-size:9px;color:var(--text3)">Pobieranie...</div></div>
+    <div style="border-top:1px solid var(--border);margin-top:7px;padding-top:7px">
+      <div id="attrDisplay"><div style="font-size:9px;color:var(--text3)">Liczenie korelacji...</div></div>
     </div>
   </div>
 </div>
 
 <div class="sec" id="sec-levels">
   <div class="sec-title">Kluczowe poziomy cenowe</div>
+  <div id="atrStrip" style="font-size:9px;color:var(--text3);margin-bottom:5px;line-height:1.6"></div>
   <div class="levels-grid">
     <div class="level-cell" id="lc_dh"><div class="lc-bar" id="lb_dh"></div><div class="lc-label">High dnia</div><div class="lc-price" id="lp_dh">—</div><div class="lc-dist" id="ld_dh">—</div><div class="lc-strength" id="ls_dh">—</div></div>
     <div class="level-cell" id="lc_dl"><div class="lc-bar" id="lb_dl"></div><div class="lc-label">Low dnia</div><div class="lc-price" id="lp_dl">—</div><div class="lc-dist" id="ld_dl">—</div><div class="lc-strength" id="ls_dl">—</div></div>
@@ -713,7 +826,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
     <div class="level-cell" id="lc_wl"><div class="lc-bar" id="lb_wl"></div><div class="lc-label">Low tygodnia</div><div class="lc-price" id="lp_wl">—</div><div class="lc-dist" id="ld_wl">—</div><div class="lc-strength" id="ls_wl">—</div></div>
     <div class="level-cell" id="lc_8h"><div class="lc-bar" id="lb_8h"></div><div class="lc-label">High 8h (lok. TP)</div><div class="lc-price" id="lp_8h">—</div><div class="lc-dist" id="ld_8h">—</div><div class="lc-strength" id="ls_8h">—</div></div>
     <div class="level-cell" id="lc_8l"><div class="lc-bar" id="lb_8l"></div><div class="lc-label">Low 8h (lok. SL)</div><div class="lc-price" id="lp_8l">—</div><div class="lc-dist" id="ld_8l">—</div><div class="lc-strength" id="ls_8l">—</div></div>
+    <div class="level-cell" id="lc_ru"><div class="lc-bar" id="lb_ru"></div><div class="lc-label">Okrągły ↑</div><div class="lc-price" id="lp_ru">—</div><div class="lc-dist" id="ld_ru">—</div><div class="lc-strength" id="ls_ru">—</div></div>
+    <div class="level-cell" id="lc_rd"><div class="lc-bar" id="lb_rd"></div><div class="lc-label">Okrągły ↓</div><div class="lc-price" id="lp_rd">—</div><div class="lc-dist" id="ld_rd">—</div><div class="lc-strength" id="ls_rd">—</div></div>
+    <div class="level-cell" id="lc_e20"><div class="lc-bar" id="lb_e20"></div><div class="lc-label">EMA20 · 1D</div><div class="lc-price" id="lp_e20">—</div><div class="lc-dist" id="ld_e20">—</div><div class="lc-strength" id="ls_e20">—</div></div>
+    <div class="level-cell" id="lc_e50"><div class="lc-bar" id="lb_e50"></div><div class="lc-label">EMA50 · 1D</div><div class="lc-price" id="lp_e50">—</div><div class="lc-dist" id="ld_e50">—</div><div class="lc-strength" id="ls_e50">—</div></div>
+    <div class="level-cell" id="lc_e100"><div class="lc-bar" id="lb_e100"></div><div class="lc-label">EMA100 · 1D</div><div class="lc-price" id="lp_e100">—</div><div class="lc-dist" id="ld_e100">—</div><div class="lc-strength" id="ls_e100">—</div></div>
   </div>
+  <div id="quarterFlag" style="display:none;margin-top:6px"></div>
 </div>
 
 <div class="sec" id="sec-sigshort">
@@ -763,6 +882,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
 
 <div class="sec" id="sec-journal">
   <div class="sec-title">Rejestr sygnałów · skuteczność</div>
+  <div style="display:flex;gap:5px;margin-bottom:5px">
+    <button id="jExport" class="api-skip-btn" style="flex:1;font-size:9px">⬇ Eksportuj</button>
+    <button id="jImport" class="api-skip-btn" style="flex:1;font-size:9px">⬆ Importuj</button>
+    <input id="jFile" type="file" accept="application/json,.json" style="display:none">
+  </div>
   <div id="journalDisplay" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 10px">
     <div style="font-size:9px;color:var(--text3)">Zbieranie danych...</div>
   </div>
@@ -1000,6 +1124,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
       <input class="api-input" type="password" id="fhKey" placeholder="Wklej klucz Finnhub"
         autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false">
       <div class="api-desc">Opcjonalny — bez niego VIX i DXY używają ETF jako zastępników</div>
+    </div>
+
+    <div class="api-field-group">
+      <div class="api-label">Punkty swapowe <span style="color:var(--text3)">(USD za 0,01 lota za noc)</span></div>
+      <div class="api-sublabel">xStation → prawy klik na GOLD → Szczegóły instrumentu → Swap.
+        Wartości ujemne to koszt. W środę naliczany potrójnie.</div>
+      <div class="pos-grid">
+        <label class="pos-f"><span>Swap long</span>
+          <input id="swapLong" class="pos-in" type="text" inputmode="decimal" placeholder="-0.15"
+            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label class="pos-f"><span>Swap short</span>
+          <input id="swapShort" class="pos-in" type="text" inputmode="decimal" placeholder="0.05"
+            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      </div>
     </div>
 
     <div class="api-field-group">
@@ -1454,13 +1592,20 @@ function calcSignal(closes,rsi,macd,bb,e20,e50,label){
   const bv=bb[n],cur=closes[n],em20=e20[n],em50=e50?e50[n]:null;
   let score=0,why=[],warn='';
 
-  // RSI — recalibrated for 15min (more active than daily)
+  // RSI — progi skalibrowane pod 15M (żywsze niż dzienne).
+  // Etykieta NIESIE INTERWAŁ I WARTOŚĆ. Bez tego na jednym ekranie stały trzy
+  // różne zdania o RSI („wykupiony", „wyprzedany", „neutralny") bez śladu, że
+  // dotyczą różnych ram czasowych — wyglądało to na błąd narzędzia.
+  var tfRSI=(label==='5min')?'5M':(label==='15min')?'15M':(label||'');
+  var rsiTxt=function(stan){
+    return 'RSI'+(tfRSI?(' '+tfRSI):'')+' '+rv.toFixed(0)+' — '+stan;
+  };
   if(rv!=null){
-    if(rv<30){score+=4;why.push('RSI skrajnie wyprz.');}
-    else if(rv<40){score+=3;why.push('RSI wyprzedany');}
+    if(rv<30){score+=4;why.push(rsiTxt('skrajnie wyprzedany'));}
+    else if(rv<40){score+=3;why.push(rsiTxt('wyprzedany'));}
     else if(rv<48)score+=1;
-    else if(rv>70){score-=4;why.push('RSI skrajnie wykup.');}
-    else if(rv>60){score-=3;why.push('RSI wykupiony');}
+    else if(rv>70){score-=4;why.push(rsiTxt('skrajnie wykupiony'));}
+    else if(rv>60){score-=3;why.push(rsiTxt('wykupiony'));}
     else if(rv>52)score-=1;
   }
 
@@ -1900,6 +2045,998 @@ function warmUpEngine(){
   WARMING=false;
   ENGINE_WARM=true;
   return true;
+}
+
+// ══ SESJE: ZEGAR, ZMIERZONE WIDEŁKI I SZUM ══════════════════════════════════
+// Do tej pory dashboard mówił o „fazie sesji", ale nie mówił rzeczy najbardziej
+// praktycznej: ile ta sesja zwykle przechodzi punktów. Bez tego nie da się
+// ocenić, czy postawiony SL leży poza zwykłym szumem, czy w samym jego środku.
+//
+// METODA — ROZSTRZYGNIĘTA POMIAREM na 175 000 świec (1540 sesji, 10.2024-09.2026).
+// Porównano dwa warianty:
+//   A) zakres ≈ ATR × √(liczba świec) — skalowanie błądzenia losowego
+//   B) zmierzona mediana historycznych zakresów sesji z ostatnich 20 dni
+//
+// Co do TRAFNOŚCI dla konkretnej sesji oba wypadły TAK SAMO — mediana błędu
+// względnego 29-38%. Zakres pojedynczej sesji jest po prostu słabo przewidywalny
+// i żadna z metod tego nie zmienia; ±30% to podłoga, nie wada implementacji.
+//
+// Rozstrzygnęło OBCIĄŻENIE, czyli to, jak często szacunek okazuje się za mały:
+//        sesja      ATR×√n     mediana z 20 sesji
+//        Azja         84%             45%
+//        Londyn       69%             48%
+//        Nowy Jork    44%             49%
+// ATR×√n zaniża zakres Azji w 84% przypadków. Przy pozycji trzymanej przez noc
+// to dokładnie ten błąd, który każe uznać SL za bezpieczny, podczas gdy cztery
+// na pięć nocy wychodzą poza ten zakres. Metoda B jest zrównoważona (~48%),
+// bo mediana z definicji dzieli próbkę na pół.
+//
+// Okno 20 sesji sprawdzone osobno: 10, 20, 40 i 60 sesji dają identyczny błąd
+// 29%, a 120 sesji już GORSZY (34%) — charakter rynku zmienia się szybciej niż
+// w pół roku. Stąd pobranie 2700 świec 15M, czyli około 20 sesji każdego typu.
+//
+// Granice w minutach od północy czasu lokalnego przeglądarki.
+var SESJE={
+  azja:   {od:120, do:540,  nazwa:'Azja',      opis:'02:00-09:00'},
+  londyn: {od:540, do:930,  nazwa:'Londyn',    opis:'09:00-15:30'},
+  ny:     {od:930, do:1320, nazwa:'Nowy Jork', opis:'15:30-22:00'},
+};
+var SESJA_KOLEJNOSC=['azja','londyn','ny'];
+
+function minutyDnia(d){return d.getHours()*60+d.getMinutes();}
+function kluczDnia(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+
+    String(d.getDate()).padStart(2,'0');
+}
+// Która sesja trwa w danym momencie; null = przerwa (22:00-02:00) albo weekend.
+function sesjaW(d){
+  var dow=d.getDay();
+  if(dow===0)return null;
+  if(dow===6&&minutyDnia(d)>0)return null;
+  var m=minutyDnia(d);
+  for(var i=0;i<SESJA_KOLEJNOSC.length;i++){
+    var k=SESJA_KOLEJNOSC[i],s=SESJE[k];
+    if(m>=s.od&&m<s.do)return k;
+  }
+  return null;
+}
+
+function perc(arr,p){
+  if(!arr||!arr.length)return null;
+  var s=arr.slice().sort(function(a,b){return a-b;});
+  return s[Math.min(s.length-1,Math.floor(s.length*p))];
+}
+
+// ── Zmierzone zakresy sesji ─────────────────────────────────────────────────
+// Liczone raz na dobę z długiej serii 15M i zapisywane jako same liczby.
+// Świece nie są przechowywane — w pamięci zostaje kilkadziesiąt wartości.
+var SESS_KEY='xau_sess_stats';
+var SESS_STATS=null;
+
+function obliczZakresySesji(c15){
+  if(!c15||c15.length<200)return null;
+  var kubelki={};
+  for(var i=0;i<c15.length;i++){
+    var c=c15[i];
+    if(!isFinite(c.t)||!isFinite(c.h)||!isFinite(c.l))continue;
+    var d=new Date(c.t);
+    var k=sesjaW(d);
+    if(!k)continue;
+    var id=k+'|'+kluczDnia(d);
+    if(!kubelki[id])kubelki[id]={k:k,hi:c.h,lo:c.l,n:1};
+    else{
+      kubelki[id].hi=Math.max(kubelki[id].hi,c.h);
+      kubelki[id].lo=Math.min(kubelki[id].lo,c.l);
+      kubelki[id].n++;
+    }
+  }
+  var zakresy={azja:[],londyn:[],ny:[]};
+  Object.keys(kubelki).forEach(function(id){
+    var b=kubelki[id];
+    // Sesja niepełna (dzień świąteczny, ucięty początek serii) zafałszowałaby
+    // medianę w dół, więc wymagamy co najmniej 60% oczekiwanych świec.
+    var oczek=(SESJE[b.k].do-SESJE[b.k].od)/15;
+    if(b.n<oczek*0.6)return;
+    zakresy[b.k].push(b.hi-b.lo);
+  });
+  var n={};
+  Object.keys(zakresy).forEach(function(k){n[k]=zakresy[k].length;});
+  return{dzien:kluczDnia(new Date()),zakresy:zakresy,n:n,policzone:Date.now()};
+}
+
+function wczytajZakresySesji(){
+  try{
+    var raw=localStorage.getItem(SESS_KEY);
+    if(!raw)return null;
+    var o=JSON.parse(raw);
+    if(!o||!o.zakresy)return null;
+    return o;
+  }catch(e){return null;}
+}
+function zapiszZakresySesji(o){
+  try{localStorage.setItem(SESS_KEY,JSON.stringify(o));}catch(e){}
+}
+
+// Jedno pobranie na dobę: 2700 świec 15M to około 28 dni kalendarzowych,
+// czyli ~20 sesji każdego typu. Kosztuje jeden kredyt dziennie.
+var SESS_TRWA=false;
+async function odswiezZakresySesji(force){
+  if(SESS_TRWA)return false;
+  if(!SESS_STATS)SESS_STATS=wczytajZakresySesji();
+  if(!force&&SESS_STATS&&SESS_STATS.dzien===kluczDnia(new Date()))return false;
+  if(!API_KEYS.td)return false;
+  SESS_TRWA=true;
+  try{
+    var d=await fetchTD('15min',2700);
+    if(d&&d.length>=400){
+      var st=obliczZakresySesji(d);
+      if(st){SESS_STATS=st;zapiszZakresySesji(st);return true;}
+    }
+  }catch(e){console.warn('zakresy sesji:',e&&e.message);}
+  finally{SESS_TRWA=false;}
+  return false;
+}
+
+// ── Projekcja widełek ───────────────────────────────────────────────────────
+// Gdy sesja już trwa, nie centrujemy pasma na bieżącej cenie — to byłby błąd.
+// Zakres liczy się od ekstremów, które sesja już postawiła: od dołka w górę
+// i od szczytu w dół. Dzięki temu widać też, ile z typowego zakresu zostało.
+function widelkiSesji(kluczSesji,cur,atr15,hiDotad,loDotad){
+  var st=SESS_STATS;
+  var lista=(st&&st.zakresy&&st.zakresy[kluczSesji])||[];
+  var zrodlo='pomiar';
+  var med,p80;
+  if(lista.length>=5){
+    med=perc(lista,.5); p80=perc(lista,.8);
+  } else {
+    // Zapas na pierwszy dzień, zanim uzbiera się historia. Samo ATR×√n jest
+    // obciążone różnie w różnych sesjach (patrz tabela wyżej), więc mnożymy
+    // przez zmierzony współczynnik korekty: iloraz prawdziwej mediany zakresu
+    // do średniego szacunku ATR×√n z dwóch lat.
+    //   Azja   32.8 / 28.4 = 1.15     Londyn 30.9 / 31.3 = 0.99
+    //   NY     34.9 / 42.3 = 0.83
+    if(!atr15||!isFinite(atr15))return null;
+    var KOREKTA={azja:1.15,londyn:0.99,ny:0.83};
+    var swiec=(SESJE[kluczSesji].do-SESJE[kluczSesji].od)/15;
+    med=atr15*Math.sqrt(swiec)*(KOREKTA[kluczSesji]||1);
+    // Rozstęp mediana → 80. percentyl zmierzony na 1540 sesjach: ×1.76
+    p80=med*1.76;
+    zrodlo='szacunek';
+  }
+  var out={med:med,p80:p80,zrodlo:zrodlo,n:lista.length,kluczSesji:kluczSesji};
+  if(hiDotad!=null&&loDotad!=null&&isFinite(hiDotad)&&isFinite(loDotad)&&hiDotad>=loDotad){
+    out.zrobione=hiDotad-loDotad;
+    out.pctZrobione=med>0?Math.round(out.zrobione/med*100):null;
+    out.gora   =Math.max(hiDotad,loDotad+med);
+    out.dol    =Math.min(loDotad,hiDotad-med);
+    out.gora80 =Math.max(hiDotad,loDotad+p80);
+    out.dol80  =Math.min(loDotad,hiDotad-p80);
+    out.trwa=true;
+  } else if(cur!=null&&isFinite(cur)){
+    out.gora=cur+med/2;  out.dol=cur-med/2;
+    out.gora80=cur+p80/2;out.dol80=cur-p80/2;
+    out.trwa=false;
+  } else return null;
+  return out;
+}
+
+// Ekstrema bieżącej sesji z posiadanych świec 5M.
+function ekstremumSesji(c5,kluczSesji){
+  if(!c5||!c5.length||!kluczSesji)return null;
+  var dzis=kluczDnia(new Date());
+  var hi=null,lo=null,n=0;
+  for(var i=0;i<c5.length;i++){
+    var d=new Date(c5[i].t);
+    if(kluczDnia(d)!==dzis)continue;
+    if(sesjaW(d)!==kluczSesji)continue;
+    var h=c5[i].h!=null?c5[i].h:c5[i].c, l=c5[i].l!=null?c5[i].l:c5[i].c;
+    hi=(hi==null)?h:Math.max(hi,h);
+    lo=(lo==null)?l:Math.min(lo,l);
+    n++;
+  }
+  return n?{hi:hi,lo:lo,n:n}:null;
+}
+
+// ══ RENDER: ZEGAR SESJI I WIDEŁKI ══════════════════════════════════════════
+function fmtHM(ms){
+  if(ms==null||!isFinite(ms)||ms<0)return '—';
+  var m=Math.round(ms/60000);
+  var h=Math.floor(m/60); m=m%60;
+  return h>0?(h+' h '+String(m).padStart(2,'0')+' min'):(m+' min');
+}
+function nastepnaSesja(d){
+  var m=minutyDnia(d);
+  for(var i=0;i<SESJA_KOLEJNOSC.length;i++){
+    var k=SESJA_KOLEJNOSC[i];
+    if(SESJE[k].od>m)return{k:k,za:(SESJE[k].od-m)*60000};
+  }
+  return{k:'azja',za:((24*60-m)+SESJE.azja.od)*60000};
+}
+
+function renderSessionsPanel(cur,atr15,c5){
+  if(WARMING)return;
+  var el=document.getElementById('sessionsDisplay');
+  if(!el)return;
+  var teraz=new Date();
+  var bie=sesjaW(teraz);
+  var nast=nastepnaSesja(teraz);
+  var w=[];
+
+  // ── pasek zegara ──
+  var zeg;
+  if(bie){
+    var doKonca=(SESJE[bie].do-minutyDnia(teraz))*60000;
+    zeg='<b style="color:var(--gold2)">'+SESJE[bie].nazwa.toUpperCase()+'</b>'+
+      ' <span style="color:var(--text3)">'+SESJE[bie].opis+' · trwa jeszcze '+fmtHM(doKonca)+'</span>';
+  } else {
+    zeg='<b style="color:var(--text2)">POZA SESJAMI</b>'+
+      ' <span style="color:var(--text3)">cienki rynek, szerszy spread</span>';
+  }
+  w.push('<div style="font-size:10px;margin-bottom:5px">'+zeg+'</div>');
+  w.push('<div class="pos-row"><span style="color:var(--text3)">Następna sesja</span>'+
+    '<span style="color:var(--text2)">'+SESJE[nast.k].nazwa+' za '+fmtHM(nast.za)+'</span></div>');
+
+  // ── widełki sesji bieżącej ──
+  var ks=bie||nast.k;
+  var ext=bie?ekstremumSesji(c5,bie):null;
+  var wid=widelkiSesji(ks,cur,atr15,ext?ext.hi:null,ext?ext.lo:null);
+  if(!wid){
+    el.innerHTML=w.join('')+'<div style="font-size:9px;color:var(--text3);margin-top:5px">'+
+      'Za mało danych, żeby policzyć widełki.</div>';
+    return;
+  }
+  var f=function(x){return x==null?'—':x.toFixed(1);};
+  w.push('<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">'+
+    '<div style="font-size:9px;font-weight:700;color:var(--text2);margin-bottom:4px">'+
+    (bie?'Zakres tej sesji':'Spodziewany zakres: '+SESJE[ks].nazwa)+'</div>');
+
+  if(wid.trwa){
+    var kol=wid.pctZrobione>=100?'var(--red)':wid.pctZrobione>=70?'var(--amber)':'var(--green)';
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Już przeszło</span>'+
+      '<span><b style="color:'+kol+'">'+f(wid.zrobione)+' pkt</b>'+
+      ' <span style="color:var(--text3)">z typowych '+f(wid.med)+' ('+wid.pctZrobione+'%)</span></span></div>');
+  }
+  w.push('<div class="pos-row"><span style="color:var(--text3)">Typowa sesja (mediana)</span>'+
+    '<span style="color:var(--text)"><b>'+f(wid.dol)+' – '+f(wid.gora)+'</b>'+
+    ' <span style="color:var(--text3)">'+f(wid.med)+' pkt</span></span></div>');
+  w.push('<div class="pos-row"><span style="color:var(--text3)">Ruchliwa (80. percentyl)</span>'+
+    '<span style="color:var(--text2)">'+f(wid.dol80)+' – '+f(wid.gora80)+
+    ' <span style="color:var(--text3)">'+f(wid.p80)+' pkt</span></span></div>');
+  w.push('</div>');
+
+  // ── skąd te liczby ──
+  if(wid.zrodlo==='pomiar'){
+    w.push('<div style="font-size:8px;color:var(--text3);margin-top:5px;line-height:1.5">'+
+      'Z pomiaru '+wid.n+' ostatnich sesji tego typu. Nie jest to prognoza kierunku — '+
+      'tylko to, ile ta sesja zwykle przechodzi.</div>');
+  } else {
+    w.push('<div style="font-size:8px;color:var(--amber);margin-top:5px;line-height:1.5">'+
+      '⚠️ Szacunek z ATR — historia sesji jeszcze się zbiera (pojawi się w ciągu doby). '+
+      'Skorygowany o zmierzone obciążenie, ale mniej wiarygodny niż pomiar.</div>');
+  }
+
+  // Zestawienie pozostałych sesji — jedna linia, żeby wiedzieć czego się spodziewać.
+  var inne=SESJA_KOLEJNOSC.filter(function(k){return k!==ks;}).map(function(k){
+    var v=widelkiSesji(k,cur,atr15,null,null);
+    return SESJE[k].nazwa+' '+(v?f(v.med):'—')+' pkt';
+  }).join(' · ');
+  w.push('<div style="font-size:8px;color:var(--text3);margin-top:4px">Pozostałe: '+inne+'</div>');
+
+  el.innerHTML=w.join('');
+}
+
+function renderAtrStrip(atr5,atr15,atr60,atrDay){
+  var el=document.getElementById('atrStrip');
+  if(!el)return;
+  var f=function(v){return (v!=null&&isFinite(v))?v.toFixed(2):'—';};
+  // Sama krotność („zasięg 2,4×ATR") jest nieporównywalna między sekcjami,
+  // dopóki nie wiadomo, o który ATR chodzi i ile on wynosi.
+  el.innerHTML='<b style="color:var(--text2)">ATR(14)</b> · '+
+    '5M <b style="color:var(--text)">'+f(atr5)+'</b> · '+
+    '15M <b style="color:var(--text)">'+f(atr15)+'</b> · '+
+    '1h <b style="color:var(--text)">'+f(atr60)+'</b> · '+
+    'dzienny <b style="color:var(--text)">'+f(atrDay)+'</b> USD';
+}
+
+// ══ TWOJA POZYCJA ══════════════════════════════════════════════════════════
+// Dashboard nie widzi rachunku w XTB, więc dane wpisuje użytkownik. W zamian
+// liczy to, czego przy oknie brokera nie widać: czy SL nie leży w zasięgu
+// zwykłego szumu sesji, ile kosztuje punkt w złotówkach i jak daleko do
+// stop-outu.
+var LAST_CTX={cur:null,atr15:null};
+var POS_KEY='xau_pos';
+var POS_FIELDS=['posDir','posLot','posEntry','posSL','posTP','posBal','posLev','posSO'];
+
+function wczytajPozycje(){
+  try{
+    var o=JSON.parse(localStorage.getItem(POS_KEY)||'{}');
+    POS_FIELDS.forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&o[id]!=null)el.value=o[id];
+    });
+  }catch(e){}
+}
+function zapiszPozycje(){
+  try{
+    var o={};
+    POS_FIELDS.forEach(function(id){
+      var el=document.getElementById(id);
+      if(el)o[id]=el.value;
+    });
+    localStorage.setItem(POS_KEY,JSON.stringify(o));
+  }catch(e){}
+}
+function liczba(id,dom){
+  var el=document.getElementById(id);
+  if(!el)return dom==null?null:dom;
+  var v=parseFloat(String(el.value).replace(',','.').trim());
+  return isFinite(v)?v:(dom==null?null:dom);
+}
+
+// Kurs USD/PLN — potrzebny tylko do przeliczenia wyniku. Odświeżany rzadko,
+// bo do oceny ryzyka wystarcza kurs sprzed kilku godzin.
+var USDPLN_KEY='xau_usdpln';
+var USDPLN={kurs:null,kiedy:0};
+function wczytajUsdPln(){
+  try{
+    var o=JSON.parse(localStorage.getItem(USDPLN_KEY)||'null');
+    if(o&&isFinite(o.kurs))USDPLN=o;
+  }catch(e){}
+}
+async function odswiezUsdPln(){
+  if(!API_KEYS.td)return;
+  if(USDPLN.kurs&&Date.now()-USDPLN.kiedy<6*3600000)return;
+  try{
+    noteApiCall();
+    var r=await fetch('https://api.twelvedata.com/quote?symbol=USD/PLN&apikey='+
+      encodeURIComponent(API_KEYS.td));
+    if(!r.ok)return;
+    var d=await r.json();
+    var v=parseFloat(d&&(d.close||d.price));
+    if(isFinite(v)&&v>1&&v<10){
+      USDPLN={kurs:v,kiedy:Date.now()};
+      try{localStorage.setItem(USDPLN_KEY,JSON.stringify(USDPLN));}catch(e){}
+    }
+  }catch(e){}
+}
+
+function renderPositionPanel(cur,atr15,c5){
+  if(WARMING)return;
+  var el=document.getElementById('positionDisplay');
+  if(!el)return;
+  var lot=liczba('posLot'), entry=liczba('posEntry'), sl=liczba('posSL'), tp=liczba('posTP');
+  var bal=liczba('posBal'), lev=liczba('posLev',20), so=liczba('posSO',50);
+  var dirEl=document.getElementById('posDir');
+  var isL=!dirEl||dirEl.value==='long';
+
+  if(!lot||!entry){
+    el.innerHTML='<div style="font-size:9px;color:var(--text3);line-height:1.5">'+
+      'Wpisz wolumen i cenę wejścia, a policzę ryzyko tej pozycji — w tym to, '+
+      'czy Twój SL nie stoi w zasięgu zwykłego szumu sesji.</div>';
+    return;
+  }
+
+  var w=[];
+  // XAU/USD: 1 lot = 100 uncji, więc 0,01 lota to 1 USD na każdy 1 USD ruchu ceny.
+  var usdNaPkt=lot*100;
+  var kurs=USDPLN.kurs;
+  var plnTxt=function(usd){
+    return kurs?(' <span style="color:var(--text3)">('+(usd*kurs).toFixed(2)+' zł)</span>'):'';
+  };
+
+  w.push('<div class="pos-row"><span style="color:var(--text3)">Wartość 1 pkt ruchu</span>'+
+    '<span style="color:var(--text)"><b>'+usdNaPkt.toFixed(2)+' USD</b>'+plnTxt(usdNaPkt)+'</span></div>');
+
+  if(cur!=null&&isFinite(cur)){
+    var ruch=(isL?(cur-entry):(entry-cur));
+    var wynik=ruch*usdNaPkt-getSpread()*usdNaPkt;
+    var kw=wynik>=0?'var(--green)':'var(--red)';
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Wynik pływający</span>'+
+      '<span><b style="color:'+kw+'">'+(wynik>=0?'+':'')+wynik.toFixed(2)+' USD</b>'+
+      plnTxt(wynik)+' <span style="color:var(--text3)">'+(ruch>=0?'+':'')+ruch.toFixed(1)+' pkt</span></span></div>');
+  }
+
+  // ── SL: dystans, krotność ATR i test na szum ──
+  if(sl){
+    var dSL=Math.abs(entry-sl);
+    var kAtr=(atr15&&atr15>0)?(dSL/atr15):null;
+    var ryzyko=dSL*usdNaPkt+getSpread()*usdNaPkt;
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Dystans SL</span>'+
+      '<span style="color:var(--text)"><b>'+dSL.toFixed(1)+' pkt</b>'+
+      (kAtr!=null?(' <span style="color:var(--text3)">= '+kAtr.toFixed(2)+'×ATR(15M)</span>'):'')+'</span></div>');
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Ryzyko na SL</span>'+
+      '<span><b style="color:var(--red)">−'+ryzyko.toFixed(2)+' USD</b>'+plnTxt(-ryzyko)+
+      (bal&&kurs?(' <span style="color:var(--text3)">'+(ryzyko*kurs/bal*100).toFixed(1)+'% salda</span>'):'')+
+      '</span></div>');
+
+    // SEDNO: czy ten SL w ogóle wystaje ponad zwykły ruch sesji?
+    var teraz=new Date();
+    var bie=sesjaW(teraz)||nastepnaSesja(teraz).k;
+    var wid=widelkiSesji(bie,cur,atr15,null,null);
+    if(wid){
+      var med=wid.med;
+      if(dSL<med*0.5){
+        w.push('<div class="pos-warn"><b style="color:var(--red)">⛔ SL leży w zasięgu zwykłego szumu</b><br>'+
+          'Twój stop jest '+dSL.toFixed(1)+' pkt od wejścia, a sesja '+SESJE[bie].nazwa+
+          ' przechodzi zwykle '+med.toFixed(1)+' pkt. To mniej niż połowa normalnego ruchu — '+
+          'wywalenie na SL bez żadnej zmiany kierunku jest tu wariantem podstawowym, nie pechem.</div>');
+      } else if(dSL<med*0.85){
+        w.push('<div class="pos-warn" style="border-color:var(--gold-b);background:var(--gold-bg)">'+
+          '<b style="color:var(--amber)">⚠️ SL blisko granicy szumu</b><br>'+
+          dSL.toFixed(1)+' pkt przy typowym zakresie sesji '+med.toFixed(1)+' pkt — '+
+          'stop stoi na '+Math.round(100*dSL/med)+'% tego zakresu, czyli wewnątrz niego. '+
+          'Sam ruch sesyjny może go dosięgnąć bez zmiany kierunku.</div>');
+      } else {
+        w.push('<div class="pos-ok">✅ SL poza zasięgiem zwykłego szumu: '+dSL.toFixed(1)+' pkt '+
+          'wobec typowych '+med.toFixed(1)+' pkt sesji '+SESJE[bie].nazwa+'.</div>');
+      }
+    }
+  }
+
+  // ── swap: koszt trzymania przez noc ──
+  var sw=getSwap();
+  if(sw.long||sw.short){
+    var stawka=(isL?sw.long:sw.short)*(lot/0.01);     // stawka podana na 0,01 lota
+    var noc1=stawka, noc3=stawka*nocyDoPrzetrzymania(72);
+    var kolSw=stawka>=0?'var(--green)':'var(--amber)';
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Swap za noc</span>'+
+      '<span><b style="color:'+kolSw+'">'+(noc1>=0?'+':'')+noc1.toFixed(2)+' USD</b>'+
+      plnTxt(noc1)+'</span></div>');
+    if(sl){
+      var ryzykoSL=Math.abs(entry-sl)*usdNaPkt;
+      if(stawka<0&&Math.abs(noc3)>ryzykoSL*0.1){
+        w.push('<div class="pos-warn" style="border-color:var(--gold-b);background:var(--gold-bg)">'+
+          '<b style="color:var(--amber)">Swap zjada ryzyko</b><br>'+
+          'Trzy doby trzymania to '+noc3.toFixed(2)+' USD swapu, czyli '+
+          Math.round(Math.abs(noc3)/ryzykoSL*100)+'% tego, czym ryzykujesz na SL. '+
+          'Przy wolno chodzącej pozycji koszt finansowania zjada przewagę.</div>');
+      }
+    }
+  }
+
+  if(tp&&sl){
+    var rr=Math.abs(tp-entry)/Math.max(0.01,Math.abs(entry-sl));
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Stosunek zysku do ryzyka</span>'+
+      '<span style="color:'+(rr>=1.5?'var(--green)':rr>=1?'var(--amber)':'var(--red)')+'"><b>'+
+      rr.toFixed(2)+':1</b></span></div>');
+  }
+
+  // ── depozyt i dystans do stop-outu ──
+  if(bal&&cur&&lev>0){
+    var nominal=lot*100*cur;                       // wartość kontraktu w USD
+    var depozytUSD=nominal/lev;
+    var depozytPLN=kurs?depozytUSD*kurs:null;
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Depozyt zabezpieczający</span>'+
+      '<span style="color:var(--text2)">'+depozytUSD.toFixed(2)+' USD'+plnTxt(depozytUSD)+'</span></div>');
+    if(depozytPLN){
+      // Stop-out przy poziomie zabezpieczenia so% → kapitał = so% × depozyt.
+      var ruchPLN=lot*100*kurs;
+      var doStopOut=(bal-depozytPLN*so/100)/ruchPLN;
+      var kolSO=doStopOut<30?'var(--red)':doStopOut<80?'var(--amber)':'var(--green)';
+      w.push('<div class="pos-row"><span style="color:var(--text3)">Do stop-outu ('+so+'%)</span>'+
+        '<span><b style="color:'+kolSO+'">'+(doStopOut>0?doStopOut.toFixed(0)+' pkt':'JUŻ PONIŻEJ')+'</b>'+
+        '</span></div>');
+      if(doStopOut>0&&atr15>0&&doStopOut<atr15*10){
+        w.push('<div class="pos-warn">Do stop-outu jest '+doStopOut.toFixed(0)+' pkt, '+
+          'czyli '+(doStopOut/atr15).toFixed(1)+'×ATR(15M). Jedna ruchliwa sesja ma taki zasięg.</div>');
+      }
+    }
+  }
+  if(!kurs){
+    w.push('<div style="font-size:8px;color:var(--text3);margin-top:5px">'+
+      'Kurs USD/PLN jeszcze nie pobrany — kwoty w złotówkach pojawią się po odświeżeniu.</div>');
+  }
+  el.innerHTML=w.join('');
+}
+
+// ══ KATALIZATORY: KONKRETNE DATY, NIE STAŁE OKNA TYGODNIA ══════════════════
+// Poprzedni opis mówił „NFP w piątek, FOMC w środę, CPI we wtorek". To zawodzi:
+// FOMC ma osiem konkretnych posiedzeń w roku, a CPI, PPI i NFP wędrują po
+// kalendarzu. Lista jest wpisywana ręcznie raz w miesiącu i zasila zasadę
+// wstrzymania handlu przed publikacją.
+var CAT_KEY='xau_catalysts';
+
+function parsujKatalizatory(txt){
+  if(!txt)return [];
+  return String(txt).split('\n').map(function(l){
+    var m=l.match(/^\s*(\d{4})-(\d{2})-(\d{2})[\sT]+(\d{1,2}):(\d{2})\s*[·\-|:]?\s*(.*)$/);
+    if(!m)return null;
+    var d=new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],0);
+    if(!isFinite(d.getTime()))return null;
+    return{t:d.getTime(),nazwa:(m[6]||'').trim()||'wydarzenie'};
+  }).filter(Boolean).sort(function(a,b){return a.t-b.t;});
+}
+function wczytajKatalizatory(){
+  try{return localStorage.getItem(CAT_KEY)||'';}catch(e){return '';}
+}
+function renderCatalysts(){
+  var el=document.getElementById('catalystsDisplay');
+  if(!el)return;
+  var lista=parsujKatalizatory(wczytajKatalizatory());
+  var teraz=Date.now();
+  var przysz=lista.filter(function(x){return x.t>teraz-2*3600000;}).slice(0,5);
+  if(!przysz.length){
+    el.innerHTML='<div style="font-size:9px;color:var(--text3);line-height:1.5">'+
+      'Brak wpisanych katalizatorów. Bez nich dashboard nie wie, kiedy wstrzymać '+
+      'handel przed publikacją — rozwiń „Edytuj listę" i wpisz najbliższe daty.</div>';
+    return;
+  }
+  el.innerHTML=przysz.map(function(x){
+    var za=x.t-teraz;
+    var pilne=za<0?'trwa':za<3600000?'pilne':za<24*3600000?'dzis':'';
+    var kol=pilne==='pilne'||pilne==='trwa'?'var(--red)':pilne==='dzis'?'var(--amber)':'var(--text2)';
+    var d=new Date(x.t);
+    var kiedy=String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+
+      ' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    var odl=za<0?'trwa / minęło':fmtHM(za);
+    return '<div class="pos-row"><span style="color:'+kol+'">'+
+      (pilne==='pilne'?'⚠ ':'')+x.nazwa+'</span>'+
+      '<span style="color:var(--text3)">'+kiedy+' · <b style="color:'+kol+'">'+odl+'</b></span></div>';
+  }).join('')+
+  (przysz[0]&&przysz[0].t-teraz<3600000&&przysz[0].t>teraz
+    ? '<div class="pos-warn" style="margin-top:5px">Publikacja w ciągu godziny. '+
+      'Zakres sesji przestaje obowiązywać, a spread się rozszerza.</div>'
+    : '');
+}
+
+// ══ POKRYCIE REJESTRU: ILE CZASU DASHBOARD BYŁ WŁĄCZONY ════════════════════
+// Rejestr ocenia wyłącznie sygnały wydane na żywo, więc statystyka pochodzi
+// z okien, w których ktoś siedział przy komputerze — a nie z rynku. Bez
+// pokazania tej dziury procenty udają ciągłość, której nie ma.
+var COV_KEY='xau_coverage';
+var COV_LUKA=30*60000;          // przerwa dłuższa niż 30 min to osobne okno
+
+function wczytajPokrycie(){
+  try{var a=JSON.parse(localStorage.getItem(COV_KEY)||'[]');return Array.isArray(a)?a:[];}
+  catch(e){return [];}
+}
+function odnotujObecnosc(){
+  var teraz=Date.now();
+  var okna=wczytajPokrycie();
+  var ost=okna[okna.length-1];
+  if(ost&&teraz-ost.do<COV_LUKA)ost.do=teraz;
+  else okna.push({od:teraz,do:teraz});
+  // trzymamy 30 dni, reszta i tak jest poza zasięgiem oceny
+  var granica=teraz-30*86400000;
+  okna=okna.filter(function(o){return o.do>granica;});
+  try{localStorage.setItem(COV_KEY,JSON.stringify(okna));}catch(e){}
+  return okna;
+}
+// Ile godzin rynku (pon-pt, 02:00-23:00) minęło w oknie N dni i ile z tego
+// dashboard faktycznie widział.
+function statystykaPokrycia(dni){
+  dni=dni||7;
+  var teraz=Date.now(), od=teraz-dni*86400000;
+  var okna=wczytajPokrycie().filter(function(o){return o.do>od;});
+  var widziane=okna.reduce(function(a,o){return a+(Math.min(o.do,teraz)-Math.max(o.od,od));},0);
+  // rynek: doba minus weekendy, przybliżenie po godzinach
+  var rynek=0;
+  for(var t=od;t<teraz;t+=3600000){
+    var d=new Date(t), w=d.getDay(), h=d.getHours();
+    if(w===0||w===6)continue;
+    if(h<2||h>=23)continue;
+    rynek+=3600000;
+  }
+  return{widziane:widziane,rynek:rynek,
+    pct:rynek>0?Math.round(widziane/rynek*100):null,okien:okna.length};
+}
+
+// ══ EKSPORT I IMPORT REJESTRU ══════════════════════════════════════════════
+// Cała historia skuteczności siedzi w jednej przeglądarce. Wyczyszczenie
+// danych witryny kasuje ją bezpowrotnie.
+function eksportujRejestr(){
+  var paczka={
+    wersja:1, kiedy:new Date().toISOString(), build:BUILD_ID,
+    rejestr:(function(){try{return JSON.parse(localStorage.getItem(JOURNAL_KEY)||'[]');}catch(e){return [];}})(),
+    pokrycie:wczytajPokrycie(),
+    sesje:(function(){try{return JSON.parse(localStorage.getItem(SESS_KEY)||'null');}catch(e){return null;}})()
+  };
+  var blob=new Blob([JSON.stringify(paczka,null,1)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='gold-rejestr-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+  showToast('Rejestr wyeksportowany ✓');
+}
+function importujRejestr(txt){
+  var p;
+  try{p=JSON.parse(txt);}catch(e){showToast('To nie jest poprawny plik JSON');return false;}
+  if(!p||!Array.isArray(p.rejestr)){showToast('Plik nie zawiera rejestru');return false;}
+  var stare=[];
+  try{stare=JSON.parse(localStorage.getItem(JOURNAL_KEY)||'[]');}catch(e){}
+  // Scalanie, nie nadpisywanie — wpisy rozróżniamy po znaczniku czasu i kierunku.
+  var klucz=function(e){return e.t+'|'+e.dir+'|'+(e.shadow?'s':'r');};
+  var mapa={};
+  stare.forEach(function(e){mapa[klucz(e)]=e;});
+  var dodane=0;
+  p.rejestr.forEach(function(e){
+    if(!e||!isFinite(e.t))return;
+    if(!mapa[klucz(e)]){mapa[klucz(e)]=e;dodane++;}
+  });
+  var scalone=Object.keys(mapa).map(function(k){return mapa[k];})
+    .sort(function(a,b){return a.t-b.t;});
+  try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(scalone));}catch(e){
+    showToast('Brak miejsca w pamięci przeglądarki');return false;}
+  if(Array.isArray(p.pokrycie)){
+    var pok=wczytajPokrycie().concat(p.pokrycie).sort(function(a,b){return a.od-b.od;});
+    var scal=[];
+    pok.forEach(function(o){
+      var ost=scal[scal.length-1];
+      if(ost&&o.od-ost.do<COV_LUKA)ost.do=Math.max(ost.do,o.do);
+      else scal.push({od:o.od,do:o.do});
+    });
+    try{localStorage.setItem(COV_KEY,JSON.stringify(scal));}catch(e){}
+  }
+  showToast('Dołączono '+dodane+' nowych wpisów');
+  renderJournal();
+  return true;
+}
+
+// ══ SWAP — KOSZT TRZYMANIA PRZEZ NOC ═══════════════════════════════════════
+// Rejestr uwzględniał spread, ale nie punkty swapowe. Przy pozycji trzymanej
+// przez noc to realny koszt, a użytkownik trzyma.
+var SWAP_KEY='xau_swap';
+function getSwap(){
+  try{
+    var o=JSON.parse(localStorage.getItem(SWAP_KEY)||'null');
+    if(o&&isFinite(o.long)&&isFinite(o.short))return o;
+  }catch(e){}
+  return{long:0,short:0};
+}
+function setSwap(l,sh){
+  var a=parseFloat(String(l).replace(',','.')), b=parseFloat(String(sh).replace(',','.'));
+  if(!isFinite(a)||!isFinite(b))return false;
+  if(Math.abs(a)>50||Math.abs(b)>50)return false;
+  try{localStorage.setItem(SWAP_KEY,JSON.stringify({long:a,short:b}));}catch(e){}
+  return true;
+}
+// Ile przewalutowań (rolowań) dzieli nas od podanej liczby godzin trzymania.
+// Rolowanie u większości brokerów o 23:00 czasu platformy, w środę potrójne.
+function nocyDoPrzetrzymania(godzin){
+  var n=0, t=new Date();
+  var koniec=t.getTime()+godzin*3600000;
+  var roll=new Date(t); roll.setHours(23,0,0,0);
+  if(roll.getTime()<=t.getTime())roll.setDate(roll.getDate()+1);
+  while(roll.getTime()<=koniec){
+    n+=(roll.getDay()===3)?3:1;         // środa: potrójny swap za weekend
+    roll.setDate(roll.getDate()+1);
+  }
+  return n;
+}
+
+// ══ RENTOWNOŚCI I ATRYBUCJA ════════════════════════════════════════════════
+// Do tej pory „stopy" w panelu korelacji reprezentował TLT — fundusz obligacji,
+// którego procentowa zmiana NIE JEST zmianą rentowności, a często ma przeciwny
+// znak. To mylące i zostaje zdegradowane do jawnego zastępnika.
+//
+// Właściwe serie: 2-latka, 10-latka, rentowność realna i oczekiwana inflacja.
+// UWAGA: nie dało się sprawdzić z piaskowni, czy przeglądarka dosięgnie FRED
+// (blokada egress) ani czy Twelve Data ma symbole obligacji na tym planie.
+// Dlatego zamiast zgadywać, kod PRÓBUJE ŹRÓDEŁ PO KOLEI i mówi, które zadziałało.
+var YIELD_KEY='xau_yields';
+var YIELDS=null;
+
+var ZRODLA_RENT=[
+  {nazwa:'Twelve Data',  buduj:function(sym){
+     return 'https://api.twelvedata.com/time_series?symbol='+encodeURIComponent(sym)+
+       '&interval=1day&outputsize=30&apikey='+encodeURIComponent(API_KEYS.td||'');},
+   symbole:{y2:'US2Y',y10:'US10Y'}, kredyt:true,
+   czytaj:function(j){
+     if(!j||j.status==='error'||!j.values||!j.values.length)return null;
+     var v=j.values.map(function(x){return parseFloat(x.close);}).filter(isFinite);
+     return v.length>=2?{teraz:v[0],poprz:v[1]}:null;}},
+  {nazwa:'FRED',         buduj:function(sym){
+     return 'https://fred.stlouisfed.org/graph/fredgraph.csv?id='+encodeURIComponent(sym);},
+   symbole:{y2:'DGS2',y10:'DGS10',real:'DFII10',oczek:'T10YIE'}, kredyt:false,
+   czytaj:function(t){
+     if(typeof t!=='string'||t.indexOf(',')<0)return null;
+     var w=t.trim().split('\n').slice(1)
+       .map(function(l){return parseFloat(l.split(',')[1]);})
+       .filter(function(x){return isFinite(x);});
+     return w.length>=2?{teraz:w[w.length-1],poprz:w[w.length-2]}:null;}},
+];
+
+async function probujZrodlo(z,sym){
+  try{
+    if(z.kredyt&&!API_KEYS.td)return null;
+    if(z.kredyt)noteApiCall();
+    var r=await fetch(z.buduj(sym));
+    if(!r.ok)return null;
+    var tresc=z.kredyt?await r.json():await r.text();
+    return z.czytaj(tresc);
+  }catch(e){return null;}
+}
+
+async function pobierzRentownosci(){
+  var wynik={zrodlo:null,y2:null,y10:null,real:null,oczek:null,kiedy:Date.now(),proby:[]};
+  for(var i=0;i<ZRODLA_RENT.length;i++){
+    var z=ZRODLA_RENT[i];
+    var y10=await probujZrodlo(z,z.symbole.y10);
+    wynik.proby.push(z.nazwa+': '+(y10?'OK':'brak'));
+    if(!y10)continue;
+    wynik.zrodlo=z.nazwa; wynik.y10=y10;
+    wynik.y2=await probujZrodlo(z,z.symbole.y2);
+    if(z.symbole.real)wynik.real=await probujZrodlo(z,z.symbole.real);
+    if(z.symbole.oczek)wynik.oczek=await probujZrodlo(z,z.symbole.oczek);
+    break;
+  }
+  YIELDS=wynik;
+  try{localStorage.setItem(YIELD_KEY,JSON.stringify(wynik));}catch(e){}
+  return wynik;
+}
+function wczytajRentownosci(){
+  try{
+    var o=JSON.parse(localStorage.getItem(YIELD_KEY)||'null');
+    if(o&&o.kiedy&&Date.now()-o.kiedy<12*3600000)YIELDS=o;
+  }catch(e){}
+}
+
+// Progi czytelności podane przez użytkownika: <5 pb szum, 10-20 zauważalne, 30+ wydarzenie.
+function opisZmiany(pb){
+  var a=Math.abs(pb);
+  if(a<5)return{txt:'szum',kol:'var(--text3)'};
+  if(a<10)return{txt:'drobna',kol:'var(--text2)'};
+  if(a<=20)return{txt:'zauważalna',kol:'var(--amber)'};
+  if(a<30)return{txt:'duża',kol:'var(--amber)'};
+  return{txt:'WYDARZENIE',kol:'var(--red)'};
+}
+
+function renderYields(){
+  var el=document.getElementById('yieldsDisplay');
+  if(!el)return;
+  if(!YIELDS||!YIELDS.zrodlo){
+    el.innerHTML='<div style="font-size:9px;color:var(--text3);line-height:1.5">'+
+      'Rentowności niedostępne'+
+      (YIELDS&&YIELDS.proby&&YIELDS.proby.length
+        ? ' — próbowane źródła: '+YIELDS.proby.join(', ')+'.'
+        : '.')+
+      '<br>Panel korelacji pokazuje w zamian TLT, ale to <b>fundusz obligacji, '+
+      'nie rentowność</b> — jego zmiana procentowa ma zwykle przeciwny znak '+
+      'i innej skali. Nie czytaj go jak stóp.</div>';
+    return;
+  }
+  var w=[];
+  var wiersz=function(lab,d,jed){
+    if(!d||!isFinite(d.teraz))return;
+    var pb=(d.teraz-d.poprz)*100;      // punkty procentowe → bazowe
+    var o=opisZmiany(pb);
+    w.push('<div class="pos-row"><span style="color:var(--text3)">'+lab+'</span>'+
+      '<span style="color:var(--text)"><b>'+d.teraz.toFixed(2)+(jed||'%')+'</b> '+
+      '<span style="color:'+o.kol+'">'+(pb>=0?'+':'')+pb.toFixed(0)+' pb · '+o.txt+'</span></span></div>');
+  };
+  wiersz('2-latka',YIELDS.y2);
+  wiersz('10-latka',YIELDS.y10);
+  if(YIELDS.y2&&YIELDS.y10){
+    // Nachylenie mówi o złocie więcej niż sam poziom: stromienie przy luzowaniu
+    // sprzyja złotu, spłaszczanie przy zacieśnianiu mu szkodzi.
+    var sl=(YIELDS.y10.teraz-YIELDS.y2.teraz)*100;
+    var slP=(YIELDS.y10.poprz-YIELDS.y2.poprz)*100;
+    var dSl=sl-slP;
+    w.push('<div class="pos-row"><span style="color:var(--text3)">Nachylenie 2s10s</span>'+
+      '<span style="color:var(--text2)"><b>'+sl.toFixed(0)+' pb</b> '+
+      (dSl>=0?'stromienie +':'spłaszczanie ')+dSl.toFixed(0)+' pb</span></div>');
+  }
+  if(YIELDS.real)wiersz('Rentowność realna (10Y)',YIELDS.real);
+  if(YIELDS.oczek)wiersz('Oczekiwana inflacja 10Y',YIELDS.oczek);
+  if(YIELDS.real){
+    w.push('<div style="font-size:8px;color:var(--text3);margin-top:5px;line-height:1.5">'+
+      'Rentowność realna to właściwy koszt alternatywny trzymania złota — '+
+      'złoto nie płaci odsetek, więc im wyższa, tym drożej je trzymać.</div>');
+  }
+  w.push('<div style="font-size:8px;color:var(--text3);margin-top:4px">Źródło: '+
+    YIELDS.zrodlo+' · dane dzienne</div>');
+  el.innerHTML=w.join('');
+}
+
+// ── ATRYBUCJA: który czynnik rządzi dziś ceną ──────────────────────────────
+// Panel korelacji pokazuje zastępniki bez informacji, który z nich akurat
+// cokolwiek tłumaczy. Liczymy korelację dziennych zwrotów z ostatnich 20 sesji.
+var ATTR_KEY='xau_attr';
+var ATTRIBUTION=null;
+var ATTR_SYMBOLE=[
+  {k:'ropa',  sym:'WTI',     nazwa:'ropa'},
+  {k:'dolar', sym:'UUP',     nazwa:'dolar (UUP)'},
+  {k:'srebro',sym:'XAG/USD', nazwa:'srebro'},
+];
+function korelZwrotow(a,b){
+  var n=Math.min(a.length,b.length);
+  if(n<8)return null;
+  var ra=[],rb=[];
+  for(var i=1;i<n;i++){
+    if(!a[i-1]||!b[i-1])continue;
+    ra.push(a[i]/a[i-1]-1); rb.push(b[i]/b[i-1]-1);
+  }
+  if(ra.length<8)return null;
+  var m=function(v){return v.reduce(function(x,y){return x+y;},0)/v.length;};
+  var ma=m(ra),mb=m(rb),sxy=0,sxx=0,syy=0;
+  for(var j=0;j<ra.length;j++){
+    var dx=ra[j]-ma,dy=rb[j]-mb; sxy+=dx*dy; sxx+=dx*dx; syy+=dy*dy;
+  }
+  return (sxx&&syy)?sxy/Math.sqrt(sxx*syy):null;
+}
+async function policzAtrybucje(zlotoDzienne){
+  if(!API_KEYS.td||!zlotoDzienne||zlotoDzienne.length<12)return null;
+  var zloto=zlotoDzienne.slice(-21).map(function(c){return c.c;});
+  var out=[];
+  for(var i=0;i<ATTR_SYMBOLE.length;i++){
+    var it=ATTR_SYMBOLE[i];
+    try{
+      noteApiCall();
+      var r=await fetch('https://api.twelvedata.com/time_series?symbol='+
+        encodeURIComponent(it.sym)+'&interval=1day&outputsize=21&apikey='+
+        encodeURIComponent(API_KEYS.td));
+      if(!r.ok)continue;
+      var j=await r.json();
+      if(!j||j.status==='error'||!j.values)continue;
+      var v=j.values.map(function(x){return parseFloat(x.close);}).filter(isFinite).reverse();
+      var c=korelZwrotow(zloto,v);
+      if(c!=null)out.push({nazwa:it.nazwa,r:c});
+    }catch(e){}
+  }
+  if(YIELDS&&YIELDS.y10&&YIELDS.y10.teraz!=null)
+    out.push({nazwa:'10-latka',r:null,uwaga:'seria dzienna zbyt krótka do korelacji'});
+  ATTRIBUTION={kiedy:Date.now(),lista:out};
+  try{localStorage.setItem(ATTR_KEY,JSON.stringify(ATTRIBUTION));}catch(e){}
+  return ATTRIBUTION;
+}
+function renderAttribution(){
+  var el=document.getElementById('attrDisplay');
+  if(!el)return;
+  if(!ATTRIBUTION||!ATTRIBUTION.lista||!ATTRIBUTION.lista.length){
+    el.innerHTML='<div style="font-size:9px;color:var(--text3)">Liczenie korelacji...</div>';
+    return;
+  }
+  var zR=ATTRIBUTION.lista.filter(function(x){return x.r!=null;})
+    .sort(function(a,b){return Math.abs(b.r)-Math.abs(a.r);});
+  if(!zR.length){el.innerHTML='<div style="font-size:9px;color:var(--text3)">Brak danych do korelacji.</div>';return;}
+  var dom=zR[0];
+  var mocne=Math.abs(dom.r)>=0.5;
+  var w=['<div style="font-size:9px;margin-bottom:4px">'+
+    (mocne?'<b style="color:var(--gold2)">Dziś rządzi: '+dom.nazwa+'</b>'
+          :'<span style="color:var(--text2)">Brak wyraźnego dominującego czynnika</span>')+
+    ' <span style="color:var(--text3)">(20 sesji)</span></div>'];
+  zR.forEach(function(x){
+    var kol=Math.abs(x.r)>=0.5?'var(--text)':Math.abs(x.r)>=0.3?'var(--text2)':'var(--text3)';
+    w.push('<div class="pos-row"><span style="color:var(--text3)">'+x.nazwa+'</span>'+
+      '<span style="color:'+kol+'"><b>'+(x.r>=0?'+':'')+x.r.toFixed(2)+'</b></span></div>');
+  });
+  w.push('<div style="font-size:8px;color:var(--text3);margin-top:4px;line-height:1.5">'+
+    'Korelacja dziennych zwrotów, nie prognoza. Powyżej |0,5| czynnik realnie '+
+    'współporusza się ze złotem; poniżej |0,3| to praktycznie niezależne ruchy.</div>');
+  el.innerHTML=w.join('');
+}
+
+// ══ CO DZIŚ WPŁYWA NA DECYZJĘ — WARSTWA WAG ════════════════════════════════
+// Użytkownik: „wszystko, co jakkolwiek wpływa na cenę, musi być brane pod uwagę,
+// najwyżej wskazując przy tym, jak ważne dla decyzji to jest".
+//
+// Dlatego zamiast twardych bramek (weto: blokuje / nie blokuje) każdy czynnik
+// dostaje WAGĘ i jest pokazany, nawet gdy ta waga wynosi zero. Trzy klasy:
+//
+//   KIERUNEK    — czynnik z ZMIERZONĄ przewagą, realnie przesuwa decyzję
+//   WIARYGODNOŚĆ— nie mówi dokąd pójdzie cena, ale psuje wiarygodność szacunków
+//                 (zdarzenie makro, cienki rynek, koniec kwartału). Rozszerza
+//                 widełki i obniża pewność, nie przechyla kierunku.
+//   ZERO        — sprawdzony i NIE działa. Pokazujemy, żeby nie wrócić do niego
+//                 z przekonania, skoro dane mówią inaczej.
+//
+// Reguła: nic nie wchodzi do klasy KIERUNEK bez pomiaru. Zgadywana waga jest
+// gorsza niż jej brak, bo wygląda tak samo jak zmierzona.
+var WAGI_ZMIERZONE={
+  // z backtestu 8273 transakcji — przewaga brutto na transakcję w USD
+  regime:{impulse:0.475,trending:0.380,ranging:0.127,transitional:-0.570},
+  sesja:{postopen:1.244,usopen:0.969,preus:0.453,london:0.331,
+         asia:-0.169,us:-0.182,lonopen:-0.300,usdata:0,weekend:-99},
+};
+
+function czynnikiDecyzji(ctx){
+  ctx=ctx||{};
+  var L=[];
+  var r=marketRegime||{};
+
+  // ── KIERUNEK: zmierzone ──
+  var wr=WAGI_ZMIERZONE.regime[r.mode];
+  if(wr!=null)L.push({klasa:'kierunek',nazwa:'Tryb rynku',stan:(r.mode||'—').toUpperCase(),
+    waga:wr,jedn:'USD/tr',zrodlo:'8273 transakcji'});
+  var ph=(r.phase&&r.phase.key)||null;
+  var ws=ph!=null?WAGI_ZMIERZONE.sesja[ph]:null;
+  if(ws!=null&&ws>-90)L.push({klasa:'kierunek',nazwa:'Faza sesji',
+    stan:(r.phase.name||ph),waga:ws,jedn:'USD/tr',zrodlo:'8273 transakcji'});
+  if(r.impulse&&r.impulse.active)
+    L.push({klasa:'kierunek',nazwa:'Filtr impulsu',
+      stan:'impuls '+(r.impulse.dir==='up'?'w górę':'w dół')+' ('+r.impulse.votes+'/6)',
+      waga:null,opis:'blokuje kontrę — zmierzone jako najsilniejszy pojedynczy filtr',
+      zrodlo:'t = −7,45 dla wejść przeciw kontekstowi 1h'});
+
+  // ── WIARYGODNOŚĆ: nie przechyla kierunku, psuje szacunki ──
+  var kat=parsujKatalizatory(wczytajKatalizatory());
+  var teraz=Date.now();
+  var bliski=kat.filter(function(x){return x.t>teraz-30*60000&&x.t<teraz+60*60000;})[0];
+  if(bliski)L.push({klasa:'wiarygodnosc',nazwa:'Katalizator',
+    stan:bliski.nazwa+' '+(bliski.t>teraz?('za '+fmtHM(bliski.t-teraz)):'właśnie minął'),
+    opis:'zakres sesji przestaje obowiązywać, spread się rozszerza',mnoznik:2.0});
+  var fq=flagaKoncaOkresu();
+  if(fq)L.push({klasa:'wiarygodnosc',nazwa:fq.kwartal?'Koniec kwartału':'Koniec miesiąca',
+    stan:'zostały '+fq.doKonca+' dni robocze',
+    opis:'przepływy rebalansujące; ZMIERZONE rozszerzenie zakresu +'+
+      (fq.kwartal?'11':'6')+'%, ale nieistotne statystycznie (z='+
+      (fq.kwartal?'1,11':'0,46')+')',mnoznik:fq.kwartal?1.11:1.06});
+  var bie=sesjaW(new Date());
+  if(!bie)L.push({klasa:'wiarygodnosc',nazwa:'Poza sesjami',
+    stan:'cienki rynek',opis:'szerszy spread, mniejsza płynność, poślizg na zleceniach',
+    mnoznik:1.0});
+  var wid=ctx.cur!=null?widelkiSesji(bie||nastepnaSesja(new Date()).k,ctx.cur,ctx.atr15,null,null):null;
+  if(wid&&wid.zrodlo==='szacunek')
+    L.push({klasa:'wiarygodnosc',nazwa:'Widełki sesji',
+      stan:'szacunek z ATR, nie pomiar',opis:'historia sesji jeszcze się zbiera',mnoznik:1.0});
+  if(API_HEALTH&&API_HEALTH.lastError)
+    L.push({klasa:'wiarygodnosc',nazwa:'Dane',stan:API_HEALTH.lastError.label,
+      opis:'wskaźniki liczone z danych, które mogą być nieaktualne',mnoznik:1.0});
+
+  // ── ZERO: sprawdzone, nie działa ──
+  L.push({klasa:'zero',nazwa:'Okrągłe poziomy',stan:'wyświetlane',
+    opis:'odbicia 52,5% wobec 53,3% na poziomach losowych (z=−1,18) — nie trzymają lepiej'});
+  L.push({klasa:'zero',nazwa:'EMA dzienne',stan:'wyświetlane',
+    opis:'odbicia 52,9–56,1% wobec 53,3% kontroli, żadne nieistotne'});
+  L.push({klasa:'zero',nazwa:'Schemat nocny',stan:'nie wbudowany',
+    opis:'korelacja USA→Azja 0,018 na 503 parach; okno 03:00–09:00 mniej kierunkowe niż losowe'});
+  return L;
+}
+
+function renderFactors(ctx){
+  if(WARMING)return;
+  var el=document.getElementById('factorsDisplay');
+  if(!el)return;
+  var L=czynnikiDecyzji(ctx);
+  var grupa=function(klasa){return L.filter(function(x){return x.klasa===klasa;});};
+  var w=[];
+
+  var sekcja=function(tytul,poz,kolor,wstep){
+    if(!poz.length)return;
+    w.push('<div style="font-size:8px;color:var(--text3);text-transform:uppercase;'+
+      'letter-spacing:.5px;margin:7px 0 3px">'+tytul+'</div>');
+    if(wstep)w.push('<div style="font-size:8px;color:var(--text3);margin-bottom:3px;'+
+      'line-height:1.5">'+wstep+'</div>');
+    poz.forEach(function(x){
+      var prawa=(x.waga!=null)
+        ? '<b style="color:'+(x.waga>0?'var(--green)':x.waga<0?'var(--red)':'var(--text3)')+'">'+
+          (x.waga>0?'+':'')+x.waga.toFixed(3)+' '+(x.jedn||'')+'</b>'
+        : (x.mnoznik!=null&&x.mnoznik!==1.0
+            ? '<b style="color:var(--amber)">widełki ×'+x.mnoznik.toFixed(2)+'</b>'
+            : '<span style="color:'+kolor+'">'+(x.klasa==='zero'?'waga 0':'wpływ na pewność')+'</span>');
+      w.push('<div style="padding:3px 0;border-bottom:1px solid var(--border)">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-size:9px">'+
+        '<span style="color:var(--text2)">'+x.nazwa+
+        ' <span style="color:var(--text3)">· '+x.stan+'</span></span>'+
+        '<span style="text-align:right;white-space:nowrap">'+prawa+'</span></div>'+
+        (x.opis?('<div style="font-size:8px;color:var(--text3);line-height:1.45;margin-top:1px">'+
+          x.opis+'</div>'):'')+
+        (x.zrodlo?('<div style="font-size:7px;color:var(--text3);margin-top:1px">źródło: '+
+          x.zrodlo+'</div>'):'')+
+        '</div>');
+    });
+  };
+
+  sekcja('Przesuwa decyzję (zmierzone)',grupa('kierunek'),'var(--text2)',
+    'Przewaga brutto na transakcję zmierzona na 8273 transakcjach. Nie jest to prognoza '+
+    'dla tej transakcji — mówi, jak historycznie wypadał ten kontekst.');
+  sekcja('Psuje wiarygodność, nie kierunek',grupa('wiarygodnosc'),'var(--amber)',
+    'Te czynniki nie mówią, dokąd pójdzie cena. Rozszerzają spodziewany zakres '+
+    'i obniżają zaufanie do poziomów — dlatego nie blokują, tylko ostrzegają.');
+  sekcja('Sprawdzone — nie działa',grupa('zero'),'var(--text3)',
+    'Zmierzone i odrzucone. Zostają na ekranie do orientacji, ale NIE wchodzą do decyzji.');
+
+  var mn=grupa('wiarygodnosc').reduce(function(a,x){
+    return a*(x.mnoznik!=null?Math.max(1,x.mnoznik):1);},1);
+  if(mn>1.01){
+    w.unshift('<div class="pos-warn" style="border-color:var(--gold-b);background:var(--gold-bg);margin:0 0 6px">'+
+      '<b style="color:var(--amber)">Dziś szacunki są mniej wiarygodne</b><br>'+
+      'Spodziewany zakres sesji przemnożony ×'+mn.toFixed(2)+' przez czynniki poniżej. '+
+      'Poziomy SL i TP traktuj szerzej niż zwykle.</div>');
+  }
+  el.innerHTML=w.join('');
+  return mn;
 }
 
 // ══ DIAGNOSTYKA POŁĄCZENIA ══════════════════════════════════════════════════
@@ -2945,6 +4082,9 @@ function journalLoad(){
 }
 // Podwójne ograniczenie: liczbą wpisów ORAZ rozmiarem w bajtach. Sama liczba nie
 // wystarcza, bo wpis puchnie w miarę oceniania (dochodzą MFE/MAE dla 12 i 24 świec).
+// Poniżej tylu rozstrzygniętych wpisów procent skuteczności jest szumem
+// udającym wynik — pokazujemy wtedy surowe zliczenie.
+var JOURNAL_MIN_N=20;
 var JOURNAL_MAX_ENTRIES=400;
 var JOURNAL_MAX_BYTES=192*1024;     // ~0,2 MB przy typowym limicie 5 MB na domenę
 var JOURNAL_STORAGE_ERR=null;       // ostatni problem z zapisem, pokazywany w panelu
@@ -3147,10 +4287,23 @@ function renderJournal(){
     var left=Math.max(0,12-best);
     nextIn=' Najbliższa ocena za ok. '+(left*5)+' min.';
   }
+  // UCZCIWOŚĆ PRÓBKI: rejestr widzi tylko te chwile, w których dashboard był
+  // włączony. Bez tej linii procenty udają statystykę z rynku, a są statystyką
+  // z okien, w których akurat ktoś siedział przy komputerze.
+  var pok=statystykaPokrycia(7);
+  var pokTxt='';
+  if(pok.rynek>0){
+    var kolP=pok.pct>=70?'var(--green)':pok.pct>=35?'var(--amber)':'var(--red)';
+    pokTxt='<div style="font-size:8px;color:var(--text3);line-height:1.5;margin-bottom:5px">'+
+      'Pokrycie ostatnich 7 dni: <b style="color:'+kolP+'">'+pok.pct+'%</b> godzin rynku '+
+      '('+Math.round(pok.widziane/3600000)+' z '+Math.round(pok.rynek/3600000)+' h, '+
+      pok.okien+' okien). Poza tym czasem dashboard był wyłączony i sygnałów z tych '+
+      'okien w rejestrze NIE MA — to nie jest próbka z całego rynku.</div>';
+  }
   var head='<div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:5px">'+
     'Sygnały: <b style="color:var(--text2)">'+real.length+'</b> zapisanych · '+
     '<b style="color:var(--text2)">'+scored.length+'</b> ocenionych · '+
-    pending.length+' czeka na ocenę.'+nextIn+'</div>';
+    pending.length+' czeka na ocenę.'+nextIn+'</div>'+pokTxt;
 
   if(!scored.length&&!scoredShadow.length){
     el.innerHTML=head+
@@ -3166,10 +4319,20 @@ function renderJournal(){
     return '<div style="font-size:8px;color:var(--text3);margin:7px 0 3px;text-transform:uppercase;letter-spacing:.5px">'+title+'</div>'+
       (note?'<div style="font-size:8px;color:var(--text3);margin-bottom:3px">'+note+'</div>':'')+
       rows.map(function(r){
-        var col=r.rate==null?'var(--text3)':r.rate>=55?'var(--green)':r.rate<=40?'var(--red)':'var(--amber)';
-        return '<div style="display:flex;justify-content:space-between;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border)">'+
+        var rozstrzygniete=r.tp+r.sl;
+        // PRÓG RZETELNOŚCI. Przy n=2 „50%" wygląda jak wynik, a jest rzutem monetą:
+        // przedział ufności sięga wtedy od kilkunastu do kilkudziesięciu procent.
+        // Poniżej progu pokazujemy surowe zliczenie i mówimy wprost, że to za mało.
+        var wartoProcent=rozstrzygniete>=JOURNAL_MIN_N;
+        var col=(!wartoProcent||r.rate==null)?'var(--text3)'
+          :r.rate>=55?'var(--green)':r.rate<=40?'var(--red)':'var(--amber)';
+        var glowna=wartoProcent
+          ? '<b style="color:'+col+'">'+r.rate+'%</b>'
+          : '<b style="color:var(--text3)">'+r.tp+'/'+rozstrzygniete+'</b>'+
+            '<span style="color:var(--text3)"> trafione — za mało danych</span>';
+        return '<div style="display:flex;justify-content:space-between;gap:6px;font-size:9px;padding:2px 0;border-bottom:1px solid var(--border)">'+
           '<span style="color:var(--text2)">'+r.key+'</span>'+
-          '<span><b style="color:'+col+'">'+(r.rate==null?'—':r.rate+'%')+'</b>'+
+          '<span style="text-align:right">'+glowna+
           ' <span style="color:var(--text3)">n='+r.n+' · +'+r.mfe+'/−'+r.mae+' pkt</span></span>'+
         '</div>';
       }).join('');
@@ -3524,6 +4687,32 @@ async function loadDataEnhanced(){
     if(sltpEls.tp){sltpEls.tp.textContent=fmt(sltpMain.tp);sltpEls.tp.style.color=bias.isLong?'var(--green)':'var(--red)';}
     if(sltpEls.sl){sltpEls.sl.textContent=fmt(sltpMain.sl);sltpEls.sl.style.color=bias.isLong?'var(--red)':'var(--green)';}
     if(sltpEls.range)sltpEls.range.textContent=sltpMain.tpPts.toFixed(1)+' pkt (R:R = '+sltpMain.rr+':1)';
+    // Gdy podłoga szumu przesunęła SL, R:R zwykle się psuje — i to jest informacja,
+    // a nie usterka: cel 12 pkt przy sesji chodzącej 31 pkt wymaga stopu w szumie.
+    const szEl=document.getElementById('sltpNoise');
+    if(szEl){
+      const sz=sltpMain.szum;
+      if(sz&&sz.przesuniety){
+        szEl.style.display='block';
+        szEl.innerHTML='<div style="border:1px solid var(--gold-b);background:var(--gold-bg);'+
+          'border-radius:var(--r2);padding:6px 8px;font-size:9px;line-height:1.55;color:var(--amber)">'+
+          '<b>SL odsunięty do granicy szumu</b><br>'+
+          'Struktura dawała stop '+sltpMain.slStrukturalny.toFixed(1)+' pkt od ceny, ale sesja '+
+          sz.sesja+' przechodzi zwykle '+sz.med.toFixed(1)+' pkt — taki stop wyleciałby '+
+          'na samym ruchu sesyjnym. Odsunięty do '+sz.podloga.toFixed(1)+' pkt.'+
+          (parseFloat(sltpMain.rr)<1
+            ? '<br><b>Uwaga:</b> przy R:R '+sltpMain.rr+':1 ta transakcja wymaga trafności '+
+              'powyżej '+Math.round(100/(1+parseFloat(sltpMain.rr)))+'%, żeby wyjść na zero. '+
+              'Albo cel musi urosnąć, albo to nie jest rynek na ten cel.'
+            : '')+
+          '</div>';
+      } else if(sz){
+        szEl.style.display='block';
+        szEl.innerHTML='<div style="font-size:8px;color:var(--text3);line-height:1.5">'+
+          'SL poza granicą szumu sesji '+sz.sesja+' (typowo '+sz.med.toFixed(1)+' pkt'+
+          (sz.zrodlo==='szacunek'?', szacunek':'')+').</div>';
+      } else szEl.style.display='none';
+    }
     if(sltpEls.cS)sltpEls.cS.textContent='$'+(sltpMain.tpPts*0.5).toFixed(2);
     if(sltpEls.cL)sltpEls.cL.textContent='$'+(sltpMain.tpPts*1.0).toFixed(2);
     // Czas do celu — z tabeli zmierzonej na dwóch latach danych
@@ -3640,6 +4829,18 @@ async function loadDataEnhanced(){
   // sprzed godziny, bo pobieranie po cichu zwróciło null.
   renderApiHealth();
   renderTimingPanel();
+
+  // ATR liczbowo — bez tego krotności w innych sekcjach są nieporównywalne.
+  const atr60=(c60.length>20)?calcATR(c60,h60,l60,14):null;
+  // Panel pozycji przelicza się przy każdym wpisaniu znaku, a nie dopiero przy
+  // kolejnym pobraniu danych — stąd zapamiętany kontekst.
+  LAST_CTX.cur=cur; LAST_CTX.atr15=atr15;
+  renderAtrStrip(atr5,atr15,atr60,atrDay);
+  renderQuarterFlag();
+  odnotujObecnosc();      // do policzenia, jaką część rynku rejestr w ogóle widział
+  renderSessionsPanel(cur,atr15,candles5);
+  renderFactors({cur:cur,atr15:atr15});
+  renderPositionPanel(cur,atr15,candles5);
 
   const msd=document.getElementById('masterScoreDisplay');
   if(msd)msd.textContent=(masterScore>0?'+':'')+masterScore+' · '+
@@ -3794,9 +4995,15 @@ function calcSignalWeekly(closes,rsi,macd,bb,e20,e50,e100){
   const last5=closes.slice(-5),trend5=last5[4]-last5[0];
   const trendPct=(trend5/last5[0]*100).toFixed(2);
   let score=0,why=[];
+  // Sygnał tygodniowy liczy się ze świec DZIENNYCH — etykieta musi to mówić,
+  // bo inaczej „RSI wyprzedany" tutaj i „RSI wykupiony" w sygnale średnim
+  // czytają się jak sprzeczność, a są po prostu o czymś innym.
+  var rsiTxtW=function(stan){return 'RSI 1D '+rv.toFixed(0)+' — '+stan;};
   if(rv!=null){
-    if(rv<30){score+=4;why.push('RSI mocno wyprz.');}else if(rv<40){score+=2;why.push('RSI wyprzedany');}else if(rv<48)score+=1;
-    else if(rv>70){score-=4;why.push('RSI mocno wykup.');}else if(rv>60){score-=2;why.push('RSI wykupiony');}else if(rv>52)score-=1;
+    if(rv<30){score+=4;why.push(rsiTxtW('mocno wyprzedany'));}
+    else if(rv<40){score+=2;why.push(rsiTxtW('wyprzedany'));}else if(rv<48)score+=1;
+    else if(rv>70){score-=4;why.push(rsiTxtW('mocno wykupiony'));}
+    else if(rv>60){score-=2;why.push(rsiTxtW('wykupiony'));}else if(rv>52)score-=1;
   }
   if(ml!=null&&ms!=null&&mlp!=null&&msp!=null){
     const gc=mlp<msp&&ml>ms,dc=mlp>msp&&ml<ms;
@@ -4262,11 +5469,64 @@ function calcPriceLevels(candles5m,candlesDaily){
   var dayHL=hilo5m(todayCandles);
   var h8HL=hilo5m(h8Candles);
 
+  // EMA dzienne — poziomy średnioterminowe, do tej pory tylko w tekście sygnału.
+  var emaD=null;
+  var dd=(candlesDaily&&candlesDaily.length>=20)?candlesDaily
+        :(typeof candlesDay!=='undefined'&&candlesDay.length>=20?candlesDay:null);
+  if(dd){
+    var cl=dd.map(function(c){return c.c;});
+    var last=function(a){return a&&a.length?a[a.length-1]:null;};
+    emaD={
+      e20:last(calcEMA(cl,20)),
+      e50:cl.length>=50?last(calcEMA(cl,50)):null,
+      e100:cl.length>=100?last(calcEMA(cl,100)):null
+    };
+  }
+
   return{
     day:dayHL,
     week:{h:weekH,l:weekL},
     h8:h8HL,
+    emaD:emaD,
   };
+}
+
+// ══ KONIEC MIESIĄCA I KWARTAŁU ═════════════════════════════════════════════
+// Przepływy rebalansujące funduszy psują statystykę zakresu: sesja potrafi
+// przejść dwa razy więcej niż zwykle bez żadnego powodu fundamentalnego.
+// Widełki liczone z mediany zwykłych dni są wtedy zaniżone.
+function flagaKoncaOkresu(d){
+  d=d||new Date();
+  var mies=d.getMonth(), rok=d.getFullYear();
+  var ostatni=new Date(rok,mies+1,0).getDate();
+  var dzien=d.getDate();
+  // Ostatnie trzy dni robocze miesiąca — liczone wstecz od końca
+  var doKonca=0;
+  for(var x=dzien;x<=ostatni;x++){
+    var w=new Date(rok,mies,x).getDay();
+    if(w!==0&&w!==6)doKonca++;
+  }
+  if(doKonca>3||doKonca===0)return null;
+  var kwartal=(mies===2||mies===5||mies===8||mies===11);
+  return{
+    kwartal:kwartal,
+    doKonca:doKonca,
+    txt:(kwartal?'Koniec kwartału':'Koniec miesiąca')+
+      ' — zostały '+doKonca+' dni robocze. Przepływy rebalansujące '+
+      'rozciągają zakres sesji bez powodu fundamentalnego, więc widełki '+
+      'liczone ze zwykłych dni są dziś ZANIŻONE.'
+  };
+}
+function renderQuarterFlag(){
+  var el=document.getElementById('quarterFlag');
+  if(!el)return;
+  var f=flagaKoncaOkresu();
+  if(!f){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="border:1px solid '+(f.kwartal?'var(--amber-b)':'var(--border)')+
+    ';background:'+(f.kwartal?'var(--amber-bg)':'var(--bg3)')+
+    ';border-radius:var(--r2);padding:6px 8px;font-size:9px;line-height:1.55;color:'+
+    (f.kwartal?'var(--amber)':'var(--text2)')+'">⚠ '+f.txt+'</div>';
 }
 
 function renderPriceLevels(levels, cur, atr){
@@ -4279,6 +5539,27 @@ function renderPriceLevels(levels, cur, atr){
     {id:'8h', price:levels.h8.h,   label:'8h',      dir:'above'},
     {id:'8l', price:levels.h8.l,   label:'8h',      dir:'below'},
   ];
+
+  // OKRĄGŁE POZIOMY. Zbierają zlecenia i zatrzymują ruch częściej niż dowolna
+  // średnia, bo ludzie ustawiają tam SL i TP. Krok 50 przy złocie po ~4000 —
+  // pełne setki są rzadsze, więc bierzemy najbliższą wielokrotność 50 w górę
+  // i w dół, a setkę wyróżniamy jako mocniejszy magnes.
+  var krok=50;
+  var rGora=Math.ceil(cur/krok)*krok, rDol=Math.floor(cur/krok)*krok;
+  if(rGora===cur)rGora+=krok;
+  if(rDol===cur)rDol-=krok;
+  defs.push({id:'ru',price:rGora,label:'okrągły',dir:'above',okragly:true});
+  defs.push({id:'rd',price:rDol, label:'okrągły',dir:'below',okragly:true});
+
+  // EMA DZIENNE — najważniejsze poziomy średnioterminowe. Do tej pory siedziały
+  // zaszyte w zdaniu sygnału tygodniowego, więc nie dało się odczytać dystansu.
+  if(levels.emaD){
+    [['e20',levels.emaD.e20,'EMA20'],['e50',levels.emaD.e50,'EMA50'],
+     ['e100',levels.emaD.e100,'EMA100']].forEach(function(x){
+      if(x[1]!=null&&isFinite(x[1]))
+        defs.push({id:x[0],price:x[1],label:x[2],dir:x[1]>cur?'above':'below',ema:true});
+    });
+  }
   defs.forEach(function(d){
     if(!d.price)return;
     var dist=d.price-cur;
@@ -4314,7 +5595,11 @@ function renderPriceLevels(levels, cur, atr){
       cEl.className='level-cell';
       dEl.className='lc-dist '+(dist>0?'above':'below');
       // Strength: can current momentum reach this level?
-      var strength=distAbs<(atr||20)?'Zasieg w 1xATR':'Zasieg w '+(distAbs/(atr||20)).toFixed(1)+'xATR';
+      // Krotność bez podanego ATR jest nieporównywalna — mówimy który to ATR.
+      var kr=(distAbs/(atr||20));
+      var strength=(kr<1?'W zasięgu 1×':'Zasięg '+kr.toFixed(1)+'×')+'ATR(15M)';
+      if(d.okragly)strength=((rGora%100===0&&d.id==='ru')||(rDol%100===0&&d.id==='rd')
+        ? 'PEŁNA SETKA · ' : 'magnes · ')+strength;
       sEl.textContent=strength;
       sEl.className='lc-strength '+(distAbs<(atr||20)*1.5?'medium':'weak');
     }
@@ -4346,12 +5631,24 @@ function renderPriceLevels(levels, cur, atr){
   if(rangeEl&&tp&&sl){
     var range=Math.abs(tp-sl);
     rangeEl.textContent=range.toFixed(1)+' pkt';
-    // 1:20 leverage, gold = 100oz per lot
-    // 0.005 lot = 0.005*100 = 0.5 oz, 1pt = $1 -> 0.5*1*range
-    var usdSmall=(range*0.5).toFixed(2);
-    var usdLarge=(range*1.0).toFixed(2);
-    if(calcS)calcS.textContent='$'+usdSmall;
-    if(calcL)calcL.textContent='$'+usdLarge;
+    // XAU/USD: 1 lot = 100 uncji, więc 0,01 lota daje 1 USD na każdy punkt.
+    // Sztywne 0,005 zastąpione polem — użytkownik gra 0,019 i żadna stała
+    // nie trafiała w jego wielkość pozycji.
+    var wlasny=liczba('calcLot',null);
+    if(wlasny==null||wlasny<=0){
+      var zap=null;
+      try{zap=parseFloat(String(JSON.parse(localStorage.getItem(POS_KEY)||'{}').posLot||'').replace(',','.'));}catch(e){}
+      wlasny=(isFinite(zap)&&zap>0)?zap:0.005;
+      var cl=document.getElementById('calcLot');
+      if(cl&&!cl.value)cl.placeholder=wlasny.toString();
+    }
+    var usdLarge=(range*1.0);
+    var usdWlasny=range*wlasny*100;
+    var pln=function(u){
+      return (USDPLN&&USDPLN.kurs)?(' / '+(u*USDPLN.kurs).toFixed(0)+' zł'):'';
+    };
+    if(calcS)calcS.textContent='$'+usdWlasny.toFixed(2)+pln(usdWlasny);
+    if(calcL)calcL.textContent='$'+usdLarge.toFixed(2)+pln(usdLarge);
   }
 }
 
@@ -4637,6 +5934,10 @@ function loadApiKeys(){
   if(API_KEYS.fh&&fhI){fhI.value=API_KEYS.fh;setApiStatus('fh','ok','✓ Ustawiony');}
   var spI=document.getElementById('spreadInput');
   if(spI)spI.value=getSpread().toFixed(2);
+  var sw=getSwap();
+  var swLi=document.getElementById('swapLong'), swSi=document.getElementById('swapShort');
+  if(swLi&&(sw.long||sw.short))swLi.value=String(sw.long);
+  if(swSi&&(sw.long||sw.short))swSi.value=String(sw.short);
   // Do działania wystarczy klucz Twelve Data. Wcześniej warunek wymagał także
   // klucza Anthropic, więc bez opcjonalnego doradcy AI dashboard w ogóle nie
   // startował — użytkownik widział tylko panel ustawień i pusty ekran.
@@ -4664,6 +5965,9 @@ function saveApiKeys(){
   if(td){API_KEYS.td=td;zapisz('xau_td_key',td);setApiStatus('td','ok','✓ Zapisany');}
   if(ant){API_KEYS.ant=ant;zapisz('xau_ant_key',ant);setApiStatus('ant','ok','✓ Zapisany');}
   if(fh){API_KEYS.fh=fh;zapisz('xau_fh_key',fh);setApiStatus('fh','ok','✓ Zapisany');}
+  var swL=document.getElementById('swapLong'), swS=document.getElementById('swapShort');
+  if(swL&&swS&&(swL.value!==''||swS.value!==''))
+    if(!setSwap(swL.value||0,swS.value||0))showToast('Punkty swapowe poza zakresem ±50');
   var spEl=document.getElementById('spreadInput');
   if(spEl&&spEl.value!==''){
     if(!setSpread(spEl.value))showToast('Spread poza zakresem 0–5 USD — zostawiam poprzedni');
@@ -5162,11 +6466,31 @@ function calcAnalyticalSLTP(candles, cur, isLong, atr){
   if(isLong&&sl>=cur)sl=cur-atrVal*0.8;
   if(!isLong&&sl<=cur)sl=cur+atrVal*0.8;
 
+  // ── PODŁOGA SZUMU ────────────────────────────────────────────────────────
+  // Dotąd SL brał się wyłącznie ze struktury (swing, ATR) i potrafił wypaść dwa
+  // punkty od ceny, gdy typowa sesja przechodzi trzydzieści. Panel pozycji zapalał
+  // wtedy czerwony alarm na poziom, który to samo narzędzie przed chwilą
+  // podpowiedziało. Podłoga: połowa zmierzonej mediany zakresu bieżącej sesji —
+  // ten sam próg, którego używa ostrzeżenie, więc sprzeczność znika z definicji.
+  var szum=null, slPrzedPodloga=Math.abs(sl-cur);
+  try{
+    var teraz=new Date();
+    var ks=sesjaW(teraz)||nastepnaSesja(teraz).k;
+    var wid=widelkiSesji(ks,cur,atr,null,null);
+    if(wid&&wid.med>0){
+      szum={sesja:SESJE[ks].nazwa,med:wid.med,podloga:wid.med*0.5,zrodlo:wid.zrodlo};
+      if(slPrzedPodloga<szum.podloga){
+        sl=isLong?(cur-szum.podloga):(cur+szum.podloga);
+        szum.przesuniety=true;
+      }
+    }
+  }catch(e){}
+
   const tpPts=Math.abs(tp-cur);
   const slPts=Math.abs(sl-cur);
   const rr=(tpPts/slPts).toFixed(1); // risk/reward ratio
 
-  return{tp,sl,tpPts,slPts,tpDesc,slDesc,rr};
+  return{tp,sl,tpPts,slPts,tpDesc,slDesc,rr,szum:szum,slStrukturalny:slPrzedPodloga};
 }
 
 
@@ -5216,6 +6540,40 @@ function initDashboard(){
   renderApiHealth();
   renderTimingPanel();
   loadDataEnhanced();
+  // Zakresy sesji: jedno pobranie na dobę, a wynik to kilkadziesiąt liczb
+  // w pamięci lokalnej. Kurs USD/PLN co sześć godzin — do oceny ryzyka
+  // starszy kurs w zupełności wystarcza.
+  setTimeout(function(){
+    odswiezZakresySesji(false).then(function(zmieniono){
+      if(zmieniono)renderSessionsPanel(LAST_CTX.cur,LAST_CTX.atr15,candles5);
+    });
+    odswiezUsdPln().then(function(){
+      renderPositionPanel(LAST_CTX.cur,LAST_CTX.atr15,candles5);
+    });
+    // Rentowności i atrybucja: dane dzienne, więc odświeżanie co 12 h wystarcza.
+    wczytajRentownosci();
+    renderYields();
+    if(!YIELDS||Date.now()-YIELDS.kiedy>12*3600000){
+      pobierzRentownosci().then(function(){
+        renderYields();
+        return policzAtrybucje(candlesDay);
+      }).then(renderAttribution);
+    } else {
+      try{ATTRIBUTION=JSON.parse(localStorage.getItem(ATTR_KEY)||'null');}catch(e){}
+      if(ATTRIBUTION&&Date.now()-ATTRIBUTION.kiedy<12*3600000)renderAttribution();
+      else policzAtrybucje(candlesDay).then(renderAttribution);
+    }
+  },4000);
+  DASH_TIMERS.push(setInterval(function(){
+    odswiezZakresySesji(false);
+    odswiezUsdPln();
+  },3600000));
+  // Odliczanie do następnej sesji ma iść własnym rytmem — dokładność minutowa,
+  // więc co 20 s wystarczy i nie obciąża telefonu.
+  DASH_TIMERS.push(setInterval(function(){
+    renderSessionsPanel(LAST_CTX.cur,LAST_CTX.atr15,candles5);
+    renderCatalysts();
+  },20000));
   // Makro, F&G, korelacje i newsy zasilają WYŁĄCZNIE prawą kolumnę, której na
   // telefonie nie ma. Pobieranie ich kosztowałoby kredyty Twelve Data i transfer
   // za dane, których nikt nie zobaczy. „Kluczowe poziomy" w lewej kolumnie biorą
@@ -5253,6 +6611,52 @@ document.addEventListener('DOMContentLoaded', function(){
   // Wire API buttons
   var tb=document.getElementById('apiTestBtn');
   if(tb)tb.addEventListener('click',diagnoseApi);
+
+  // Panel pozycji: wartości zostają w przeglądarce, przeliczanie jest natychmiastowe.
+  wczytajUsdPln();
+  wczytajPozycje();
+  POS_FIELDS.forEach(function(id){
+    var e=document.getElementById(id);
+    if(!e)return;
+    var h=function(){zapiszPozycje();renderPositionPanel(LAST_CTX.cur,LAST_CTX.atr15,candles5);};
+    e.addEventListener('input',h);
+    e.addEventListener('change',h);
+  });
+  var je=document.getElementById('jExport');
+  if(je)je.addEventListener('click',eksportujRejestr);
+  var ji=document.getElementById('jImport'), jf=document.getElementById('jFile');
+  if(ji&&jf){
+    ji.addEventListener('click',function(){jf.click();});
+    jf.addEventListener('change',function(){
+      var f=jf.files&&jf.files[0];
+      if(!f)return;
+      var r=new FileReader();
+      r.onload=function(){importujRejestr(String(r.result));jf.value='';};
+      r.onerror=function(){showToast('Nie udało się odczytać pliku');};
+      r.readAsText(f);
+    });
+  }
+
+  var ce=document.getElementById('catalystsEdit');
+  if(ce)ce.value=wczytajKatalizatory();
+  var cs=document.getElementById('catSave');
+  if(cs)cs.addEventListener('click',function(){
+    try{localStorage.setItem(CAT_KEY,(ce&&ce.value)||'');}catch(e){}
+    renderCatalysts();
+    showToast('Katalizatory zapisane ✓');
+  });
+  renderCatalysts();
+
+  var pc=document.getElementById('posClear');
+  if(pc)pc.addEventListener('click',function(){
+    POS_FIELDS.forEach(function(id){
+      var e=document.getElementById(id);
+      if(e)e.value=(id==='posDir')?'long':'';
+    });
+    zapiszPozycje();
+    renderPositionPanel(LAST_CTX.cur,LAST_CTX.atr15,candles5);
+  });
+  renderPositionPanel(null,null,[]);
   var bs=document.getElementById('buildStamp');
   if(bs)bs.textContent='Wersja pliku: '+BUILD_ID;
   var sb=document.getElementById('apiSaveBtn');
