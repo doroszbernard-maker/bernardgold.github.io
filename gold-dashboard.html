@@ -709,8 +709,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07080c;color:#cdd5e
   </div>
   <div class="sec-title">Sugerowane SL / TP</div>
   <div class="sltp-box">
-    <div class="sltp-row"><div class="sltp-label">Take Profit (lok. High 8h)</div><div class="sltp-val tp" id="sltpTP">—</div></div>
-    <div class="sltp-row"><div class="sltp-label">Stop Loss (lok. Low 8h)</div><div class="sltp-val sl" id="sltpSL">—</div></div>
+    <div class="sltp-row"><div class="sltp-label" id="sltpTPlab">Take Profit</div><div class="sltp-val tp" id="sltpTP">—</div></div>
+    <div class="sltp-row"><div class="sltp-label" id="sltpSLlab">Stop Loss</div><div class="sltp-val sl" id="sltpSL">—</div></div>
     <div class="sltp-row"><div class="sltp-label">Zasięg TP / R:R</div><div class="sltp-val usd" id="sltpRange">—</div></div>
     <div style="font-size:8px;padding:3px 6px;background:var(--bg3);border-radius:3px;color:var(--text3);margin-bottom:4px" id="sltpRR">Analiza swing struktury...</div>
     <div style="font-size:9px;padding:4px 6px;background:var(--gold-bg);border:1px solid var(--gold-b);border-radius:3px;color:var(--text2);margin-bottom:4px;line-height:1.5" id="sltpTime"></div>
@@ -3039,6 +3039,49 @@ function renderFactors(ctx){
   return mn;
 }
 
+// ══ BRAMKA OPŁACALNOŚCI ════════════════════════════════════════════════════
+// Dashboard potrafił jednocześnie pokazać „✅ OTWÓRZ SHORT" i obok wyliczenie,
+// że ta sama transakcja wymaga 77% trafności, żeby wyjść na zero. To ta sama
+// klasa sprzeczności co poziom SL odrzucany przez własny test — warstwa decyzji
+// nie rozmawiała z warstwą ryzyka.
+//
+// Próg jest wyprowadzony, nie wymyślony. Przy stosunku zysku do ryzyka R
+// trafność progu rentowności wynosi 1/(1+R). Nasz backtest na 8273 transakcjach
+// dawał trafności w przedziale 33–47%, a najlepszy zwalidowany wariant (TP 5×ATR,
+// SL 2,5×ATR, czyli R = 2) miał 40% przy progu 33%. Żadna zmierzona konfiguracja
+// nie zbliżyła się do 50%. Dlatego:
+//   R ≥ 1,0  → próg 50% i niżej: dopuszczalne
+//   R < 1,0  → próg powyżej 50%: powyżej wszystkiego, co kiedykolwiek zmierzyliśmy
+// Do tego dochodzi spread, który pogarsza realny stosunek — stąd liczymy R po
+// odjęciu pełnego spreadu od zysku i doliczeniu go do straty.
+var RR_MIN=1.0;
+
+function bramkaOplacalnosci(dec,sltp,spread){
+  if(!dec||!sltp||!isFinite(sltp.tpPts)||!isFinite(sltp.slPts)||sltp.slPts<=0)return dec;
+  var sp=(spread!=null&&isFinite(spread))?spread:0;
+  var zyskNetto=sltp.tpPts-sp;
+  var strataNetto=sltp.slPts+sp;
+  if(zyskNetto<=0){
+    dec._rr={R:0,prog:100,blokada:true,tp:sltp.tpPts,sl:sltp.slPts};
+  } else {
+    var R=zyskNetto/strataNetto;
+    dec._rr={R:R,prog:Math.round(100/(1+R)),blokada:R<RR_MIN,
+             tp:sltp.tpPts,sl:sltp.slPts,spread:sp};
+  }
+  if(!dec._rr.blokada)return dec;
+
+  // Nie kasujemy sygnału — degradujemy zielone światło do ostrzeżenia i mówimy
+  // dlaczego. Kierunek może być trafny; niewykonalna jest ta konkretna para
+  // poziomów przy tej zmienności.
+  var tekst='Cel '+sltp.tpPts.toFixed(1)+' pkt przy stopie '+sltp.slPts.toFixed(1)+
+    ' pkt (R:R '+dec._rr.R.toFixed(2)+':1) wymaga trafności powyżej '+dec._rr.prog+
+    '%. Najlepszy zmierzony wariant miał 40% przy progu 33%. Ten cel jest za mały '+
+    'wobec szumu — albo TP musi urosnąć, albo to nie jest rynek na ten cel.';
+  if(String(dec.oL).indexOf('✅')===0){dec.oL='🟡 CEL ZA MAŁY WOBEC SZUMU';dec.oLr=tekst;}
+  if(String(dec.oS).indexOf('✅')===0){dec.oS='🟡 CEL ZA MAŁY WOBEC SZUMU';dec.oSr=tekst;}
+  return dec;
+}
+
 // ══ DIAGNOSTYKA POŁĄCZENIA ══════════════════════════════════════════════════
 // Na komputerze przy problemie otwiera się konsolę i widać przyczynę. Na iPhonie
 // konsoli nie ma, więc „nie mogę połączyć się z API" to ślepy zaułek. Ten blok
@@ -4656,6 +4699,9 @@ async function loadDataEnhanced(){
   renderSig('Short',sigShortFinal);
   renderSig('Mid',sigMid);
   renderSigWeek(sigWeek);
+  // Bramka opłacalności MUSI zadziałać przed renderem, inaczej użytkownik zobaczy
+  // zielone światło dla transakcji, którą sam dashboard obok uznaje za nieopłacalną.
+  if(dec&&sltpMain)bramkaOplacalnosci(dec,sltpMain,getSpread());
   if(dec)renderDecisions(dec);
 
   setInd('Rsi',((rv15!=null?rv15.toFixed(1):'—'))+' (15M)',rv15<40?'WYPRZ.':rv15>60?'WYKUP.':'NEUTRAL',rv15<40?'buy':rv15>60?'sell':'neutral');
@@ -4687,6 +4733,26 @@ async function loadDataEnhanced(){
     if(sltpEls.tp){sltpEls.tp.textContent=fmt(sltpMain.tp);sltpEls.tp.style.color=bias.isLong?'var(--green)':'var(--red)';}
     if(sltpEls.sl){sltpEls.sl.textContent=fmt(sltpMain.sl);sltpEls.sl.style.color=bias.isLong?'var(--red)':'var(--green)';}
     if(sltpEls.range)sltpEls.range.textContent=sltpMain.tpPts.toFixed(1)+' pkt (R:R = '+sltpMain.rr+':1)';
+    // Etykiety muszą mówić, skąd poziom pochodzi i po której stronie ceny leży —
+    // przy shorcie „lok. High 8h" przy take proficie było wprost mylące.
+    const labTP=document.getElementById('sltpTPlab'), labSL=document.getElementById('sltpSLlab');
+    if(labTP)labTP.textContent='Take Profit '+(bias.isLong?'↑':'↓')+' · '+(sltpMain.tpDesc||'');
+    if(labSL)labSL.textContent='Stop Loss '+(bias.isLong?'↓':'↑')+' · '+(sltpMain.slDesc||'');
+    // Kalkulator liczony z DYSTANSU DO TP, nie z rozpiętości okna 8h.
+    (function(){
+      var wlasny=liczba('calcLot',null);
+      if(wlasny==null||wlasny<=0){
+        var zap=null;
+        try{zap=parseFloat(String(JSON.parse(localStorage.getItem(POS_KEY)||'{}').posLot||'').replace(',','.'));}catch(e){}
+        wlasny=(isFinite(zap)&&zap>0)?zap:0.01;
+        var cl=document.getElementById('calcLot');
+        if(cl&&!cl.value)cl.placeholder=String(wlasny);
+      }
+      var pln=function(u){return (USDPLN&&USDPLN.kurs)?(' / '+(u*USDPLN.kurs).toFixed(0)+' zł'):'';};
+      var uW=sltpMain.tpPts*wlasny*100, uL=sltpMain.tpPts*1.0;
+      if(sltpEls.cS)sltpEls.cS.textContent='$'+uW.toFixed(2)+pln(uW);
+      if(sltpEls.cL)sltpEls.cL.textContent='$'+uL.toFixed(2)+pln(uL);
+    })();
     // Gdy podłoga szumu przesunęła SL, R:R zwykle się psuje — i to jest informacja,
     // a nie usterka: cel 12 pkt przy sesji chodzącej 31 pkt wymaga stopu w szumie.
     const szEl=document.getElementById('sltpNoise');
@@ -5609,47 +5675,14 @@ function renderPriceLevels(levels, cur, atr){
     if(bEl)bEl.style.width=barPct+'%';
   });
 
-  // SL/TP suggestions - use regime-based values in ranging mode
-  var tp, sl;
-  if(marketRegime.mode==='ranging'&&marketRegime.tpPts&&cur){
-    // In ranging: use fixed point targets based on detected range
-    const sig=marketSnapshot.sigShort||{type:'wait'};
-    tp=sig.type==='buy'?cur+marketRegime.tpPts:cur-marketRegime.tpPts;
-    sl=sig.type==='buy'?cur-marketRegime.slPts:cur+marketRegime.slPts;
-  } else {
-    // In trending: use 8h highs/lows
-    tp=levels.h8.h;
-    sl=levels.h8.l;
-  }
-  var tpEl=document.getElementById('sltpTP');
-  var slEl=document.getElementById('sltpSL');
-  var rangeEl=document.getElementById('sltpRange');
-  var calcS=document.getElementById('calcSmall');
-  var calcL=document.getElementById('calcLarge');
-  if(tpEl&&tp)tpEl.textContent=fmt(tp);
-  if(slEl&&sl)slEl.textContent=fmt(sl);
-  if(rangeEl&&tp&&sl){
-    var range=Math.abs(tp-sl);
-    rangeEl.textContent=range.toFixed(1)+' pkt';
-    // XAU/USD: 1 lot = 100 uncji, więc 0,01 lota daje 1 USD na każdy punkt.
-    // Sztywne 0,005 zastąpione polem — użytkownik gra 0,019 i żadna stała
-    // nie trafiała w jego wielkość pozycji.
-    var wlasny=liczba('calcLot',null);
-    if(wlasny==null||wlasny<=0){
-      var zap=null;
-      try{zap=parseFloat(String(JSON.parse(localStorage.getItem(POS_KEY)||'{}').posLot||'').replace(',','.'));}catch(e){}
-      wlasny=(isFinite(zap)&&zap>0)?zap:0.005;
-      var cl=document.getElementById('calcLot');
-      if(cl&&!cl.value)cl.placeholder=wlasny.toString();
-    }
-    var usdLarge=(range*1.0);
-    var usdWlasny=range*wlasny*100;
-    var pln=function(u){
-      return (USDPLN&&USDPLN.kurs)?(' / '+(u*USDPLN.kurs).toFixed(0)+' zł'):'';
-    };
-    if(calcS)calcS.textContent='$'+usdWlasny.toFixed(2)+pln(usdWlasny);
-    if(calcL)calcL.textContent='$'+usdLarge.toFixed(2)+pln(usdLarge);
-  }
+  // USUNIĘTY DRUGI PISARZ TP/SL.
+  // Do tej pory ta funkcja wpisywała do pól „Take Profit" i „Stop Loss" wartości
+  // levels.h8.h i levels.h8.l — ZAWSZE w tej samej kolejności, niezależnie od
+  // kierunku. Przy pozycji SHORT dawało to take profit POWYŻEJ ceny i stop loss
+  // PONIŻEJ, czyli dokładnie odwrotnie. Do tego działała PO calcAnalyticalSLTP,
+  // więc nadpisywała poprawne poziomy błędnymi.
+  // Jedynym źródłem TP/SL jest teraz calcAnalyticalSLTP; kalkulator wielkości
+  // pozycji też liczy z tamtego dystansu, nie z rozpiętości okna 8h.
 }
 
 function checkMomentumDivergence(closes, rsi, macd, isUp){
